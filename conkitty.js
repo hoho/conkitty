@@ -1,3 +1,8 @@
+/*!
+ * conkitty v0.0.2, https://github.com/hoho/conkitty
+ * Copyright 2013 Marat Abdullin
+ * Released under the MIT license
+ */
 var conkittyCompile;
 
 (function() {
@@ -765,6 +770,8 @@ var conkittyCompile;
 
                 name = name.join('');
 
+                conkittyCheckName(index, i - name.length, name);
+
                 i = skipWhitespaces(line, i);
 
                 while (i < line.length) {
@@ -809,7 +816,7 @@ var conkittyCompile;
 
                 addIndent(ret, stack.length);
 
-                k = (new Array(stack.length + 1)).join(indentWith);
+                k = (new Array(stack.length)).join(indentWith);
 
                 if (cmd === 'WITH') {
                     variables[name] = true;
@@ -818,12 +825,12 @@ var conkittyCompile;
 
                     if (payload) {
                         payload = payload.replace('$C()', '$C(this)');
-                        payload = strip(payload).split('\n').join('\n' + k);
+                        payload = strip(payload).split('\n').join('\n' + k + indentWith);
                     }
 
                     if (payload2) {
                         payload2 = payload2.replace('$C()', '$C(this)');
-                        payload2 = strip(payload2).split('\n').join('\n' + k);
+                        payload2 = strip(payload2).split('\n').join('\n' + k + indentWith);
                     }
 
                     ret.push('.act(function ' + funcName + '() {\n');
@@ -853,11 +860,20 @@ var conkittyCompile;
                     addIndent(ret, stack.length);
                     ret.push('})\n');
                 } else {
-                    ret.push('.act(function ' + funcName + '() {\n' + k + '$C.tpl.' + name + '({parent: this');
+                    ret.push('.act(function ' + funcName + '(' + (payload ? '_' : '') + ') {\n');
+
                     if (payload) {
-                        ret.push(', payload:\n' + k + indentWith + strip(payload).split('\n').join('\n' + k));
-                        ret.push('[0]');
+                        ret.push(k + indentWith + '_ = ');
+                        ret.push(strip(payload).split('\n').join('\n' + k));
+                        ret.push('[0];\n');
                     }
+
+                    ret.push(k + indentWith + '$C.tpl.' + name + '({parent: this');
+
+                    if (payload) {
+                        ret.push(', payload: _.firstChild ? _ : undefined');
+                    }
+
                     ret.push('}');
 
                     if (args.length) {
@@ -930,6 +946,7 @@ var conkittyCompile;
                 ret.push(strip(expr).split('\n').join('\n' + k));
                 if (payload) {
                     ret.push('[0]');
+                    ret.push(';\n' + k + indentWith + name + ' = ' + name + '.firstChild ? ' + name + ' : undefined');
                 }
                 ret.push(';\n');
 
@@ -952,7 +969,7 @@ var conkittyCompile;
                     if (cmd === 'CURRENT') {
                         ret.push('.text(function(item) { return item; })\n');
                     } else {
-                        ret.push('.act(function ' + funcName + '() { if (_.payload) { this.appendChild(_.payload); }})\n');
+                        ret.push('.act(function ' + funcName + '() { _.payload && this.appendChild(_.payload); })\n');
                     }
 
                 } else {
