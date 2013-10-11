@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" href="3rdparty/qunit-1.12.0.css">
+    <script src="3rdparty/qunit-1.12.0.js"></script>
+    <script src="3rdparty/concat.js"></script>
+    <script src="../conkitty.js"></script>
+</head>
+<body>
+<div id="qunit"></div>
+<div id="container"></div>
+<script type="concat.js/template">
+page
+    div.class#id[data-ololo=123].ahah
+        "Hello "
+        strong
+            ('wo' + 'r')
+            (function() { return 'ld'; })
+        "!"
+
+tpl1 arg1 arg2
+    div
+        ATTR ('a' + 1) "bebe"
+
+        (arg2 + arg2)
+
+        CALL tpl2 (arg1 + 'yo')
+            em
+                "cool"
+            CALL tpl3
+                "hihihi"
+        CALL tpl2 "test"
+
+        SET somevar ({a: {b: arg1}})
+        SET somevar2
+            p
+                "000"
+
+        WITH somevar3 (somevar.a.b.c)
+            "no"
+        ELSE
+            "yes"
+
+        WITH somevar4 (somevar.a.b)
+            INSERT (somevar2)
+            (somevar4)
+            "!!!"
+
+
+tpl2 a
+    h1
+        (a)
+    TEST PAYLOAD
+        "aaa"
+    CHOOSE
+        WHEN PAYLOAD
+            h3
+                "1"
+                PAYLOAD
+                "1"
+        OTHERWISE
+            "nothing"
+
+tpl3 b
+    CHOOSE
+        WHEN (b)
+            "bbbbb"
+            (b)
+            "bbbbb"
+        OTHERWISE
+            "BBBBB"
+            PAYLOAD
+
+eachtest arg
+    ul
+        EACH (arg)
+            li
+                CURRENT
+                "|"
+                EACH CURRENT
+                    b
+                        CURRENT
+                "|"
+
+</script>
+<script src="../browser.js"></script>
+<script src="test.js"></script>
+</body>
+</html>
