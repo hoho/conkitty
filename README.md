@@ -3,6 +3,9 @@ conkitty
 
 Concat.js Template Engine
 
+Conkitty templates are being compiled to https://github.com/hoho/concat.js
+chains.
+
 # Example
 
 ## Below is the template example
