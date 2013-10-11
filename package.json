@@ -1,0 +1,33 @@
+{
+  "name": "conkitty",
+  "version": "0.0.1",
+  "description": "Concat.js Template Engine",
+  "main": "conkitty",
+  "directories": {
+    "test": "test",
+    "bin": "bin"
+  },
+  "scripts": {
+    "test": "grunt"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/hoho/conkitty.git"
+  },
+  "keywords": [
+    "conkitty",
+    "templates"
+  ],
+  "author": "Marat Abdullin <dakota@brokenpipe.ru>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hoho/conkitty/issues"
+  },
+  "bin": {
+      "conkitty": "bin/conkitty"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-contrib-jshint": "~0.6.4"
+  }
+}

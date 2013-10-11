@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+
+'use strict';
+
+try {
+    var conkittyCompile = require('../conkitty.js'),
+        fs = require('fs'),
+        filenames = process.argv.slice(2);
+
+    if (filenames.length) {
+        var compiled = {},
+            tmp,
+            code,
+            tplName,
+            hasTemplates;
+
+        for (var i = 0; i < filenames.length; i++) {
+            code = fs.readFileSync(filenames[i], 'utf8');
+
+            tmp = conkittyCompile(code);
+
+            for (tplName in tmp) {
+                compiled[tplName] = tmp[tplName];
+                hasTemplates = true;
+            }
+        }
+
+        if (!hasTemplates) {
+            throw new Error('No templates compiled');
+        }
+
+        console.log('if (!$C.tpl) { $C.tpl = {}; }\n');
+
+        for (tplName in compiled) {
+            console.log('$C.tpl.' + tplName + ' = ' + compiled[tplName] + '\n');
+        }
+
+    } else {
+        throw new Error('Filename is not supplied');
+    }
+} catch(e) {
+    console.log(e.message);
+    process.exit(1);
+}
