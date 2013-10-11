@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.0.2, https://github.com/hoho/conkitty
+ * conkitty v0.0.3, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -55,7 +55,7 @@ var conkittyCompile;
     }
 
     function conkittyCheckName(line, col, name) {
-        if (name === '_' || !name.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+        if (name === '_' || name === '__' || !name.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
             conkittyError(line, col, "Illegal name '" + name + "'");
         }
     }
@@ -732,13 +732,13 @@ var conkittyCompile;
                     index = expr.index;
                     i = expr.col;
 
-                    ret.push('.act(function ' + funcName + '(_) {\n');
+                    ret.push('.act(function ' + funcName + '(__) {\n');
                     addIndent(ret, stack.length + 1);
-                    ret.push('_ = ' + expr.expr + ';\n');
+                    ret.push('__ = ' + expr.expr + ';\n');
                     addIndent(ret, stack.length + 1);
-                    ret.push('if (!(_ instanceof Node)) { _ = document.createTextNode(_); }\n');
+                    ret.push('if (!(__ instanceof Node)) { __ = document.createTextNode(__); }\n');
                     addIndent(ret, stack.length + 1);
-                    ret.push('this.appendChild(_);\n');
+                    ret.push('this.appendChild(__);\n');
                     addIndent(ret, stack.length);
                     ret.push('})\n');
                 } else {
@@ -860,10 +860,10 @@ var conkittyCompile;
                     addIndent(ret, stack.length);
                     ret.push('})\n');
                 } else {
-                    ret.push('.act(function ' + funcName + '(' + (payload ? '_' : '') + ') {\n');
+                    ret.push('.act(function ' + funcName + '(' + (payload ? '__' : '') + ') {\n');
 
                     if (payload) {
-                        ret.push(k + indentWith + '_ = ');
+                        ret.push(k + indentWith + '__ = ');
                         ret.push(strip(payload).split('\n').join('\n' + k));
                         ret.push('[0];\n');
                     }
@@ -871,7 +871,7 @@ var conkittyCompile;
                     ret.push(k + indentWith + '$C.tpl.' + name + '({parent: this');
 
                     if (payload) {
-                        ret.push(', payload: _.firstChild ? _ : undefined');
+                        ret.push(', payload: __.firstChild ? __ : undefined');
                     }
 
                     ret.push('}');
