@@ -3,12 +3,7 @@ conkitty
 
 Concat.js Template Engine
 
-Not ready yet.
-
 # Example
-
-In this example templates are being compiled at the runtime. In production it is
-supposed to have compiled concat.js chains only.
 
 ## Below is the template example
 
@@ -92,88 +87,3 @@ http://rawgithub.com/hoho/conkitty/master/example.html
             <li class="item" num="bb">item: <strong>bb!</strong></li>
         </ol>
     </p>
-
-## Template above is compiled to concat.js chains like these:
-
-    {
-        page: function (_, title, data) {
-            return $C(_.parent)
-                .test(function() { return (title); })
-                    .elem('h1', {"id":"identifier","aaa":"bbb","class":"some-class b-block1 b-block1_mod_val"})
-                        .text(function() { return (title); })
-                .end(2)
-                .p({"class":"ccc"})
-                    .choose()
-                        .when(function() { return (data.isUL); })
-                            .act(function() {
-                                $C.tpl.ul_list({parent: this, payload:
-                                    $C()
-                                        .elem('h3')
-                                            .text("This is <UL>")
-                                    .end(2)[0]},
-                                    (data.list)
-                                );
-                            })
-                        .end()
-                        .when(function() { return (data.isOL); })
-                            .act(function() {
-                                $C.tpl.ol_list({parent: this},
-                                    (data.list),
-                                    (1 + 3)
-                                );
-                            })
-                        .end()
-                        .otherwise()
-                            .elem('em')
-                                .text("Nothing")
-            .end(5)
-        },
-
-        ul_list: function (_, items) {
-            return $C(_.parent)
-                .div({"data-list":"999"})
-                    .act(function() { if (_.payload) { this.appendChild(_.payload); }})
-                .end()
-                .ul()
-                    .act(function() {
-                        $C.tpl.list({parent: this},
-                            (items)
-                        );
-                    })
-            .end(2)
-        },
-
-        ol_list: function (_, items, arg1) {
-            return $C(_.parent)
-                .elem('h3')
-                    .text("arg1 + 1 === ")
-                    .text(function() { return (arg1 + 1); })
-                .end()
-                .ol()
-                    .act(function() {
-                        $C.tpl.list({parent: this},
-                            (items)
-                        );
-                    })
-            .end(2)
-        },
-
-        list: function (_, items) {
-            return $C(_.parent)
-                .each(function() { return (items); })
-                    .li({"class":"item"})
-                        .attr('num', function() { return arguments[0]; })
-                        .text("item: ")
-                        .elem('strong')
-                            .text(function(item) { return item; })
-                            .text("!")
-            .end(4)
-        },
-
-        sep: function (_) {
-            return $C(_.parent)
-                .elem('section', {"class":"horizontal-separator"})
-                    .text("sep-sep-sep")
-            .end(2)
-        }
-    }
