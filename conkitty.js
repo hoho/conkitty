@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.0.3, https://github.com/hoho/conkitty
+ * conkitty v0.1.0, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -38,6 +38,11 @@ var conkittyCompile;
         }
 
         return col;
+    }
+
+    function startsWith(str, pos, what) {
+        var i = pos + what.length;
+        return str.substring(pos, i) === what && (str.length === i || whitespace.test(str[i]));
     }
 
     function conkittyGetAnonymousFunctionName(line, col) {
@@ -456,12 +461,8 @@ var conkittyCompile;
 
         funcName =  conkittyGetAnonymousFunctionName(index, i);
 
-        if (line.substring(i).match(/^(?:CURRENT|PAYLOAD)(?:\s|$)/)) {
-            if (line[i] === 'C') {
-                expr = 'arguments[0]';
-            } else {
-                expr = '_.payload';
-            }
+        if (line.substring(i).match(/^(?:PAYLOAD)(?:\s|$)/)) {
+            expr = '_.payload';
 
             if (!noWrap) {
                 expr = 'function ' + funcName + '() { return ' + expr + '; }';
@@ -679,7 +680,7 @@ var conkittyCompile;
         switch (cmd) {
             case 'CHOO':
             case 'OTHE':
-                if (line.substring(i, i + 6) === 'CHOOSE' || line.substring(i, i + 9) === 'OTHERWISE') {
+                if (startsWith(line, i, 'CHOOSE') || startsWith(line, i, 'OTHERWISE')) {
                     if (strip(line) === 'CHOOSE' || strip(line) === 'OTHERWISE') {
                         addIndent(ret, stack.length);
                         ret.push(cmd === 'CHOO' ? '.choose()\n' : '.otherwise()\n');
@@ -687,27 +688,23 @@ var conkittyCompile;
                         stack[stack.length - 1].end = true;
                         if (cmd === 'CHOO') {
                             stack[stack.length - 1].choose = true;
-                            break;
                         } else if (stack[stack.length - 2].choose) {
                             delete stack[stack.length - 2].choose;
-                            break;
                         }
                     } else {
-                        i += (cmd === 'CHOO' ? 6 : 9);
-                        if (whitespace.test(line[i])) {
-                            conkittyErrorUnexpectedSymbol(index, i + 1, line[i + 1]);
-                        }
+                        i = skipWhitespaces(line, i + (cmd === 'CHOO' ? 6 : 9));
+                        conkittyErrorUnexpectedSymbol(index, i, line[i]);
                     }
+                } else {
+                    conkittyError(index, i, 'Unexpected command');
                 }
 
-                conkittyError(index, i, 'Unexpected command');
                 break;
 
             case 'TEST':
-            case 'EACH':
             case 'ATTR':
             case 'WHEN':
-                if (cmd === 'WHEN' && !stack[stack.length - 2].choose) {
+                if ((!whitespace.test(line[i + 4])) || (cmd === 'WHEN' && !stack[stack.length - 2].choose)) {
                     conkittyError(index, i, 'Unexpected command');
                 }
 
@@ -722,10 +719,97 @@ var conkittyCompile;
 
                 break;
 
+            case 'EACH':
+                i += 4;
+
+                if (i >= line.length) {
+                    conkittyError(index, i, 'Expression is expected');
+                }
+
+                if (!whitespace.test(line[i])) {
+                    conkittyError(index, i, 'Unexpected command');
+                }
+
+                i = j = k = skipWhitespaces(line, i);
+
+                var keyVarName,
+                    valVarName,
+                    exprStarters = {'"': true, "'": true, '(': true};
+
+                if (!(line[i] in exprStarters)) {
+                    keyVarName = [];
+                    while (i < line.length && !whitespace.test(line[i])) {
+                        keyVarName.push(line[i]);
+                        i++;
+                    }
+
+                    i = skipWhitespaces(line, i + 1);
+
+                    if (i < line.length) {
+                        keyVarName = keyVarName.join('');
+                        conkittyCheckName(index, j, keyVarName);
+
+                        j = i;
+
+                        if (!(line[i] in exprStarters)) {
+                            valVarName = [];
+                            while (i < line.length && !whitespace.test(line[i])) {
+                                valVarName.push(line[i]);
+                                i++;
+                            }
+
+                            i = skipWhitespaces(line, i + 1);
+
+                            if (i < line.length) {
+                                valVarName = valVarName.join('');
+                                conkittyCheckName(index, j, valVarName);
+                            } else {
+                                i = j;
+                                valVarName = keyVarName;
+                                keyVarName = undefined;
+                            }
+                        } else {
+                            valVarName = keyVarName;
+                            keyVarName = undefined;
+                        }
+                    } else {
+                        i = k;
+                        keyVarName = undefined;
+                    }
+                }
+
+                expr = conkittyExtractExpression(index, i);
+
+                index = expr.index;
+                i = expr.col;
+
+                addIndent(ret, stack.length);
+                ret.push('.each(' + expr.expr + ')\n');
+
+                if (keyVarName || valVarName) {
+                    if (keyVarName) {
+                        variables[keyVarName] = true;
+                    }
+
+                    variables[valVarName] = true;
+
+                    addIndent(ret, stack.length + 1);
+                    ret.push('.act(function(_' + (keyVarName ? ', __' : '') + ') { ');
+                    ret.push(valVarName + ' = _; ');
+                    if (keyVarName) {
+                        ret.push(keyVarName + ' = __; ');
+                    }
+                    ret.push('})\n');
+                }
+
+                stack[stack.length - 1].end = true;
+
+                break;
+
             case 'INSE':
                 cmd = line.substring(i, i + 6);
 
-                if (cmd === 'INSERT' && whitespace.test(line[i + 6])) {
+                if (startsWith(line, i, 'INSERT')) {
                     expr = conkittyExtractExpression(index, i + 7, false, true);
                     addIndent(ret, stack.length);
 
@@ -890,6 +974,10 @@ var conkittyCompile;
 
             case 'SET':
             case 'SET ':
+                if (!startsWith(line, i, 'SET')) {
+                    conkittyError(index, i, 'Unexpected command');
+                }
+
                 name = [];
 
                 i = skipWhitespaces(line, i + 3);
@@ -955,10 +1043,8 @@ var conkittyCompile;
 
                 break;
 
-            case 'CURR':
             case 'PAYL':
-                cmd = line.substring(i, i + 7);
-                if (cmd === 'CURRENT' || cmd === 'PAYLOAD') {
+                if (startsWith(line, i, 'PAYLOAD')) {
                     i = skipWhitespaces(line, i + 7);
                     if (i < line.length) {
                         conkittyErrorUnexpectedSymbol(index, i, line[i]);
@@ -966,12 +1052,7 @@ var conkittyCompile;
 
                     addIndent(ret, stack.length);
 
-                    if (cmd === 'CURRENT') {
-                        ret.push('.text(function(item) { return item; })\n');
-                    } else {
-                        ret.push('.act(function ' + funcName + '() { _.payload && this.appendChild(_.payload); })\n');
-                    }
-
+                    ret.push('.act(function ' + funcName + '() { _.payload && this.appendChild(_.payload); })\n');
                 } else {
                     conkittyError(index, i, 'Unexpected command');
                 }
@@ -985,9 +1066,8 @@ var conkittyCompile;
         switch (cmd) {
             case 'TEST':
             case 'WHEN':
-            case 'EACH':
                 addIndent(ret, stack.length);
-                ret.push((cmd === 'TEST' ? '.test(' : cmd === 'EACH' ? '.each(' : '.when(') + expr.expr + ')\n');
+                ret.push((cmd === 'TEST' ? '.test(' : '.when(') + expr.expr + ')\n');
                 stack[stack.length - 1].end = true;
 
                 break;

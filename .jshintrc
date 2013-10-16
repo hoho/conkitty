@@ -9,7 +9,6 @@
     "eqeqeq": true,
     "immed": true,
     "noarg": true,
-    "onevar": true,
     "quotmark": false,
     "trailing": true,
     "undef": true,

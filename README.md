@@ -40,12 +40,12 @@ chains.
             CALL list (items)
 
     list items
-        EACH (items)
+        EACH cur (items)
             li.item
-                @num CURRENT
+                @num (cur)
                 "item: "
                 strong
-                    CURRENT
+                    (cur)
                     "!"
 
     sep

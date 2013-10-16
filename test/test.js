@@ -149,3 +149,30 @@ test('Each test', function() {
 
     container.innerHTML = '';
 });
+
+test('Each test 2', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('eachtest2', [{a: 11, b: 22}, {c: 33, d: 44}]).end();
+
+    domEqual(domToArray(container), [
+        'eeee',
+        'eeee',
+        {name: 'ul', children: [
+            {name: 'li', children: [
+                '|',
+                {name: 'b', children: ['a = 11']},
+                {name: 'b', children: ['b = 22']},
+                '|'
+            ]},
+            {name: 'li', children: [
+                '|',
+                {name: 'b', children: ['c = 33']},
+                {name: 'b', children: ['d = 44']},
+                '|'
+            ]}
+        ]}
+    ]);
+
+    container.innerHTML = '';
+});

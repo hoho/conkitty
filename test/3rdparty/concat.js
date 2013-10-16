@@ -1,7 +1,6 @@
 /*!
- * concat.js v0.5.6, https://github.com/hoho/concat.js
- * Copyright 2013 Marat Abdullin
- * Released under the MIT license
+ * concat.js v0.6.1, https://github.com/hoho/concat.js
+ * (c) 2013 Marat Abdullin, MIT license
  */
 (function(document, undefined) {
     // This code is being optimized for size, so some parts of it could be
@@ -12,7 +11,8 @@
         applyString = 'apply',
         proto,
         i,
-        curArgs = [], eachArray,
+        curArgs = [],
+        eachTarget,
         isFunction =
             function(func) {
                 return typeof func === 'function';
@@ -62,24 +62,42 @@
 
         run =
             function(item) {
-                var R, i, j, oldArgs = curArgs, oldEachArray = eachArray;
+                var R,
+                    i,
+                    j,
+                    oldArgs = curArgs,
+                    oldEachTarget = eachTarget,
+                    keys,
+                    position = -1;
 
                 if (item.E !== undefined) {
-                    eachArray = isFunction(item.E) ?
+                    eachTarget = isFunction(item.E) ?
                         item.E[applyString](item.A.P, curArgs)
                         :
                         item.E;
-                    curArgs = [undefined, -1, eachArray];
 
-                    R = function() {
-                        j = ++curArgs[1];
-                        curArgs[0] = eachArray[j];
+                    if (eachTarget) {
+                        keys = [];
+                        if (eachTarget instanceof Array) {
+                            for (j = 0; j < eachTarget.length; j++) {
+                                keys.push(j);
+                            }
+                        } else {
+                            for (j in eachTarget) {
+                                keys.push(j);
+                            }
+                        }
 
-                        return j < eachArray.length;
-                    };
+                        curArgs = [undefined, undefined, eachTarget];
+
+                        R = function() {
+                            curArgs[0] = eachTarget[(curArgs[1] = keys[++position])];
+                            return position < keys.length;
+                        };
+                    }
                 } else if (item.R !== undefined) {
                     curArgs = [-1];
-                    eachArray = undefined;
+                    eachTarget = undefined;
 
                     R = function() {
                         return isFunction(item.R) ?
@@ -107,7 +125,7 @@
                 }
 
                 curArgs = oldArgs;
-                eachArray = oldEachArray;
+                eachTarget = oldEachTarget;
             },
 
         Item =

@@ -74,13 +74,25 @@ tpl3 b
 
 eachtest arg
     ul
-        EACH (arg)
+        EACH cur (arg)
             li
-                CURRENT
+                (cur)
                 "|"
-                EACH CURRENT
+                EACH cur (cur)
                     b
-                        CURRENT
+                        (cur)
+                "|"
+
+eachtest2 arg
+    EACH (arg)
+        "eeee"
+    ul
+        EACH value (arg)
+            li
+                "|"
+                EACH key val (value)
+                    b
+                        (key + ' = ' + val)
                 "|"
 
 </script>
