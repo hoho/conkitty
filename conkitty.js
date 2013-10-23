@@ -1247,6 +1247,7 @@ var conkittyCompile;
 
                         conkittyInsertVariables(ret);
 
+                        ret.push(';');
                         ret = ret.join('');
 
                         try {
@@ -1331,6 +1332,7 @@ var conkittyCompile;
             } else {
                 conkittyInsertVariables(ret);
 
+                ret.push(';');
                 ret = ret.join('');
 
                 try {
