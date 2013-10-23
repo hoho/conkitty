@@ -176,3 +176,21 @@ test('Each test 2', function() {
 
     container.innerHTML = '';
 });
+
+test('Unescaped test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('unescaped').end();
+
+    domEqual(domToArray(container), [
+        {name: 'div', attr: {aa: 's"<>ss', he: 'ha'}, children: []},
+        {name: 'p', children: [
+            '"hello"'
+        ]},
+        {name: 'a', children: [
+            '\'world\''
+        ]}
+    ]);
+
+    container.innerHTML = '';
+});

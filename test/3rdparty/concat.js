@@ -1,5 +1,5 @@
 /*!
- * concat.js v0.6.1, https://github.com/hoho/concat.js
+ * concat.js v0.6.2, https://github.com/hoho/concat.js
  * (c) 2013 Marat Abdullin, MIT license
  */
 (function(document, undefined) {
@@ -296,12 +296,24 @@
         args[0][applyString](this, curArgs);
     });
 
-    i('text', function(item, index, arr, args/**/, text) {
+    i('text', function(item, index, arr, args/**/, text, el) {
         text = args[0];
         text = isFunction(text) ? text[applyString](this, curArgs) : text;
 
         if (text !== undefined) {
-            this[appendChildString](document.createTextNode(text));
+            if (args[1]) {
+                el = document.createElement('p');
+                el.innerHTML = text;
+                el = el.firstChild;
+                while (el) {
+                    // Use text variable as a temporary variable.
+                    text = el.nextSibling;
+                    this[appendChildString](el);
+                    el = text;
+                }
+            } else {
+                this[appendChildString](document.createTextNode(text));
+            }
         }
 
     });

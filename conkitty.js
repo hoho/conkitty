@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.1.0, https://github.com/hoho/conkitty
+ * conkitty v0.1.1, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -478,12 +478,34 @@ var conkittyCompile;
 
             return {index: index, col: i, expr: expr};
         } else if (line[i] === '"' || line[i] === "'") {
+            var longStr = line.substring(i, i + 3),
+                temp,
+                noesc;
+
+            if (longStr !== '"""' && longStr !== "'''") {
+                longStr = null;
+            } else {
+                i += 2;
+                noesc = true;
+            }
+
             inString = line[i];
             expr.push(line[i++]);
 
             while (i < line.length && inString) {
                 if (line[i] === inString && line[i - 1] !== '\\') {
-                    inString = false;
+                    temp = line.substring(i, i + 3);
+
+                    if (!longStr || longStr === temp) {
+                        inString = false;
+                        if (longStr) {
+                            i += 2;
+                        }
+                        expr.push(line[i++]);
+                        break;
+                    } else {
+                        expr.push('\\');
+                    }
                 }
 
                 expr.push(line[i++]);
@@ -503,7 +525,7 @@ var conkittyCompile;
 
             conkittyCheckExpression(expr);
 
-            return {index: index, col: i, expr: expr};
+            return {index: index, col: i, expr: expr, noesc: noesc};
         } else {
             if (line[i] !== '(') {
                 conkittyError(index, i, "Illegal symbol '" + line[i] + "'");
@@ -648,7 +670,7 @@ var conkittyCompile;
         addIndent(ret, stack.length);
         ret.push('.text(');
         ret.push(expr.expr);
-        ret.push(')\n');
+        ret.push((expr.noesc ? ', true' : '') + ')\n');
 
         stack[stack.length - 1].end = false;
 

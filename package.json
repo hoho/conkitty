@@ -1,6 +1,6 @@
 {
   "name": "conkitty",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Concat.js Template Engine",
   "main": "conkitty",
   "directories": {
