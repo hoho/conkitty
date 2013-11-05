@@ -194,3 +194,16 @@ test('Unescaped test', function() {
 
     container.innerHTML = '';
 });
+
+test('Dynamic call name test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('dynamic_call').end();
+
+    domEqual(domToArray(container), [
+        'ooooo',
+        'yoyoyo'
+    ]);
+
+    container.innerHTML = '';
+});

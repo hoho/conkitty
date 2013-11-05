@@ -101,6 +101,15 @@ unescaped
         ATTR '''he''' '''ha'''
     """<p>"hello"</p>"""
     '''<a>'world'</a>'''
+
+dynamic_call
+    CALL ('dynamic_call' + '_call') ('yo')
+        "ooooo"
+
+dynamic_call_call arg
+    PAYLOAD
+    (arg + arg + arg)
+
 </script>
 <script src="../browser.js"></script>
 <script src="test.js"></script>

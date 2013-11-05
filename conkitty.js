@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.1.1, https://github.com/hoho/conkitty
+ * conkitty v0.1.1+, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -685,6 +685,7 @@ var conkittyCompile;
             expr2,
             args,
             name,
+            nameWrapped,
             j,
             k,
             payload,
@@ -865,18 +866,30 @@ var conkittyCompile;
 
                 i = skipWhitespaces(line, i + 4);
 
-                while (i < line.length && !whitespace.test(line[i])) {
-                    name.push(line[i]);
-                    i++;
+                if (cmd === 'CALL' && line[i] === '(') {
+                    expr = conkittyExtractExpression(index, i, true, true);
+
+                    index = expr.index;
+                    i = expr.col;
+                    line = code[index];
+
+                    nameWrapped = '[' + expr.expr + ']';
+                } else {
+                    while (i < line.length && !whitespace.test(line[i])) {
+                        name.push(line[i]);
+                        i++;
+                    }
+
+                    if (!name.length) {
+                        conkittyError(index, i, 'No name');
+                    }
+
+                    name = name.join('');
+
+                    conkittyCheckName(index, i - name.length, name);
+
+                    nameWrapped = "['" + name + "']";
                 }
-
-                if (!name.length) {
-                    conkittyError(index, i, 'No name');
-                }
-
-                name = name.join('');
-
-                conkittyCheckName(index, i - name.length, name);
 
                 i = skipWhitespaces(line, i);
 
@@ -974,7 +987,7 @@ var conkittyCompile;
                         ret.push('[0];\n');
                     }
 
-                    ret.push(k + indentWith + '$C.tpl.' + name + '({parent: this');
+                    ret.push(k + indentWith + '$C.tpl' + nameWrapped + '({parent: this');
 
                     if (payload) {
                         ret.push(', payload: __.firstChild ? __ : undefined');
