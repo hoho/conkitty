@@ -198,7 +198,7 @@ test('Unescaped test', function() {
 test('Dynamic call name test', function() {
     var container = document.getElementById('container');
 
-    $C(container).callTemplate('dynamic_call').end();
+    $C(container).callTemplate('dynamic-call').end();
 
     domEqual(domToArray(container), [
         'ooooo',

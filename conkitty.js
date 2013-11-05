@@ -46,7 +46,7 @@ var conkittyCompile;
     }
 
     function conkittyGetAnonymousFunctionName(line, col) {
-        return '$C_' + currentTemplateName + '_' + (line + 1) + '_' + (col + 1);
+        return '$C_' + currentTemplateName.replace(/\-/g, '_') + '_' + (line + 1) + '_' + (col + 1);
     }
 
 
@@ -59,8 +59,9 @@ var conkittyCompile;
         conkittyError(line, col, "Unexpected symbol '" + chr + "'");
     }
 
-    function conkittyCheckName(line, col, name) {
-        if (name === '_' || name === '__' || !name.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+    function conkittyCheckName(line, col, name, isCall) {
+        var nameExpr = isCall ? /^[a-zA-Z_][a-zA-Z0-9_-]*$/ : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+        if (name === '_' || name === '__' || !name.match(nameExpr)) {
             conkittyError(line, col, "Illegal name '" + name + "'");
         }
     }
@@ -886,7 +887,7 @@ var conkittyCompile;
 
                     name = name.join('');
 
-                    conkittyCheckName(index, i - name.length, name);
+                    conkittyCheckName(index, i - name.length, name, cmd === 'CALL');
 
                     nameWrapped = "['" + name + "']";
                 }
@@ -1308,7 +1309,7 @@ var conkittyCompile;
                             if (whitespace.test(line[k])) {
                                 if (name.length) {
                                     name = name.join('');
-                                    conkittyCheckName(i, k - name.length, name);
+                                    conkittyCheckName(i, k - name.length, name, true);
                                     args.push(name);
                                     name = [];
                                 }

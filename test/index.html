@@ -25,12 +25,12 @@ tpl1 arg1 arg2
 
         (arg2 + arg2)
 
-        CALL tpl2 (arg1 + 'yo')
+        CALL tpl-2 (arg1 + 'yo')
             em
                 "cool"
             CALL tpl3
                 "hihihi"
-        CALL tpl2 "test"
+        CALL tpl-2 "test"
 
         SET somevar ({a: {b: arg1}})
         SET somevar2
@@ -48,7 +48,7 @@ tpl1 arg1 arg2
             "!!!"
 
 
-tpl2 a
+tpl-2 a
     h1
         (a)
     TEST PAYLOAD
@@ -102,11 +102,11 @@ unescaped
     """<p>"hello"</p>"""
     '''<a>'world'</a>'''
 
-dynamic_call
-    CALL ('dynamic_call' + '_call') ('yo')
+dynamic-call
+    CALL ('dynamic-call' + '-call') ('yo')
         "ooooo"
 
-dynamic_call_call arg
+dynamic-call-call arg
     PAYLOAD
     (arg + arg + arg)
 
