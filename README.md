@@ -55,38 +55,42 @@ chains.
 
 ## Here is the JavaScript to run
 
-    // Calling template with different input.
-    $('body')
-        .$C('page', 'This is page', {})
-        .$C('sep')
-        .$C('page', null, {list: [11, 22, 33], isUL: true})
-        .$C('sep')
-        .$C('page', null, {list: ['aa', 'bb'], isOL: true});
+```js
+// Calling template with different input.
+$('body')
+    .$C('page', 'This is page', {})
+    .$C('sep')
+    .$C('page', null, {list: [11, 22, 33], isUL: true})
+    .$C('sep')
+    .$C('page', null, {list: ['aa', 'bb'], isOL: true});
+```
 
 http://rawgithub.com/hoho/conkitty/master/example.html
 
 ## And the result inserted into `<body>` tag
 
-    <h1 id="identifier" aaa="bbb" class="some-class b-block1 b-block1_mod_val">This is page</h1>
-    <p class="ccc">
-        <em>Nothing</em>
-    </p>
-    <section class="horizontal-separator">sep-sep-sep</section>
-    <p class="ccc">
-        <div data-list="999">
-            <h3>This is &lt;UL&gt;</h3>
-        </div>
-        <ul>
-            <li class="item" num="11">item: <strong>11!</strong></li>
-            <li class="item" num="22">item: <strong>22!</strong></li>
-            <li class="item" num="33">item: <strong>33!</strong></li>
-        </ul>
-    </p>
-    <section class="horizontal-separator">sep-sep-sep</section>
-    <p class="ccc">
-        <h3>arg1 + 1 === 5</h3>
-        <ol>
-            <li class="item" num="aa">item: <strong>aa!</strong></li>
-            <li class="item" num="bb">item: <strong>bb!</strong></li>
-        </ol>
-    </p>
+```html
+<h1 id="identifier" aaa="bbb" class="some-class b-block1 b-block1_mod_val">This is page</h1>
+<p class="ccc">
+    <em>Nothing</em>
+</p>
+<section class="horizontal-separator">sep-sep-sep</section>
+<p class="ccc">
+    <div data-list="999">
+        <h3>This is &lt;UL&gt;</h3>
+    </div>
+    <ul>
+        <li class="item" num="11">item: <strong>11!</strong></li>
+        <li class="item" num="22">item: <strong>22!</strong></li>
+        <li class="item" num="33">item: <strong>33!</strong></li>
+    </ul>
+</p>
+<section class="horizontal-separator">sep-sep-sep</section>
+<p class="ccc">
+    <h3>arg1 + 1 === 5</h3>
+    <ol>
+        <li class="item" num="aa">item: <strong>aa!</strong></li>
+        <li class="item" num="bb">item: <strong>bb!</strong></li>
+    </ol>
+</p>
+```
