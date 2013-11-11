@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.1.1+, https://github.com/hoho/conkitty
+ * conkitty v0.2.0, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -61,7 +61,7 @@ var conkittyCompile;
 
     function conkittyCheckName(line, col, name, isCall) {
         var nameExpr = isCall ? /^[a-zA-Z_][a-zA-Z0-9_-]*$/ : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-        if (name === '_' || name === '__' || !name.match(nameExpr)) {
+        if (name === '_' || name === '__' || name === '___' || !name.match(nameExpr)) {
             conkittyError(line, col, "Illegal name '" + name + "'");
         }
     }
@@ -944,12 +944,12 @@ var conkittyCompile;
                     expr = args[0];
 
                     if (payload) {
-                        payload = payload.replace('$C()', '$C(this)');
+                        payload = payload.replace('$C(undefined, false, ___)', '$C(this, false, ___)');
                         payload = strip(payload).split('\n').join('\n' + k + indentWith);
                     }
 
                     if (payload2) {
-                        payload2 = payload2.replace('$C()', '$C(this)');
+                        payload2 = payload2.replace('$C(undefined, false, ___)', '$C(this, false, ___)');
                         payload2 = strip(payload2).split('\n').join('\n' + k + indentWith);
                     }
 
@@ -985,10 +985,10 @@ var conkittyCompile;
                     if (payload) {
                         ret.push(k + indentWith + '__ = ');
                         ret.push(strip(payload).split('\n').join('\n' + k));
-                        ret.push('[0];\n');
+                        ret.push('.dom;\n');
                     }
 
-                    ret.push(k + indentWith + '$C.tpl' + nameWrapped + '({parent: this');
+                    ret.push(k + indentWith + '$C.tpl' + nameWrapped + '({parent: this, mem: ___');
 
                     if (payload) {
                         ret.push(', payload: __.firstChild ? __ : undefined');
@@ -1069,7 +1069,7 @@ var conkittyCompile;
                 ret.push('.act(function ' + funcName + '() {\n' + k + indentWith + name + ' = ');
                 ret.push(strip(expr).split('\n').join('\n' + k));
                 if (payload) {
-                    ret.push('[0]');
+                    ret.push('.dom');
                     ret.push(';\n' + k + indentWith + name + ' = ' + name + '.firstChild ? ' + name + ' : undefined');
                 }
                 ret.push(';\n');
@@ -1092,6 +1092,46 @@ var conkittyCompile;
                 } else {
                     conkittyError(index, i, 'Unexpected command');
                 }
+
+                break;
+
+            case 'MEM':
+            case 'MEM ':
+                if (!startsWith(line, i, 'MEM')) {
+                    conkittyError(index, i, 'Unexpected command');
+                }
+
+                i = skipWhitespaces(line, i + 3);
+
+                expr = conkittyExtractExpression(index, i, true);
+                index = expr.index;
+                i = expr.col;
+                line = code[index];
+                expr = expr.expr;
+
+                if (i < line.length) {
+                    expr2 = conkittyExtractExpression(index, i);
+                    index = expr2.index;
+                    i = expr2.col;
+                    line = code[index];
+                    expr2 = expr2.expr;
+                } else {
+                    expr2 = undefined;
+                }
+
+                addIndent(ret, stack.length);
+
+                k = (new Array(stack.length)).join(indentWith);
+
+                ret.push('.mem(');
+                ret.push(strip(expr).split('\n').join('\n' + k));
+
+                if (expr2) {
+                    ret.push(', ');
+                    ret.push(strip(expr2).split('\n').join('\n' + k));
+                }
+
+                ret.push(')\n');
 
                 break;
 
@@ -1180,16 +1220,14 @@ var conkittyCompile;
 
 
     function conkittyInsertVariables(ret) {
-        var args = [],
+        var args = ['___ = _.mem || {}'],
             v;
 
         for (v in variables) {
             args.push(v);
         }
 
-        if (args.length) {
-            ret.splice(1, 0, indentWith + 'var ' + args.join(', ') + ';\n');
-        }
+        ret.splice(1, 0, indentWith + 'var ' + args.join(', ') + ';\n');
     }
 
 
@@ -1217,7 +1255,7 @@ var conkittyCompile;
 
         if (minIndent) {
             stack.push({indent: minIndent, end: true});
-            ret.push('$C()\n');
+            ret.push('$C(undefined, false, ___)\n');
         }
 
         for (i = startIndex || 0; i < code.length; i++) {
@@ -1327,7 +1365,7 @@ var conkittyCompile;
                         args.shift();
                         ret.push('function(_' + (args.length ? ', ' + args.join(', ') : '') + ') {\n');
                         addIndent(ret, stack.length);
-                        ret.push('return $C(_.parent)\n');
+                        ret.push('return $C(_.parent, false, ___)\n');
                     } else {
                         // It's a PAYLOAD for CALL command or SET command.
                         break;

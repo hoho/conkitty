@@ -1,5 +1,5 @@
 /*!
- * concat.js v0.6.2, https://github.com/hoho/concat.js
+ * concat.js v0.8.1, https://github.com/hoho/concat.js
  * (c) 2013 Marat Abdullin, MIT license
  */
 (function(document, undefined) {
@@ -33,7 +33,7 @@
             },
 
         constr =
-            function(parent, replace, noFragment) {
+            function(parent, replace, mem) {
                 // Item:
                 // D — node to append the result to (if any).
                 // P — item's parent node.
@@ -51,11 +51,11 @@
 
                 var self = this;
 
-                self.m = [];
+                self.m = mem || {};
 
                 self._ = self.c = {
-                    D: parent && {p: parent, r: replace, n: noFragment},
-                    P: parent && noFragment ? parent : document.createDocumentFragment(),
+                    D: parent && {p: parent, r: replace},
+                    P: document.createDocumentFragment(),
                     _: []
                 };
             },
@@ -160,15 +160,13 @@
             run(r);
 
             if ((i = r.D)) {
-                if (!i.n) {
-                    if (i.r) {
-                        i.p.innerHTML = '';
-                    }
-
-                    i.p[appendChildString](r.P);
+                if (i.r) {
+                    i.p.innerHTML = '';
                 }
+
+                i.p[appendChildString](r.P);
             } else {
-                self.m.unshift(r.P);
+                self.m.dom = r.P;
             }
 
             return self.m;
@@ -224,11 +222,12 @@
                 self;
         },
 
-        mem: function(func) {
+        mem: function(key, func) {
             var self = this,
-                item = Item(self, function(parentElem) {
+                item = Item(self, function(/**/parentElem) {
                     parentElem = item.A.P;
-                    self.m.push(isFunction(func) ? func[applyString](parentElem, curArgs) : parentElem);
+                    self.m[isFunction(key) ? key[applyString](parentElem, curArgs) : key] =
+                        isFunction(func) ? func[applyString](parentElem, curArgs) : func || parentElem;
                 });
 
             return self;
@@ -275,8 +274,8 @@
         })(tags[i]);
     }
 
-    i = window.$C = function(parent, replace, noFragment) {
-        return new constr(parent, replace, noFragment);
+    i = window.$C = function(parent, replace, mem) {
+        return new constr(parent, replace, mem);
     };
 
     i.define = i = function(name, func) {

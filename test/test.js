@@ -207,3 +207,36 @@ test('Dynamic call name test', function() {
 
     container.innerHTML = '';
 });
+
+test('Memorize test', function() {
+    var container = document.getElementById('container'),
+        ret = $C.tpl['mem-test']({parent: container});
+
+    domEqual(domToArray(container), [
+        {name: 'div', attr: {id: 'm1'}, children: []},
+        {name: 'div', attr: {id: 'm2'}, children: []}
+    ])
+
+    deepEqual(ret.m0, 'aaaaa');
+    deepEqual(ret.m1.getAttribute('id'), 'm1');
+    deepEqual(ret['m2-999'].node.getAttribute('id'), 'm2');
+    deepEqual(ret['m2-999'].aa, 'bb');
+    deepEqual(ret.mmm, undefined);
+
+    container.innerHTML = '';
+
+    ret = $C.tpl['mem-test']({parent: container, mem: {m0: 'ppppp', mmm: 'uuuuu'}});
+
+    domEqual(domToArray(container), [
+        {name: 'div', attr: {id: 'm1'}, children: []},
+        {name: 'div', attr: {id: 'm2'}, children: []}
+    ])
+
+    deepEqual(ret.m0, 'aaaaa');
+    deepEqual(ret.m1.getAttribute('id'), 'm1');
+    deepEqual(ret['m2-999'].node.getAttribute('id'), 'm2');
+    deepEqual(ret['m2-999'].aa, 'bb');
+    deepEqual(ret.mmm, 'uuuuu');
+
+    container.innerHTML = '';
+});

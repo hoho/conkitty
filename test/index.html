@@ -110,6 +110,16 @@ dynamic-call-call arg
     PAYLOAD
     (arg + arg + arg)
 
+mem-test
+    MEM "m0" "aaaaa"
+    div#m1
+        MEM "m1"
+    CALL mem-test2
+
+mem-test2
+    div#m2
+        MEM ('m2' + '-999') ({node: this, aa: 'bb'})
+
 </script>
 <script src="../browser.js"></script>
 <script src="test.js"></script>

@@ -32,7 +32,7 @@ try {
         console.log('if (!$C.tpl) { $C.tpl = {}; }\n');
 
         for (tplName in compiled) {
-            console.log('$C.tpl.' + tplName + ' = ' + compiled[tplName] + '\n');
+            console.log("$C.tpl['" + tplName + "'] = " + compiled[tplName] + '\n');
         }
 
     } else {
