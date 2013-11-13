@@ -15,7 +15,7 @@ Usage:
 
 Return value is a dictionary of everything memorized with `MEM` command during
 template execution. This dictionary contains result's documentFragment in case
-`parent` is not passed (documentFragment's key is 'dom').
+`parent` is not passed (documentFragment's key is `dom`).
 
 Example:
 
@@ -37,10 +37,10 @@ var ret2 = $C.callTemplate(document.body, 'my-template', 'Tatata', 'bbbb');
 // `ret1` will be {'my-div': node1, 't': node2, 'dom': docFrag}
 // `ret2` will be {'my-div': node1, 't': node2}
 
-// Where `node1` and `node2` are references to appropriate memorized nodes,
-// `docFrag` is the result of first `$C.callTemplate` execution. Second's
-// `$C.callTemplate` execution result will be inserted into document.body
-// right away
+// Where `node1` and `node2` are references to appropriate memorized
+// nodes (`div` and `h1`), `docFrag` is the result of first `$C.callTemplate`
+// execution. Second `$C.callTemplate` execution result will be inserted into
+// `document.body` right away.
 
 */
 $C.callTemplate = function callTemplate(parent, name/*, ...*/) {
