@@ -39,7 +39,7 @@ template via appropriate names.
 ## Strings
 
 Strings are enclosed in single or double quotes. String should begin and end
-in the same line. String output will be properly escaped inside resulting DOM.
+in the same line. String output will be properly escaped in resulting DOM.
 
 **Good**
 
@@ -56,7 +56,7 @@ in the same line. String output will be properly escaped inside resulting DOM.
 
 ## Unescaped strings
 
-A string like `"&nbsp;"` will produce `&amp;nbsp;` into resulting DOM. To put
+A string like `"&nbsp;"` will produce `&amp;nbsp;` in resulting DOM. To put
 unescaped text to resulting DOM, enclose string in triple quotes. Note that
 markup inside triple quotes should be valid.
 
@@ -72,7 +72,9 @@ markup inside triple quotes should be valid.
 
 ## JavaScript expressions
 
-JavaScript expressions are enclosed in parenthesis. JavaScript expressions should return some result. This result will be inserted into resulting DOM. You can pass a function expression, this function will be called.
+JavaScript expressions are enclosed in parenthesis. JavaScript expressions
+should return some result. This result will be inserted in resulting DOM.
+You can pass a function expression, this function will be called.
 
 **Good**
 
@@ -240,7 +242,7 @@ $('body')
 
 http://rawgithub.com/hoho/conkitty/master/example.html
 
-## And the result inserted into `<body>` tag
+## And the result inserted in `<body>` tag
 
 ```html
 <h1 id="identifier" aaa="bbb" class="some-class b-block1 b-block1_mod_val">This is page</h1>
