@@ -1,7 +1,5 @@
-conkitty
-========
-
-Concat.js Template Engine
+Conkitty Template Engine
+========================
 
 Conkitty templates are being compiled to https://github.com/hoho/concat.js
 chains.
@@ -26,6 +24,22 @@ and JavaScript expressions.
                     (key)
                 dd
                     (val)
+
+    // $C.callTemplate('Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'}) will produce:
+    //
+    // <h1>Hello</h1>
+    // <ul>
+    //     <li>Item: 1</li>
+    //     <li>Item: 2</li>
+    //     <li>Item: 3</li>
+    // </ul>
+    // <dl>
+    //     <dt>k1</dt>
+    //     <dd>v1</dd>
+    //     <dt>k2</dt>
+    //     <dd>v2</dd>
+    // </dl>
+
 
 ## Template declaration
 
