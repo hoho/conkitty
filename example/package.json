@@ -1,0 +1,12 @@
+{
+    "name"   : "conkitty-example",
+    "version": "0.0.1",
+    "private": true,
+
+    "devDependencies": {
+        "grunt": "~0.4.1",
+        "grunt-contrib": "~0.7.0",
+        "grunt-contrib-conkitty": ">=0.0.6",
+        "grunt-contrib-uglify": "~0.2.4"
+    }
+}
