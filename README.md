@@ -299,7 +299,7 @@ argument. `INSERT` command tends to insert this DOM node as a DOM node.
 
         (arg)
 
-        ", this is"
+        ", this is "
 
         INSERT (arg)
 
