@@ -33,7 +33,7 @@ repositories.
         <script src="https://rawgithub.com/hoho/conkitty/master/callTemplate/conkittyCallTemplate.js"></script>
         <script src="/path/to/compiled/templates"></script>
         <script>
-            // Insert `template-name` into document body right away.
+            // Insert `template-name` result into document body right away.
             $C.callTemplate(document.body, 'template-name', 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'});
         </script>
     </body>
