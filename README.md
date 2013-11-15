@@ -234,7 +234,7 @@ Iterate over an array or an object.
 *key* and *value* are identifiers to access the data from JavaScript
 expressions. *key* is optional.
 
-*expr* is a JavaScript expressions returns an array or an object.
+*expr* is a JavaScript expression returns an array or an object.
 
     template1
         EACH val ([11, 22])
@@ -280,8 +280,8 @@ expressions. *key* is optional.
 ### INSERT *expr*
 
 When you use JavaScript expression to insert something to your resulting DOM,
-it is coerced to string. Sometimes you have a DOM node as a template argument.
-`INSERT` command tends to insert this DOM node as a DOM node.
+its result is coerced to string. Sometimes you have a DOM node as a template
+argument. `INSERT` command tends to insert this DOM node as a DOM node.
 
     template1
         div
@@ -331,6 +331,7 @@ memorize some of these nodes for future use.
 ### SET *name* *expr*
 
 *name* is a valid JavaScript variable name.
+
 *expr* is a JavaScript expression for a variable value.
 
 Sometimes you need to define a variable.
@@ -369,6 +370,7 @@ Sometimes you need to define a variable.
 ### WITH *name* *expr*
 
 *name* is a valid JavaScript variable name.
+
 *expr* is a JavaScript expression.
 
     template1
