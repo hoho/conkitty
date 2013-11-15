@@ -2,7 +2,7 @@ Conkitty Example
 ================
 
 Assume you have [npm](http://npmjs.org/), [Bower](http://bower.io) and
-[Grunt](http://gruntjs.com/ installed.
+[Grunt](http://gruntjs.com/) installed.
 
 * `npm install`;
 * `bower install`;
