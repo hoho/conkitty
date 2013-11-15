@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.2.0, https://github.com/hoho/conkitty
+ * conkitty v0.2.0+, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -576,6 +576,7 @@ var conkittyCompile;
 
                 if (i === line.length) {
                     index++;
+                    expr.push('\n');
 
                     while (index < code.length && !strip(code[index])) {
                         index++;
@@ -1227,7 +1228,7 @@ var conkittyCompile;
             args.push(v);
         }
 
-        ret.splice(1, 0, indentWith + 'var ' + args.join(', ') + ';\n');
+        ret.splice(1, 0, indentWith + '_ = _ || {};\n' + indentWith + 'var ' + args.join(', ') + ';\n');
     }
 
 
