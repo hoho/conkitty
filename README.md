@@ -12,7 +12,7 @@ Block nesting is done by indentation. Top level (zero-indented lines) is for
 template declaration. Below template declaration are commands, tags, strings
 and JavaScript expressions.
 
-    template-name arg1, arg2, arg3
+    template-name arg1 arg2 arg3
         h1
             (arg1)
         ul
