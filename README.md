@@ -29,8 +29,8 @@ repositories.
         <title>Hello</title>
     </head>
     <body>
-        <script src="https://rawgithub.com/hoho/concat.js/master/concat.min.js"></script>
-        <script src="https://rawgithub.com/hoho/conkitty/master/callTemplate/conkittyCallTemplate.js"></script>
+        <script src="/path/to/concat.js"></script>
+        <script src="/path/to/callTemplate"></script>
         <script src="/path/to/compiled/templates"></script>
         <script>
             // Insert `template-name` result into document body right away.
@@ -39,6 +39,9 @@ repositories.
     </body>
 </html>
 ```
+
+Check out [this example](https://github.com/hoho/conkitty/tree/master/example)
+to see how dependencies and compiled templates could be stuck together.
 
 # Syntax (description is in painful progress)
 
