@@ -1,8 +1,44 @@
 Conkitty Template Engine
 ========================
 
-Conkitty templates are being compiled to https://github.com/hoho/concat.js
-chains.
+Conkitty templates are being compiled to
+[concat.js](https://github.com/hoho/concat.js) chains.
+
+## Quick start
+
+Two quick start options are available:
+
+* `npm install -g conkitty` and `conkitty file.ctpl` will print compiled
+  `file.ctpl` file.
+* Use [grunt-contrib-conkitty](https://github.com/hoho/grunt-contrib-conkitty)
+  to build Conkitty templates with [Grunt](http://gruntjs.com/)
+
+To start using compiled templates:
+
+* Link [concat.js](https://github.com/hoho/concat.js) to your page;
+* link [callTemplate](https://github.com/hoho/conkitty/blob/master/callTemplate/conkittyCallTemplate.js)
+  function to your page;
+* link compiled templates to your page.
+
+You can install all of these from [Bower](http://bower.io) or [npm](http://npmjs.org/)
+repositories.
+
+```html
+<html>
+    <head>
+        <title>Hello</title>
+    </head>
+    <body>
+        <script src="https://rawgithub.com/hoho/concat.js/master/concat.min.js"></script>
+        <script src="https://rawgithub.com/hoho/conkitty/master/callTemplate/conkittyCallTemplate.js"></script>
+        <script src="/path/to/compiled/templates"></script>
+        <script>
+            // Insert `template-name` into document body right away.
+            $C.callTemplate(document.body, 'template-name', 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'});
+        </script>
+    </body>
+</html>
+```
 
 # Syntax (description is in painful progress)
 
