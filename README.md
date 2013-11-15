@@ -222,7 +222,7 @@ You can pass a subtree when you call a template.
                     (arg1 + ' aaa ' + arg1)
 
     // $C.callTemplate('template1', 1) will produce: <div>111</div>.
-    // $C.callTemplate('template1', 2) will produce: <span>111</span>.
+    // $C.callTemplate('template1', 2) will produce: <span>222</span>.
     // $C.callTemplate('template1', 3) will produce: <p>3 aaa 3</p>.
 
 Any number of `WHEN` sections is possible. `OTHERWISE` is an optional section.
