@@ -207,28 +207,203 @@ You can pass a subtree when you call a template.
 
 ### CHOOSE
 
-Pending.
+`CHOOSE` is a command to choose one of multiple choices.
 
-### EACH
+    template1 arg1
+        CHOOSE
+            WHEN (arg1 === 1)
+                div
+                    "111"
+            WHEN (arg1 === 2)
+                span
+                    "222"
+            OTHERWISE
+                p
+                    (arg1 + ' aaa ' + arg1)
 
-Pending.
+    // $C.callTemplate('template1', 1) will produce: <div>111</div>.
+    // $C.callTemplate('template1', 2) will produce: <span>111</span>.
+    // $C.callTemplate('template1', 3) will produce: <p>3 aaa 3</p>.
 
-### INSERT
+Any number of `WHEN` sections is possible. `OTHERWISE` is an optional section.
 
-Pending.
+### EACH *[key] value* *expr*
 
-### MEM
+Iterate over an array or an object.
 
-Pending.
+*key* and *value* are identifiers to access the data from JavaScript
+expressions. *key* is optional.
 
-### SET
+*expr* is a JavaScript expressions returns an array or an object.
 
-Pending.
+    template1
+        EACH val ([11, 22])
+            p
+                (val + ' aa ' + val)
 
-### TEST
+        hr
 
-Pending.
+        EACH index val ([33, 44])
+            span
+                (index)
+                ": "
+                (val)
 
-### WITH
+        hr
 
-Pending.
+        EACH vvv ({k1: 'v1', k2: 'v2'})
+            div
+                (vvv)
+
+        hr
+
+        EACH k v ({k3: 'v3', k4: 'v4'})
+            em
+                (k)
+                ": "
+                (v)
+
+    // This template will produce:
+    //
+    // <p>11 aa 11</p>
+    // <p>22 aa 22</p>
+    // <hr>
+    // <span>0: 33</span>
+    // <span>1: 44</span>
+    // <hr>
+    // <div>v1</div>
+    // <div>v2</div>
+    // <hr>
+    // <em>k3: v3</em>
+    // <em>k4: v4</em>
+
+### INSERT *expr*
+
+When you use JavaScript expression to insert something to your resulting DOM,
+it is coerced to string. Sometimes you have a DOM node as a template argument.
+`INSERT` command tends to insert this DOM node as a DOM node.
+
+    template1
+        div
+            CALL template2
+                span
+                    "some DOM inside"
+
+    template2
+        p
+            // Pass this template's PAYLOAD as an argument to next template.
+            CALL template3 PAYLOAD
+
+    template3 arg
+        "This is not "
+
+        (arg)
+
+        ", this is"
+
+        INSERT (arg)
+
+        " indeed."
+
+    // This template will produce:
+    //
+    // <div>
+    //     <p>
+    //         This is not [object DocumentFragment], this is <span>some DOM inside</span> indeed.
+    //     </p>
+    // </div>
+
+### MEM *key* *[expr]*
+
+You have an access to exact DOM nodes during their creation process. You can
+memorize some of these nodes for future use.
+
+    template1
+        div
+            MEM "my-div"
+
+            p
+                MEM ('my' + '-' + 'p') ({ppp: this})
+
+    // var ret = $C.callTemplate(document.body, 'template1');
+    // `ret` will be {'my-div': div, 'my-p': {'ppp': p}}
+
+### SET *name* *expr*
+
+*name* is a valid JavaScript variable name.
+*expr* is a JavaScript expression for a variable value.
+
+Sometimes you need to define a variable.
+
+    template1
+        div
+            SET myvar ({some: 'data', inside: '.'})
+
+            (myvar.some + myvar.inside)
+
+            // You can reuse variable names.
+            SET myvar ({another: 'value'})
+
+            (myvar.another)
+
+    // This template will produce:
+    // <div>data.value</div>
+
+### TEST *expr*
+
+`TEST` is a simplified `CHOOSE` for the cases you have only one option to check.
+
+    template1 title
+        TEST (title)
+            h1
+                (title)
+        p
+            "Some content"
+
+    // $C.callTemplate(document.body, 'template1', 'Tiiiiiii') will produce:
+    // <h1>Tiiiiiii</h1><p>Some content</p>
+
+    // $C.callTemplate(document.body, 'template1') will produce:
+    // <p>Some content</p>
+
+### WITH *name* *expr*
+
+*name* is a valid JavaScript variable name.
+*expr* is a JavaScript expression.
+
+    template1
+        div
+            SET v ({a: {b: {c: 'd', e: false}}})
+
+            div
+                WITH ok (v.a.b.c)
+                    (ok)
+                ELSE
+                    "FUCK"
+
+            div
+                // Go to ELSE section in case of exception.
+                WITH ok (v.e.f.g)
+                    (ok)
+                ELSE
+                    "FUCK"
+
+            div
+                WITH ok (v.a.b.e)
+                    (ok)
+                ELSE
+                    "FUCK"
+
+            div
+                // Go to ELSE section in case of undefined value.
+                WITH ok (v.a.b.no)
+                    (ok)
+                ELSE
+                    "FUCK"
+
+    // This template will produce:
+    //
+    // <div>d</div>
+    // <div>FUCK</div>
+    // <div>false</div>
+    // <div>FUCK</div>
