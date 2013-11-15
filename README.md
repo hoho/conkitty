@@ -25,7 +25,7 @@ and JavaScript expressions.
                 dd
                     (val)
 
-    // $C.callTemplate('Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'}) will produce:
+    // $C.callTemplate('template-name', 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'}) will produce:
     //
     // <h1>Hello</h1>
     // <ul>
