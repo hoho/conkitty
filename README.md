@@ -92,7 +92,7 @@ template via appropriate names.
 ## Strings
 
 Strings are enclosed in single or double quotes. String should begin and end
-in the same line. String output will be properly escaped in resulting DOM.
+in the same line. String will be properly escaped in the result.
 
 **Good**
 
@@ -109,8 +109,8 @@ in the same line. String output will be properly escaped in resulting DOM.
 
 ## JavaScript expressions
 
-JavaScript expressions are enclosed in parenthesis. JavaScript expressions
-should return some result. This result will be inserted in resulting DOM.
+JavaScript expressions are enclosed in parenthesis. A JavaScript expression
+value will be coerced to string and properly escaped in the result.
 You can pass a function expression, this function will be called.
 
 **Good**
@@ -376,8 +376,8 @@ You can also assign a subtree to a variable.
 
 ## Unescaped strings
 
-A string like `"&nbsp;"` will produce `&amp;nbsp;` in resulting DOM. To put
-unescaped text to resulting DOM, enclose string in triple quotes. Note that
+A string like `"&nbsp;"` will produce `&amp;nbsp;` in the result. To put an
+unescaped text to the result, enclose a string in triple quotes. Note that the
 markup inside triple quotes should be valid.
 
 **Good**
@@ -392,20 +392,23 @@ markup inside triple quotes should be valid.
 
 ## Unescaped JavaScript expressions
 
-When you use a JavaScript expression to insert something to your resulting DOM,
-its result is coerced to a properly escaped string. Sometimes you have a DOM
-node as a template argument or you want to insert unescaped JavaScript
-expression result. To do that, enclose your JavaScript expression in triple
+When you use a JavaScript expression to insert something to the result, its
+value is coerced to a properly escaped string. Sometimes you have a DOM
+node as a template argument or you want to insert an unescaped JavaScript
+expression value. To do that, enclose your JavaScript expression in triple
 parenthesis. When you do that, typecheck is performed, if your JavaScript
-expression result is an instance of Node, it will be inserted as node,
-otherwise the result will be coerced to string and this string will be inserted
-unescaped (note that markup should be valid).
+expression value is an instance of Node, it will be inserted as node,
+otherwise the value will be coerced to a string and this string will be
+inserted unescaped (note that the markup should be valid).
 
     template1
         div
             CALL template2
                 span
                     "some DOM inside"
+
+            ('<em>' + 'no, it is not' + '</em>')
+            ((('<strong>' + 'yes it is' + '</strong>')))
 
     template2
         p
@@ -429,4 +432,6 @@ unescaped (note that markup should be valid).
     //     <p>
     //         This is not [object DocumentFragment], this is <span>some DOM inside</span> indeed.
     //     </p>
+    //     &lt;em&gt;no, it is not&lt;/em&gt;
+    //     <strong>yes it is</strong>
     // </div>
