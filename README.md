@@ -401,6 +401,9 @@ expression value is an instance of Node, it will be inserted as node,
 otherwise the value will be coerced to a string and this string will be
 inserted unescaped (note that the markup should be valid).
 
+*Please, keep in mind, that if you need unescaped JavaScript expressions often,
+you are probably doing something wrong.*
+
     template1
         div
             CALL template2
