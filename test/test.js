@@ -184,12 +184,9 @@ test('Unescaped test', function() {
 
     domEqual(domToArray(container), [
         {name: 'div', attr: {aa: 's"<>ss', he: 'ha'}, children: []},
-        {name: 'p', children: [
-            '"hello"'
-        ]},
-        {name: 'a', children: [
-            '\'world\''
-        ]}
+        {name: 'p', children: ['"hello"']},
+        {name: 'a', children: ['\'world\'']},
+        {name: 'div', children: ['indeed']}
     ]);
 
     container.innerHTML = '';

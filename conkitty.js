@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.2.1, https://github.com/hoho/conkitty
+ * conkitty v0.3.0, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -597,16 +597,23 @@ var conkittyCompile;
                 conkittyError(startIndex, col, 'Empty expression');
             }
 
+            var jsnoesc;
+
+            if (expr.substring(0, 2) === '((' && expr.substring(expr.length - 2) === '))') {
+                expr = expr.substring(2, expr.length - 2);
+                jsnoesc = true;
+            }
+
             i = skipWhitespaces(line, i);
 
             if (expr.substring(0, 8) !== 'function') {
-                if (noWrap) {
+                if (noWrap || jsnoesc) {
                     expr = '(' + expr + ')';
                 } else {
                     expr = 'function ' + funcName + '() { return (' + expr + '); }';
                 }
             } else {
-                if (noWrap) {
+                if (noWrap || jsnoesc) {
                     expr = '(' + expr + ').apply(this, arguments)';
                 }
             }
@@ -617,7 +624,7 @@ var conkittyCompile;
 
             conkittyCheckExpression(expr);
 
-            return {index: index, col: i, expr: expr};
+            return {index: index, col: i, expr: expr, jsnoesc: jsnoesc};
         }
     }
 
@@ -667,12 +674,27 @@ var conkittyCompile;
     function conkittyProcessTextExpression(index, stack, ret) {
         var expr = conkittyExtractExpression(index, 0);
 
-        index = expr.index;
+        if (expr.jsnoesc) {
+            var funcName = conkittyGetAnonymousFunctionName(index, skipWhitespaces(code[index], 0));
 
-        addIndent(ret, stack.length);
-        ret.push('.text(');
-        ret.push(expr.expr);
-        ret.push((expr.noesc ? ', true' : '') + ')\n');
+            addIndent(ret, stack.length);
+            ret.push('.act(function ' + funcName + '(__) {\n');
+            addIndent(ret, stack.length + 1);
+            ret.push('__ = ' + expr.expr + ';\n');
+            addIndent(ret, stack.length + 1);
+            ret.push('if (__ instanceof Node) { this.appendChild(__); }\n');
+            addIndent(ret, stack.length + 1);
+            ret.push('else { $C(this).text(__, true).end(); };\n');
+            addIndent(ret, stack.length);
+            ret.push('})\n');
+        } else {
+            addIndent(ret, stack.length);
+            ret.push('.text(');
+            ret.push(expr.expr);
+            ret.push((expr.noesc ? ', true' : '') + ')\n');
+        }
+
+        index = expr.index;
 
         stack[stack.length - 1].end = false;
 
@@ -828,31 +850,6 @@ var conkittyCompile;
                 }
 
                 stack[stack.length - 1].end = true;
-
-                break;
-
-            case 'INSE':
-                cmd = line.substring(i, i + 6);
-
-                if (startsWith(line, i, 'INSERT')) {
-                    expr = conkittyExtractExpression(index, i + 7, false, true);
-                    addIndent(ret, stack.length);
-
-                    index = expr.index;
-                    i = expr.col;
-
-                    ret.push('.act(function ' + funcName + '(__) {\n');
-                    addIndent(ret, stack.length + 1);
-                    ret.push('__ = ' + expr.expr + ';\n');
-                    addIndent(ret, stack.length + 1);
-                    ret.push('if (!(__ instanceof Node)) { __ = document.createTextNode(__); }\n');
-                    addIndent(ret, stack.length + 1);
-                    ret.push('this.appendChild(__);\n');
-                    addIndent(ret, stack.length);
-                    ret.push('})\n');
-                } else {
-                    conkittyError(index, i, 'Unexpected command');
-                }
 
                 break;
 

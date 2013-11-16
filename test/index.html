@@ -43,7 +43,7 @@ tpl1 arg1 arg2
             "yes"
 
         WITH somevar4 (somevar.a.b)
-            INSERT (somevar2)
+            (((somevar2)))
             (somevar4)
             "!!!"
 
@@ -101,6 +101,7 @@ unescaped
         ATTR '''he''' '''ha'''
     """<p>"hello"</p>"""
     '''<a>'world'</a>'''
+    ((('<div>' + 'indeed' + '</div>')))
 
 dynamic-call
     CALL ('dynamic-call' + '-call') ('yo')

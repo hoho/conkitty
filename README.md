@@ -107,22 +107,6 @@ in the same line. String output will be properly escaped in resulting DOM.
     "Hello
        world"
 
-## Unescaped strings
-
-A string like `"&nbsp;"` will produce `&amp;nbsp;` in resulting DOM. To put
-unescaped text to resulting DOM, enclose string in triple quotes. Note that
-markup inside triple quotes should be valid.
-
-**Good**
-
-    """Hello&nbsp;world"""
-
-    '''<p>Hello <strong>world</strong></p>'''
-
-**Bad**
-
-    """</div>"""
-
 ## JavaScript expressions
 
 JavaScript expressions are enclosed in parenthesis. JavaScript expressions
@@ -277,42 +261,6 @@ expressions. *key* is optional.
     // <em>k3: v3</em>
     // <em>k4: v4</em>
 
-### INSERT *expr*
-
-When you use JavaScript expression to insert something to your resulting DOM,
-its result is coerced to string. Sometimes you have a DOM node as a template
-argument. `INSERT` command tends to insert this DOM node as a DOM node.
-
-    template1
-        div
-            CALL template2
-                span
-                    "some DOM inside"
-
-    template2
-        p
-            // Pass this template's PAYLOAD as an argument to next template.
-            CALL template3 PAYLOAD
-
-    template3 arg
-        "This is not "
-
-        (arg)
-
-        ", this is "
-
-        INSERT (arg)
-
-        " indeed."
-
-    // This template will produce:
-    //
-    // <div>
-    //     <p>
-    //         This is not [object DocumentFragment], this is <span>some DOM inside</span> indeed.
-    //     </p>
-    // </div>
-
 ### MEM *key* *[expr]*
 
 You have an access to exact DOM nodes during their creation process. You can
@@ -349,6 +297,22 @@ Sometimes you need to define a variable.
 
     // This template will produce:
     // <div>data.value</div>
+
+You can also assign a subtree to a variable.
+
+    template2
+        SET myvar2
+            em
+                "hello"
+            strong
+                "world"
+
+        div
+            // Use unescaped JavaScript expression (see below) to insert the result.
+            (((myvar2)))
+
+    // This template will produce:
+    // <div><em>hello</em><strong>world</strong></div>
 
 ### TEST *expr*
 
@@ -409,3 +373,60 @@ Sometimes you need to define a variable.
     // <div>FUCK</div>
     // <div>false</div>
     // <div>FUCK</div>
+
+## Unescaped strings
+
+A string like `"&nbsp;"` will produce `&amp;nbsp;` in resulting DOM. To put
+unescaped text to resulting DOM, enclose string in triple quotes. Note that
+markup inside triple quotes should be valid.
+
+**Good**
+
+    """Hello&nbsp;world"""
+
+    '''<p>Hello <strong>world</strong></p>'''
+
+**Bad**
+
+    """</div>"""
+
+## Unescaped JavaScript expressions
+
+When you use a JavaScript expression to insert something to your resulting DOM,
+its result is coerced to a properly escaped string. Sometimes you have a DOM
+node as a template argument or you want to insert unescaped JavaScript
+expression result. To do that, enclose your JavaScript expression in triple
+parenthesis. When you do that, typecheck is performed, if your JavaScript
+expression result is an instance of Node, it will be inserted as node,
+otherwise the result will be coerced to string and this string will be inserted
+unescaped (note that markup should be valid).
+
+    template1
+        div
+            CALL template2
+                span
+                    "some DOM inside"
+
+    template2
+        p
+            // Pass this template's PAYLOAD as an argument to next template.
+            CALL template3 PAYLOAD
+
+    template3 arg
+        "This is not "
+
+        (arg)
+
+        ", this is "
+
+        (((arg)))
+
+        " indeed."
+
+    // This template will produce:
+    //
+    // <div>
+    //     <p>
+    //         This is not [object DocumentFragment], this is <span>some DOM inside</span> indeed.
+    //     </p>
+    // </div>

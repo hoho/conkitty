@@ -3,6 +3,6 @@
     "version": "0.0.1",
     "dependencies": {
         "concat.js": "~0.8.1",
-        "conkitty": "~0.2.1"
+        "conkitty": "~0.3.0"
     }
 }
