@@ -225,21 +225,15 @@ expressions. *key* is optional.
             p
                 (val + ' aa ' + val)
 
-        hr
-
         EACH index val ([33, 44])
             span
                 (index)
                 ": "
                 (val)
 
-        hr
-
         EACH vvv ({k1: 'v1', k2: 'v2'})
             div
                 (vvv)
-
-        hr
 
         EACH k v ({k3: 'v3', k4: 'v4'})
             em
@@ -251,13 +245,10 @@ expressions. *key* is optional.
     //
     // <p>11 aa 11</p>
     // <p>22 aa 22</p>
-    // <hr>
     // <span>0: 33</span>
     // <span>1: 44</span>
-    // <hr>
     // <div>v1</div>
     // <div>v2</div>
-    // <hr>
     // <em>k3: v3</em>
     // <em>k4: v4</em>
 
