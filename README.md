@@ -404,7 +404,7 @@ you are probably doing something wrong.*
                     "some DOM inside"
 
             ('<em>' + 'no, it is not' + '</em>')
-            ((('<strong>' + 'yes it is' + '</strong>')))
+            ((('<strong>' + 'yes, it is' + '</strong>')))
 
     template2
         p
