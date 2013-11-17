@@ -15,11 +15,11 @@ Two quick start options are available:
 
 To start using compiled templates:
 
-* Link [concat.js](https://github.com/hoho/concat.js) to your page (about 1.3 Kb gzipped);
+* Link [concat.js](https://github.com/hoho/concat.js) to your page *(about 1.3 Kb gzipped)*;
 * link compiled templates to your page;
 * link [callTemplate](https://github.com/hoho/conkitty/blob/master/callTemplate/conkittyCallTemplate.js)
-  function to your page (less than 200 bytes and optional, you can use
-  `$C.tpl['template-name']` functions directly).
+  function to your page *(less than 200 bytes and optional, you can use
+  `$C.tpl['template-name']` functions directly)*.
 
 You can install all of these from [Bower](http://bower.io) or [npm](http://npmjs.org/)
 repositories.
