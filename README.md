@@ -429,5 +429,5 @@ you are probably doing something wrong.*
     //         This is not [object DocumentFragment], this is <span>some DOM inside</span> indeed.
     //     </p>
     //     &lt;em&gt;no, it is not&lt;/em&gt;
-    //     <strong>yes it is</strong>
+    //     <strong>yes, it is</strong>
     // </div>
