@@ -89,7 +89,8 @@ and JavaScript expressions.
 Where `template-name` is a name of the template, this name is used to call this
 template. When you call the template, you can pass any number of arguments into
 it. These arguments will be accessible from JavaScript expressions of the
-template via appropriate names.
+template via appropriate names. Argument names should be a valid JavaScript
+variable names.
 
 ## Strings
 
@@ -218,7 +219,8 @@ Any number of `WHEN` sections is possible. `OTHERWISE` is an optional section.
 Iterate over an array or an object.
 
 *key* and *value* are identifiers to access the data from JavaScript
-expressions. *key* is optional.
+expressions. They should be a valid JavaScript variable names. *key* is
+optional.
 
 *expr* is a JavaScript expression returns an array or an object.
 
