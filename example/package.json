@@ -6,7 +6,7 @@
     "devDependencies": {
         "grunt": "~0.4.1",
         "grunt-contrib": "~0.7.0",
-        "grunt-contrib-conkitty": ">=0.0.7",
+        "grunt-conkitty": "~0.1.1",
         "grunt-contrib-uglify": "~0.2.4"
     }
 }

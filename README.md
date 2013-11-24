@@ -10,7 +10,7 @@ Two quick start options are available:
 
 * `npm install -g conkitty` and `conkitty file.ctpl` will print compiled
   `file.ctpl` file.
-* Use [grunt-contrib-conkitty](https://github.com/hoho/grunt-contrib-conkitty)
+* Use [grunt-conkitty](https://github.com/hoho/grunt-conkitty)
   to build Conkitty templates with [Grunt](http://gruntjs.com/).
 
 To start using compiled templates:
@@ -43,7 +43,7 @@ repositories.
 
 Check out [this example](https://github.com/hoho/conkitty/tree/master/example)
 to see how dependencies and compiled templates could be stuck together using
-[grunt-contrib-conkitty](https://github.com/hoho/grunt-contrib-conkitty).
+[grunt-conkitty](https://github.com/hoho/grunt-conkitty).
 
 # Syntax (description is in painful progress)
 

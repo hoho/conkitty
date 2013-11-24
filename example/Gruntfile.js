@@ -35,7 +35,7 @@ module.exports = function(grunt) {
 
 
     grunt.loadNpmTasks('grunt-contrib');
-    grunt.loadNpmTasks('grunt-contrib-conkitty');
+    grunt.loadNpmTasks('grunt-conkitty');
 
     grunt.registerTask('default', ['conkitty', 'concat']);
 };
