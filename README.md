@@ -24,6 +24,10 @@ To start using compiled templates:
 You can install all of these from [Bower](http://bower.io) or [npm](http://npmjs.org/)
 repositories.
 
+There is a Conkitty syntax highlighting plugin for JetBrains products
+(IntelliJ IDEA, WebStorm, PhpStorm and so on). It is available from
+[official plugin repository](http://plugins.jetbrains.com/plugin/7348).
+
 ```html
 <html>
     <head>
