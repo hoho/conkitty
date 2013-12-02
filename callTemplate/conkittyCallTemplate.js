@@ -51,15 +51,18 @@ $C.callTemplate = function callTemplate(parent, name/*, ...*/) {
 
     if (parent instanceof Node) {
         meta.parent = parent;
-        tpl = name;
         start = 1;
     } else {
-        tpl = parent;
+        name = parent;
         start = 0;
     }
 
     args = Array.prototype.slice.call(arguments, start);
     args[0] = meta;
 
-    return $C.tpl[tpl].apply(this, args);
+    if ((tpl = $C.tpl[name])) {
+        return tpl.apply(null, args);
+    } else {
+        throw new Error('No template named "' + name + '"');
+    }
 };
