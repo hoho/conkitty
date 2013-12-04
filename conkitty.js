@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.3.0, https://github.com/hoho/conkitty
+ * conkitty v0.3.1, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -449,7 +449,7 @@ var conkittyCompile;
     }
 
 
-    function conkittyExtractExpression(index, col, hasMore, noWrap) {
+    function conkittyExtractExpression(index, col, hasMore, noWrap, noReturn) {
         var i = col,
             line = code[index],
             expr = [],
@@ -610,7 +610,11 @@ var conkittyCompile;
                 if (noWrap || jsnoesc) {
                     expr = '(' + expr + ')';
                 } else {
-                    expr = 'function ' + funcName + '() { return (' + expr + '); }';
+                    if (noReturn) {
+                        expr = 'function ' + funcName + '() { ' + expr + ' }';
+                    } else {
+                        expr = 'function ' + funcName + '() { return (' + expr + '); }';
+                    }
                 }
             } else {
                 if (noWrap || jsnoesc) {
@@ -1129,6 +1133,34 @@ var conkittyCompile;
                     ret.push(strip(expr2).split('\n').join('\n' + k));
                 }
 
+                ret.push(')\n');
+
+                break;
+
+            case 'ACT':
+            case 'ACT ':
+                if (!startsWith(line, i, 'ACT')) {
+                    conkittyError(index, i, 'Unexpected command');
+                }
+
+                i = skipWhitespaces(line, i + 3);
+
+                if (line[i] !== '(') {
+                    conkittyError(index, i, 'Expression is expected');
+                }
+
+                expr = conkittyExtractExpression(index, i, false, false, true);
+                index = expr.index;
+                i = expr.col;
+                line = code[index];
+                expr = expr.expr;
+
+                addIndent(ret, stack.length);
+
+                k = (new Array(stack.length)).join(indentWith);
+
+                ret.push('.act(');
+                ret.push(strip(expr).split('\n').join('\n' + k));
                 ret.push(')\n');
 
                 break;

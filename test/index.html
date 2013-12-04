@@ -121,6 +121,9 @@ mem-test2
     div#m2
         MEM ('m2' + '-999') ({node: this, aa: 'bb'})
 
+act-test
+    ACT (if (true) { document.actTest = 'Yo!'; })
+    ACT (function() { document.actTest2 = 'Hahaha'; })
 </script>
 <script src="../browser.js"></script>
 <script src="test.js"></script>

@@ -157,6 +157,25 @@ You can pass a function expression, this function will be called.
 
 ## Commands
 
+### ACT *expr*
+
+Run arbitrary JavaScript code.
+
+*expr* is a valid JavaScript code. If *expr* is a function, this function will
+be called.
+
+    template1
+        div
+            ACT (window.everythingIsOk = true)
+            p
+                "Hello world"
+                ACT (function() { window.functionIsOkToo = 'yes'; })
+
+    // $C.callTemplate('template1') will produce: <div><p>Hello world</p></div>,
+    // `window.everythingIsOk` and `window.functionIsOkToo` will be set to
+    // true and 'yes' respectively.
+
+
 ### ATTR *name* *value*
 
 This command should be used to add an attribute with a dynamic name.

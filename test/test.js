@@ -237,3 +237,16 @@ test('Memorize test', function() {
 
     container.innerHTML = '';
 });
+
+test('ACT test', function() {
+    document.actTest = undefined;
+    document.actTest2 = undefined;
+
+    $C().callTemplate('act-test').end();
+
+    deepEqual(document.actTest, 'Yo!', 'ACT worked');
+    deepEqual(document.actTest2, 'Hahaha', 'ACT worked');
+
+    document.actTest = undefined;
+    document.actTest2 = undefined;
+});
