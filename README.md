@@ -161,8 +161,8 @@ You can pass a function expression, this function will be called.
 
 Run arbitrary JavaScript code.
 
-*expr* is a valid JavaScript code. If *expr* is a function, this function will
-be called.
+*expr* is a valid JavaScript code enclosed in parenthesis. If *expr* is a
+function, this function will be called.
 
     template1
         div
