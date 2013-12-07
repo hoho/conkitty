@@ -1,7 +1,10 @@
 /*!
- * concat.js v0.8.1, https://github.com/hoho/concat.js
+ * concat.js v0.9.0, https://github.com/hoho/concat.js
  * (c) 2013 Marat Abdullin, MIT license
  */
+
+var $C;
+
 (function(document, undefined) {
     // This code is being optimized for size, so some parts of it could be
     // a bit hard to read. But it is quite short anyway.
@@ -33,7 +36,7 @@
             },
 
         constr =
-            function(parent, replace, mem) {
+            function(parent, replace) {
                 // Item:
                 // D — node to append the result to (if any).
                 // P — item's parent node.
@@ -46,12 +49,9 @@
                 // e — redefinition for end() return value.
 
                 // self.c — current item.
-                // self.m — values memorized with mem().
                 // self._ — first item.
 
                 var self = this;
-
-                self.m = mem || {};
 
                 self._ = self.c = {
                     D: parent && {p: parent, r: replace},
@@ -166,10 +166,8 @@
 
                 i.p[appendChildString](r.P);
             } else {
-                self.m.dom = r.P;
+                return r.P;
             }
-
-            return self.m;
         },
 
         elem: function(name, attr, close) {
@@ -226,7 +224,7 @@
             var self = this,
                 item = Item(self, function(/**/parentElem) {
                     parentElem = item.A.P;
-                    self.m[isFunction(key) ? key[applyString](parentElem, curArgs) : key] =
+                    $C.mem[isFunction(key) ? key[applyString](parentElem, curArgs) : key] =
                         isFunction(func) ? func[applyString](parentElem, curArgs) : func || parentElem;
                 });
 
@@ -274,9 +272,11 @@
         })(tags[i]);
     }
 
-    i = window.$C = function(parent, replace, mem) {
-        return new constr(parent, replace, mem);
+    $C = i = function(parent, replace) {
+        return new constr(parent, replace);
     };
+
+    i.mem = {};
 
     i.define = i = function(name, func) {
         proto[name] = function() {

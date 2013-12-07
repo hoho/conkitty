@@ -209,32 +209,39 @@ test('Memorize test', function() {
     var container = document.getElementById('container'),
         ret = $C.tpl['mem-test']({parent: container});
 
+    deepEqual(ret, undefined);
+
     domEqual(domToArray(container), [
         {name: 'div', attr: {id: 'm1'}, children: []},
         {name: 'div', attr: {id: 'm2'}, children: []}
-    ])
+    ]);
 
-    deepEqual(ret.m0, 'aaaaa');
-    deepEqual(ret.m1.getAttribute('id'), 'm1');
-    deepEqual(ret['m2-999'].node.getAttribute('id'), 'm2');
-    deepEqual(ret['m2-999'].aa, 'bb');
-    deepEqual(ret.mmm, undefined);
+    deepEqual($C.mem.m0, 'aaaaa');
+    deepEqual($C.mem.m1.getAttribute('id'), 'm1');
+    deepEqual($C.mem['m2-999'].node.getAttribute('id'), 'm2');
+    deepEqual($C.mem['m2-999'].aa, 'bb');
+    deepEqual($C.mem.mmm, undefined);
 
     container.innerHTML = '';
 
-    ret = $C.tpl['mem-test']({parent: container, mem: {m0: 'ppppp', mmm: 'uuuuu'}});
+    $C.mem = {m0: 'ppppp', mmm: 'uuuuu'};
+
+    ret = $C.tpl['mem-test']({parent: container});
+
+    deepEqual(ret, undefined);
 
     domEqual(domToArray(container), [
         {name: 'div', attr: {id: 'm1'}, children: []},
         {name: 'div', attr: {id: 'm2'}, children: []}
-    ])
+    ]);
 
-    deepEqual(ret.m0, 'aaaaa');
-    deepEqual(ret.m1.getAttribute('id'), 'm1');
-    deepEqual(ret['m2-999'].node.getAttribute('id'), 'm2');
-    deepEqual(ret['m2-999'].aa, 'bb');
-    deepEqual(ret.mmm, 'uuuuu');
+    deepEqual($C.mem.m0, 'aaaaa');
+    deepEqual($C.mem.m1.getAttribute('id'), 'm1');
+    deepEqual($C.mem['m2-999'].node.getAttribute('id'), 'm2');
+    deepEqual($C.mem['m2-999'].aa, 'bb');
+    deepEqual($C.mem.mmm, 'uuuuu');
 
+    $C.mem = {};
     container.innerHTML = '';
 });
 

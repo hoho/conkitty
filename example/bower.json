@@ -2,7 +2,7 @@
     "name": "conkitty-example",
     "version": "0.0.1",
     "dependencies": {
-        "concat.js": "~0.8.1",
-        "conkitty": "~0.3.0"
+        "concat.js": "~0.9.0",
+        "conkitty": "~0.4.0"
     }
 }
