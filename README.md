@@ -291,8 +291,8 @@ memorize some of these nodes for future use.
             p
                 MEM ('my' + '-' + 'p') ({ppp: this})
 
-    // var ret = $C.callTemplate(document.body, 'template1');
-    // `ret` will be {'my-div': div, 'my-p': {'ppp': p}}
+    // $C.callTemplate(document.body, 'template1');
+    // `$C.mem` will be {'my-div': div, 'my-p': {'ppp': p}}
 
 ### SET *name* *expr*
 
