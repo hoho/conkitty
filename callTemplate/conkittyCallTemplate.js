@@ -42,24 +42,23 @@ var ret2 = $C.callTemplate(document.body, 'my-template', 'Tatata', 'bbbb');
 $C.callTemplate = function callTemplate(parent, name/*, ...*/) {
     var meta = {},
         tplName,
-        tpl,
-        start,
         args;
 
     if (parent instanceof Node) {
         meta.parent = parent;
         tplName = name;
-        start = 1;
+        args = 1;
     } else {
         tplName = parent;
-        start = 0;
+        args = 0;
     }
 
-    args = Array.prototype.slice.call(arguments, start);
+    args = Array.prototype.slice.call(arguments, args);
     args[0] = meta;
 
-    if ((tpl = $C.tpl[tplName])) {
-        return tpl.apply(null, args);
+    // Reuse `parent` variable to get template function.
+    if ((parent = $C.tpl[tplName])) {
+        return parent.apply(null, args);
     } else {
         throw new Error('No template named "' + tplName + '"');
     }
