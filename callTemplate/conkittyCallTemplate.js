@@ -9,13 +9,9 @@ Usage:
     `parent`
         A DOM node to insert the result to.
     `templateName`
-        A name of template to call.
+        A name of a template to call.
     `arg1`, `arg2`, ...
         Arguments to pass to a template.
-
-Return value is a dictionary of everything memorized with `MEM` command during
-template execution. This dictionary contains result's documentFragment in case
-`parent` is not passed (documentFragment's key is `dom`).
 
 Example:
 
@@ -32,10 +28,10 @@ my-template title, anything
 
 // We call callTemplate function.
 var ret1 = $C.callTemplate('my-template', 'Tititi', 'aaaa');
-var ret2 = $C.callTemplate(document.body, 'my-template', 'Tatata', 'bbbb');
+// `ret1` will be `docFrag`, `$C.mem` will be {'my-div': node1, 't': node2}
 
-// `ret1` will be {'my-div': node1, 't': node2, 'dom': docFrag}
-// `ret2` will be {'my-div': node1, 't': node2}
+var ret2 = $C.callTemplate(document.body, 'my-template', 'Tatata', 'bbbb');
+// `ret2` will be undefined, `$C.mem` will be {'my-div': node1, 't': node2}
 
 // Where `node1` and `node2` are references to appropriate memorized
 // nodes (`div` and `h1`), `docFrag` is the result of first `$C.callTemplate`
@@ -45,24 +41,26 @@ var ret2 = $C.callTemplate(document.body, 'my-template', 'Tatata', 'bbbb');
 */
 $C.callTemplate = function callTemplate(parent, name/*, ...*/) {
     var meta = {},
+        tplName,
         tpl,
         start,
         args;
 
     if (parent instanceof Node) {
         meta.parent = parent;
+        tplName = name;
         start = 1;
     } else {
-        name = parent;
+        tplName = parent;
         start = 0;
     }
 
     args = Array.prototype.slice.call(arguments, start);
     args[0] = meta;
 
-    if ((tpl = $C.tpl[name])) {
+    if ((tpl = $C.tpl[tplName])) {
         return tpl.apply(null, args);
     } else {
-        throw new Error('No template named "' + name + '"');
+        throw new Error('No template named "' + tplName + '"');
     }
 };
