@@ -456,3 +456,48 @@ you are probably doing something wrong.*
     //     &lt;em&gt;no, it is not&lt;/em&gt;
     //     <strong>yes, it is</strong>
     // </div>
+
+## Generated code notes
+
+Generated code for a template like:
+
+    b-checkbox props
+        div.checkbox
+            label
+                input[type="checkbox"]
+                    TEST (props.name)
+                        @name (props.name)
+                    TEST (props.id)
+                        @id (props.id)
+                    TEST (props.value)
+                        @value (props.value)
+                TEST (props.label)
+                    (props.label)
+
+will look like:
+
+    $C.tpl['b-checkbox'] = function(_, props) {
+        _ = _ || {};
+        return $C(_.parent)
+            .div({"class":"checkbox"})
+                .elem('label')
+                    .elem('input', {"type":"checkbox"})
+                        .test(function $C_b_checkbox_5_22() { return (props.name); })
+                            .attr('name', function $C_b_checkbox_6_27() { return (props.name); })
+                        .end()
+                        .test(function $C_b_checkbox_7_22() { return (props.id); })
+                            .attr('id', function $C_b_checkbox_8_25() { return (props.id); })
+                        .end()
+                        .test(function $C_b_checkbox_9_22() { return (props.value); })
+                            .attr('value', function $C_b_checkbox_10_28() { return (props.value); })
+                    .end(2)
+                    .test(function $C_b_checkbox_11_18() { return (props.label); })
+                        .text(function $C_b_checkbox_12_17() { return (props.label); })
+        .end(4)
+    };
+
+You might notice anonymous functions named like `$C_b_checkbox_7_22`. These
+names are for easier debugging — you'll see template name, line number and
+character position in your call stack. JavaScript minifiers like UglifyJS
+remove these names during minification, so, compiled templates minify really
+well.
