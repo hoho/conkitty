@@ -257,3 +257,19 @@ test('ACT test', function() {
     document.actTest = undefined;
     document.actTest2 = undefined;
 });
+
+test('TRIGGER test', function() {
+    var expected = [
+        'div|["div1",123]',
+        'p|["p1",234,345]',
+        'span|["span1",456]',
+        'span|["span2"]'
+    ];
+
+    $C.define('trigger', function(item, index, arr, args) {
+        var ret = this.tagName.toLowerCase() + '|' + JSON.stringify(Array.prototype.slice.call(args, 0));
+        deepEqual(ret, expected.shift());
+    });
+
+    $C().callTemplate('trigger-test').end();
+});

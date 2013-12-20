@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.4.0, https://github.com/hoho/conkitty
+ * conkitty v0.4.0+, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -1160,6 +1160,37 @@ var conkittyCompile;
 
                 ret.push('.act(');
                 ret.push(strip(expr).split('\n').join('\n' + k));
+                ret.push(')\n');
+
+                break;
+
+            case 'TRIG':
+                if (!startsWith(line, i, 'TRIGGER')) {
+                    conkittyError(index, i, 'Unexpected command');
+                }
+
+                i = skipWhitespaces(line, i + 7);
+
+                args = [];
+
+                while (i < line.length) {
+                    expr = conkittyExtractExpression(index, i, true, true);
+                    index = expr.index;
+                    i = expr.col;
+                    line = code[index];
+                    args.push(expr.expr);
+                }
+
+                addIndent(ret, stack.length);
+
+                k = (new Array(stack.length)).join(indentWith);
+
+                ret.push('.trigger(');
+
+                if (args.length) {
+                    ret.push('\n' + k + indentWith + (args.join(',\n' + k + indentWith)) + '\n' + k);
+                }
+
                 ret.push(')\n');
 
                 break;

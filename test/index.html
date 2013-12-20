@@ -124,6 +124,15 @@ mem-test2
 act-test
     ACT (if (true) { document.actTest = 'Yo!'; })
     ACT (function() { document.actTest2 = 'Hahaha'; })
+
+trigger-test
+    div
+        TRIGGER "div1" (123)
+    p
+        TRIGGER "p1" (234) (345)
+        span
+            TRIGGER "span1" (456)
+            TRIGGER "span2"
 </script>
 <script src="../browser.js"></script>
 <script src="test.js"></script>
