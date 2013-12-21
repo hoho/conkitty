@@ -349,6 +349,21 @@ You can also assign a subtree to a variable.
     // $C.callTemplate(document.body, 'template1') will produce:
     // <p>Some content</p>
 
+### TRIGGER *[arg1 [arg2 […]]]*
+
+This command calls concat.js trigger function which should be user-defined.
+
+To define trigger function, do:
+
+    $C.define('trigger', function(item, index, arr, args) {
+        // `this` is pointing to current DOM node.
+
+        // Your code.
+    });
+
+If you use TRIGGER command without defining trigger function, your template
+will throw an error in the runtime.
+
 ### WITH *name* *expr*
 
 *name* is a valid JavaScript variable name.
