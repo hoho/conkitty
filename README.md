@@ -356,10 +356,27 @@ This command calls concat.js trigger function which should be user-defined.
 To define trigger function, do:
 
     $C.define('trigger', function(item, index, arr, args) {
+        //  In case you're inside EACH command:
+        //     `item` is EACH command value.
+        //     `index` is EACH command index or key.
+        //     `arr` is EACH command array or object.
+        //
+        // `item`, `index` and `arr` are undefined in case you're not inside EACH.
+        //
+        // `args` is an array of arguments of TRIGGER command.
+        //
         // `this` is pointing to current DOM node.
 
         // Your code.
     });
+
+After that:
+
+    template1
+        div
+            TRIGGER "some" ({arg: true})
+
+    // `args` argument in trigger callback will be ['some', {arg: true}].
 
 If you use TRIGGER command without defining trigger function, your template
 will throw an error in the runtime.
