@@ -273,3 +273,13 @@ test('TRIGGER test', function() {
 
     $C().callTemplate('trigger-test').end();
 });
+
+test('WITH test', function() {
+    var container = document.getElementById('container'),
+        ret = $C.tpl['with-test']({parent: container}, {ololo: {piupiu: "yo!"}});
+
+    deepEqual(ret, undefined);
+    domEqual(domToArray(container), ["yo!"]);
+
+    container.innerHTML = '';
+});

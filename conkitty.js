@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.4.1, https://github.com/hoho/conkitty
+ * conkitty v0.4.2, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -61,7 +61,7 @@ var conkittyCompile;
 
     function conkittyCheckName(line, col, name, isCall) {
         var nameExpr = isCall ? /^[a-zA-Z_][a-zA-Z0-9_-]*$/ : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-        if (name === '_' || name === '__' || name === '___' || !name.match(nameExpr)) {
+        if (name === '_' || name === '__' || name === '___' || name === '$C_e' || !name.match(nameExpr)) {
             conkittyError(line, col, "Illegal name '" + name + "'");
         }
     }
@@ -958,7 +958,7 @@ var conkittyCompile;
                     ret.push('.act(function ' + funcName + '() {\n');
 
                     addIndent(ret, stack.length + 1);
-                    ret.push('try { ' + name + ' = ' + expr + ' } catch(e) { ' + name + ' = undefined; }\n');
+                    ret.push('try { ' + name + ' = ' + expr + ' } catch($C_e) { ' + name + ' = undefined; }\n');
                     addIndent(ret, stack.length + 1);
                     ret.push('if (' + name + ' === undefined || ' + name + ' === null) {\n');
                     addIndent(ret, stack.length + (payload2 ? 2 : 1));

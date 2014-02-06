@@ -1,6 +1,6 @@
 {
   "name": "conkitty",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Concat.js Template Engine",
   "main": "conkitty",
   "directories": {
@@ -30,6 +30,8 @@
     "grunt": "~0.4.1",
     "grunt-contrib-jshint": "~0.6.4",
     "grunt-contrib-qunit": "~0.3.0",
+    "grunt-contrib-uglify": "~0.2.4",
+    "grunt-contrib-clean": "~0.4.0",
     "qunitjs": "~1.12.0",
     "jquery-browser": "~1.10.2",
     "concat.js": "~0.9.0"

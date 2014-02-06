@@ -1,16 +1,3 @@
-<!doctype html>
-<html>
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <link rel="stylesheet" href="../node_modules/qunitjs/qunit/qunit.css">
-    <script src="../node_modules/qunitjs/qunit/qunit.js"></script>
-    <script src="../node_modules/concat.js/concat.js"></script>
-    <script src="../conkitty.js"></script>
-</head>
-<body>
-<div id="qunit"></div>
-<div id="container"></div>
-<script type="concat.js/template">
 page
     div.class#id[data-ololo=123].ahah
         "Hello "
@@ -136,9 +123,3 @@ trigger-test
 with-test e
     WITH details (e.ololo.piupiu)
         (details)
-
-</script>
-<script src="../browser.js"></script>
-<script src="test.js"></script>
-</body>
-</html>
