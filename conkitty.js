@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.4.2, https://github.com/hoho/conkitty
+ * conkitty v0.4.3, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -733,6 +733,8 @@ var conkittyCompile;
             case 'OTHE':
                 if (startsWith(line, i, 'CHOOSE') || startsWith(line, i, 'OTHERWISE')) {
                     if (strip(line) === 'CHOOSE' || strip(line) === 'OTHERWISE') {
+                        stack[stack.length - 1].lastChild = false;
+
                         addIndent(ret, stack.length);
                         ret.push(cmd === 'CHOO' ? '.choose()\n' : '.otherwise()\n');
 
@@ -763,6 +765,8 @@ var conkittyCompile;
                     conkittyError(index, i + 4, 'Expression is expected');
                 }
 
+                stack[stack.length - 1].lastChild = false;
+
                 expr = conkittyExtractExpression(index, i + 4, cmd === 'ATTR');
 
                 index = expr.index;
@@ -780,6 +784,8 @@ var conkittyCompile;
                 if (!whitespace.test(line[i])) {
                     conkittyError(index, i, 'Unexpected command');
                 }
+
+                stack[stack.length - 1].lastChild = false;
 
                 i = j = k = skipWhitespaces(line, i);
 
@@ -1232,6 +1238,8 @@ var conkittyCompile;
             break;
         }
 
+        stack[stack.length - 1].lastChild = false;
+
         addIndent(ret, stack.length);
 
         if (elem.elem in TAG_FUNCS) {
@@ -1314,7 +1322,7 @@ var conkittyCompile;
             name;
 
         if (minIndent) {
-            stack.push({indent: minIndent, end: true});
+            stack.push({indent: minIndent, end: true, lashChild: true});
             ret.push('$C()\n');
         }
 
@@ -1345,6 +1353,10 @@ var conkittyCompile;
             k = j;
             ends = 0;
 
+            if ((j > stack[stack.length - 1].indent) && stack[stack.length - 1].lastChild) {
+                conkittyError(i, j, 'Bad indentation');
+            }
+
             while (j <= stack[stack.length - 1].indent) {
                 k = stack.pop();
 
@@ -1366,9 +1378,10 @@ var conkittyCompile;
 
             if (j >= stack[stack.length - 1].indent) {
                 if (j > stack[stack.length - 1].indent) {
-                    k = {indent: j};
+                    k = {indent: j, lastChild: true};
                     if (stack.push(k) === 2) {
                         k.end = true;
+                        k.lastChild = false;
                     }
                 }
 
