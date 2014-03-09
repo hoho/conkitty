@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.4.3, https://github.com/hoho/conkitty
+ * conkitty v0.4.4, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -399,7 +399,7 @@ var conkittyCompile;
                             if (tmp[j + 1] === '*') {
                                 k = tmp.indexOf('*/');
 
-                                if (k > j) {
+                                if (k > j + 1) {
                                     tmp = tmp.substring(0, j) + new Array(k + 3 - j).join(' ') + tmp.substring(k + 2);
                                     continue;
                                 } else {

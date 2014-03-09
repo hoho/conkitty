@@ -1,3 +1,5 @@
+/*/ Comment test
+*/
 page
     div.class#id[data-ololo=123].ahah
         "Hello "
