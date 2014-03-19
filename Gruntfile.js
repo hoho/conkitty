@@ -1,6 +1,8 @@
 module.exports = function(grunt) {
     'use strict';
 
+    var fs = require('fs');
+
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
 
@@ -14,7 +16,8 @@ module.exports = function(grunt) {
         },
 
         clean: {
-            tmp: ['tmp']
+            tmp: ['tmp'],
+            'browser.js': ['browser.js']
         },
 
         conkitty: {
@@ -51,7 +54,7 @@ module.exports = function(grunt) {
 
         this.files.forEach(function(f) {
             var compiled = conkittyCompile(grunt.file.read(f.src[0])),
-                ret = ['if (!$C.tpl) { $C.tpl = {}; }\n'],
+                ret = [fs.readFileSync('./_common.js', {encoding: 'utf8'}), '\n'],
                 name;
 
             for (name in compiled) {
@@ -63,5 +66,16 @@ module.exports = function(grunt) {
         });
     });
 
-    grunt.registerTask('default', ['jshint', 'clean', 'conkitty', 'uglify', 'qunit']);
+    grunt.registerTask('browser.js', function() {
+        var browser = fs.readFileSync('./_browser.js', {encoding: 'utf8'}),
+            common = fs.readFileSync('./_common.js', {encoding: 'utf8'});
+
+        common = common.split('\n').join('\n    ');
+        browser = browser.replace('/*** common.js inserted here ***/', common);
+
+        fs.writeFileSync('./browser.js', browser);
+        grunt.log.writeln('File "browser.js" created.');
+    });
+
+    grunt.registerTask('default', ['jshint', 'clean', 'browser.js', 'conkitty', 'uglify', 'qunit']);
 };

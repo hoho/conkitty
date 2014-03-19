@@ -7,11 +7,10 @@ function conkittyCompileScriptTags() {
         compiled,
         name;
 
-    /*global $C*/
-    /*global conkittyCompile*/
-    if (!$C.tpl) {
-        $C.tpl = {};
-    }
+    /* global $C */
+    /* global conkittyCompile */
+
+    /*** common.js inserted here ***/
 
     for (i = 0; i < tpls.length; i++) {
         tpl = tpls[i];

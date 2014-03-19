@@ -1,24 +1,24 @@
 {
-  "name": "conkitty",
-  "version": "0.4.4",
-  "homepage": "https://github.com/hoho/conkitty",
-  "authors": [
-    "Marat Abdullin <dakota@brokenpipe.ru>"
-  ],
-  "description": "Concat.js Template Engine",
-  "keywords": [
-    "conkitty",
-    "templates"
-  ],
-  "license": "MIT",
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "bower_components",
-    "test",
-    "*.md",
-    "package.json",
-    "bower.json",
-    "Gruntfile.js"
-  ]
+    "name": "conkitty",
+    "version": "0.4.5",
+    "homepage": "https://github.com/hoho/conkitty",
+    "authors": [
+        "Marat Abdullin <dakota@brokenpipe.ru>"
+    ],
+    "description": "Concat.js Template Engine",
+    "keywords": [
+        "conkitty",
+        "templates"
+    ],
+    "license": "MIT",
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "test",
+        "*.md",
+        "package.json",
+        "bower.json",
+        "Gruntfile.js"
+    ]
 }

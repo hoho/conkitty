@@ -29,7 +29,7 @@ try {
             throw new Error('No templates compiled');
         }
 
-        console.log('if (!$C.tpl) { $C.tpl = {}; }\n');
+        console.log(fs.readFileSync(__dirname + '/../_common.js', {encoding: 'utf8'}));
 
         for (tplName in compiled) {
             console.log("$C.tpl['" + tplName + "'] = " + compiled[tplName] + '\n');

@@ -8,6 +8,7 @@ page
             (function() { return 'ld'; })
         "!"
 
+
 /* Another comment test */
 tpl1 arg1 arg2
     div
@@ -37,6 +38,7 @@ tpl1 arg1 arg2
             (somevar4)
             "!!!"
 
+
 /* Mulitline
    comment
    test */
@@ -54,6 +56,7 @@ tpl-2 a
         OTHERWISE
             "nothing"
 
+
 tpl3 b
     CHOOSE
         WHEN (b)
@@ -63,6 +66,7 @@ tpl3 b
         OTHERWISE
             "BBBBB"
             PAYLOAD
+
 
 eachtest arg
     ul
@@ -74,6 +78,7 @@ eachtest arg
                     b
                         (cur)
                 "|"
+
 
 eachtest2 arg
     EACH (arg)
@@ -87,6 +92,7 @@ eachtest2 arg
                         (key + ' = ' + val)
                 "|"
 
+
 // More comment
 unescaped
     div
@@ -96,13 +102,16 @@ unescaped
     '''<a>'world'</a>'''
     ((('<div>' + 'indeed' + '</div>')))
 
+
 dynamic-call
     CALL ('dynamic-call' + '-call') ('yo')
         "ooooo"
 
+
 dynamic-call-call arg
     PAYLOAD
     (arg + arg + arg)
+
 
 mem-test
     MEM "m0" "aaaaa"
@@ -110,13 +119,16 @@ mem-test
         MEM "m1"
     CALL mem-test2
 
+
 mem-test2
     div#m2
         MEM ('m2' + '-999') ({node: this, aa: 'bb'})
 
+
 act-test
     ACT (if (true) { document.actTest = 'Yo!'; })
     ACT (function() { document.actTest2 = 'Hahaha'; })
+
 
 trigger-test
     div
@@ -127,6 +139,37 @@ trigger-test
             TRIGGER "span1" (456)
             TRIGGER "span2"
 
+
 with-test e
     WITH details (e.ololo.piupiu)
         (details)
+
+
+lazy-payload-test
+    ACT (window._lazyPayload = 1)
+
+    h1
+        CALL lazy-payload-inner "test1"
+            span
+                (window._lazyPayload++)
+    h2
+        CALL lazy-payload-inner "test2"
+    h3
+        CALL lazy-payload-inner "test3"
+            em
+                (window._lazyPayload++)
+
+
+lazy-payload-inner prefix
+    TEST PAYLOAD
+        TEST PAYLOAD
+            p
+                (prefix)
+                PAYLOAD
+    h6
+        (prefix)
+        PAYLOAD
+    TEST PAYLOAD
+        div
+            (prefix)
+            PAYLOAD

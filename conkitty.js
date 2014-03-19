@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.4.4, https://github.com/hoho/conkitty
+ * conkitty v0.4.5, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -463,7 +463,7 @@ var conkittyCompile;
         funcName =  conkittyGetAnonymousFunctionName(index, i);
 
         if (line.substring(i).match(/^(?:PAYLOAD)(?:\s|$)/)) {
-            expr = '_.payload';
+            expr = '$C._p(_, _.payload)';
 
             if (!noWrap) {
                 expr = 'function ' + funcName + '() { return ' + expr + '; }';
@@ -991,15 +991,19 @@ var conkittyCompile;
                     ret.push('.act(function ' + funcName + '(' + (payload ? '__' : '') + ') {\n');
 
                     if (payload) {
-                        ret.push(k + indentWith + '__ = ');
-                        ret.push(strip(payload).split('\n').join('\n' + k));
+                        ret.push(k + indentWith);
+                        ret.push('__ = function() {\n');
+                        ret.push(k + indentWith + indentWith);
+                        ret.push('return ');
+                        ret.push(strip(payload).split('\n').join('\n' + k + indentWith));
                         ret.push(';\n');
+                        ret.push(k + indentWith + '};\n');
                     }
 
                     ret.push(k + indentWith + '$C.tpl' + nameWrapped + '({parent: this');
 
                     if (payload) {
-                        ret.push(', payload: __.firstChild ? __ : undefined');
+                        ret.push(', payload: __');
                     }
 
                     ret.push('}');
@@ -1095,7 +1099,7 @@ var conkittyCompile;
 
                     addIndent(ret, stack.length);
 
-                    ret.push('.act(function ' + funcName + '() { _.payload && this.appendChild(_.payload); })\n');
+                    ret.push('.act(function ' + funcName + '() { $C._p(_, _.payload, this); })\n');
                 } else {
                     conkittyError(index, i, 'Unexpected command');
                 }
