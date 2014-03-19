@@ -457,6 +457,8 @@ you are probably doing something wrong.*
     template1
         div
             CALL template2
+                // This is PAYLOAD for template2, it will be calculated lazily,
+                // when you use PAYLOAD command inside template2.
                 span
                     "some DOM inside"
 
