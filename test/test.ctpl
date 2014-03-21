@@ -189,7 +189,7 @@ safe-call-test
         strong
             "error2"
 
-    CALL safe-call-test-inner (true)
+    CALL ('ololo' + 'piu')
 
 
     ELSE
