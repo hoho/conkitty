@@ -155,7 +155,7 @@ lazy-payload-test
     h2
         CALL lazy-payload-inner "test2"
     h3
-        CALL lazy-payload-inner "test3"
+        CALL lazy-payload-inner "test3" "test4"
             em
                 (window._lazyPayload++)
 
@@ -175,3 +175,32 @@ lazy-payload-inner prefix
         div
             (prefix)
             PAYLOAD
+
+
+safe-call-test
+    CALL safe-call-test-inner (true)
+        span
+            "payload"
+    ELSE
+        em
+            "error1"
+    CALL safe-call-test-inner (false)
+    ELSE
+        strong
+            "error2"
+
+    CALL safe-call-test-inner (true)
+
+
+    ELSE
+        div
+            "error3"
+
+
+safe-call-test-inner error
+    CHOOSE
+        WHEN (error)
+            ACT (throw new Error('No pasaran'))
+        OTHERWISE
+            p
+                "ok"

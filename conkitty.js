@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.4.6, https://github.com/hoho/conkitty
+ * conkitty v0.4.7, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -920,7 +920,7 @@ var conkittyCompile;
                 index = payload.index;
                 payload = payload.ret;
 
-                if (cmd === 'WITH' && index + 1 < code.length) {
+                if (index + 1 < code.length) {
                     line = code[index + 1];
                     i = skipWhitespaces(line, 0);
 
@@ -946,6 +946,11 @@ var conkittyCompile;
 
                 k = (new Array(stack.length)).join(indentWith);
 
+                if (payload2) {
+                    payload2 = payload2.replace('$C()', '$C(this)');
+                    payload2 = strip(payload2).split('\n').join('\n' + k + indentWith);
+                }
+
                 if (cmd === 'WITH') {
                     variables[name] = true;
 
@@ -954,11 +959,6 @@ var conkittyCompile;
                     if (payload) {
                         payload = payload.replace('$C()', '$C(this)');
                         payload = strip(payload).split('\n').join('\n' + k + indentWith);
-                    }
-
-                    if (payload2) {
-                        payload2 = payload2.replace('$C()', '$C(this)');
-                        payload2 = strip(payload2).split('\n').join('\n' + k + indentWith);
                     }
 
                     ret.push('.act(function ' + funcName + '() {\n');
@@ -1000,7 +1000,13 @@ var conkittyCompile;
                         ret.push(k + indentWith + '};\n');
                     }
 
-                    ret.push(k + indentWith + '$C.tpl' + nameWrapped + '({parent: this');
+                    if (payload2) {
+                        ret.push(k + indentWith + 'try {\n');
+                    }
+
+                    ret.push(k + indentWith);
+                    if (payload2) { ret.push(indentWith); }
+                    ret.push('$C.tpl' + nameWrapped + '({parent: this');
 
                     if (payload) {
                         ret.push(', payload: __');
@@ -1009,10 +1015,24 @@ var conkittyCompile;
                     ret.push('}');
 
                     if (args.length) {
-                        ret.push(',\n' + k + indentWith + (args.join(',\n' + k + indentWith)) + '\n' + k);
+                        ret.push(',\n' + k + indentWith + indentWith);
+                        if (payload2) { ret.push(indentWith); }
+                        ret.push(args.join(',\n' + k + indentWith + indentWith + (payload2 ? indentWith : '')));
+                        ret.push('\n' + k + indentWith);
+                        if (payload2) { ret.push(indentWith); }
                     }
 
                     ret.push(');\n');
+
+                    if (payload2) {
+                        ret.push(k + indentWith);
+                        ret.push('} catch($C_e) {\n');
+                        ret.push(k + indentWith + indentWith);
+                        ret.push(payload2);
+                        ret.push('\n');
+                        ret.push(k + indentWith);
+                        ret.push('}\n');
+                    }
 
                     addIndent(ret, stack.length);
                     ret.push('})\n');

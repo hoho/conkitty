@@ -307,3 +307,17 @@ test('Lazy PAYLOAD test', function() {
 
     container.innerHTML = '';
 });
+
+test('Safe CALL test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('safe-call-test').end();
+
+    domEqual(domToArray(container), [
+        {name: 'em', children: ['error1']},
+        {name: 'p', children: ['ok']},
+        {name: 'div', children: ['error3']}
+    ]);
+
+    container.innerHTML = '';
+});
