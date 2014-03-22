@@ -217,6 +217,36 @@ You can pass a subtree when you call a template.
             (arg1)
             PAYLOAD
 
+It is possible to get template name as JavaScript expression.
+
+    template1
+        div
+            CALL ('template' + 2) "Hello" "world"
+
+    template2 arg1 arg2
+        (arg1)
+        " "
+        (arg2)
+
+You can compliment `CALL` command with `ELSE` section, which will be executed
+in case of any exception during `CALL` command processing.'
+
+    template1
+        div
+            CALL template2
+                // Payload could be here too.
+            ELSE
+                "Oops"
+
+        div
+            CALL (throw new Error('Template name getter exception'))
+            ELSE
+                "It is safe"
+
+    template2
+        span
+            ACT (throw new Error('Exception, baby'))
+
 ### CHOOSE
 
 `CHOOSE` is a command to choose one of multiple choices.
