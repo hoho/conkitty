@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.4.7, https://github.com/hoho/conkitty
+ * conkitty v0.4.8, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -157,6 +157,7 @@ var conkittyCompile;
             processAttrMod = function(closer) {
                 var name = [],
                     value = [],
+                    hasValue = false,
                     isString,
                     attrmodCol = i;
 
@@ -176,6 +177,7 @@ var conkittyCompile;
                 i = skipWhitespaces(selector, i);
 
                 if (selector[i] === '=') {
+                    hasValue = true;
                     i++;
                 }
 
@@ -263,13 +265,13 @@ var conkittyCompile;
                         conkittyError(line, attrmodCol, "Previously assigned 'class' attribute is being rewritten");
                     }
 
-                    attr[name] = value || name;
+                    attr[name] = hasValue ? (value || '') : name;
                 } else {
                     if (name in mods) {
                         conkittyError(line, attrmodCol, "Modifier '" + name + "' is already set");
                     }
 
-                    mods[name] = value || true;
+                    mods[name] = hasValue ? (value || false) : true;
                 }
 
                 i++;

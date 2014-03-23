@@ -83,7 +83,7 @@ test('Simple test', function() {
     $C(container).callTemplate('page').end();
 
     domEqual(domToArray(container), [
-        {name: 'div', attr: {'class': 'class ahah', id: 'id', 'data-ololo': '123'}, children: [
+        {name: 'div', attr: {'class': 'class ahah', id: 'id', 'data-ololo': '123', 'attr1': 'attr1', 'attr2': ''}, children: [
             'Hello ',
             {name: 'strong', children: ['wor', 'ld']},
             '!'
