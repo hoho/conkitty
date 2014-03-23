@@ -229,7 +229,7 @@ It is possible to get template name as JavaScript expression.
         (arg2)
 
 You can compliment `CALL` command with `ELSE` section, which will be executed
-in case of any exception during `CALL` command processing.'
+in case of any exception during `CALL` command processing.
 
     template1
         div
