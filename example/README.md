@@ -4,6 +4,8 @@ Conkitty Example
 Assume you have [npm](http://npmjs.org/), [Bower](http://bower.io) and
 [Grunt](http://gruntjs.com/) installed.
 
+* `git clone https://github.com/hoho/conkitty.git conkitty`
+* `cd conkitty/example`
 * `npm install`;
 * `bower install`;
 * `grunt`;

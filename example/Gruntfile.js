@@ -34,7 +34,8 @@ module.exports = function(grunt) {
     });
 
 
-    grunt.loadNpmTasks('grunt-contrib');
+    grunt.loadNpmTasks('grunt-contrib-concat');
+    grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-conkitty');
 
     grunt.registerTask('default', ['conkitty', 'concat']);
