@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.4.8, https://github.com/hoho/conkitty
+ * conkitty v0.4.9, https://github.com/hoho/conkitty
  * Copyright 2013 Marat Abdullin
  * Released under the MIT license
  */
@@ -61,7 +61,7 @@ var conkittyCompile;
 
     function conkittyCheckName(line, col, name, isCall) {
         var nameExpr = isCall ? /^[a-zA-Z_][a-zA-Z0-9_-]*$/ : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-        if (name === '_' || name === '__' || name === '___' || name === '$C_e' || !name.match(nameExpr)) {
+        if (name === '$C_' || name === '$C__' || name === '$C___' || name === '$C_e' || !name.match(nameExpr)) {
             conkittyError(line, col, "Illegal name '" + name + "'");
         }
     }
@@ -465,7 +465,7 @@ var conkittyCompile;
         funcName =  conkittyGetAnonymousFunctionName(index, i);
 
         if (line.substring(i).match(/^(?:PAYLOAD)(?:\s|$)/)) {
-            expr = '$C._p(_, _.payload)';
+            expr = '$C._p($C_, $C_.payload)';
 
             if (!noWrap) {
                 expr = 'function ' + funcName + '() { return ' + expr + '; }';
@@ -684,13 +684,13 @@ var conkittyCompile;
             var funcName = conkittyGetAnonymousFunctionName(index, skipWhitespaces(code[index], 0));
 
             addIndent(ret, stack.length);
-            ret.push('.act(function ' + funcName + '(__) {\n');
+            ret.push('.act(function ' + funcName + '($C__) {\n');
             addIndent(ret, stack.length + 1);
-            ret.push('__ = ' + expr.expr + ';\n');
+            ret.push('$C__ = ' + expr.expr + ';\n');
             addIndent(ret, stack.length + 1);
-            ret.push('if (__ instanceof Node) { this.appendChild(__); }\n');
+            ret.push('if ($C__ instanceof Node) { this.appendChild($C__); }\n');
             addIndent(ret, stack.length + 1);
-            ret.push('else { $C(this).text(__, true).end(); };\n');
+            ret.push('else { $C(this).text($C__, true).end(); };\n');
             addIndent(ret, stack.length);
             ret.push('})\n');
         } else {
@@ -853,10 +853,10 @@ var conkittyCompile;
                     variables[valVarName] = true;
 
                     addIndent(ret, stack.length + 1);
-                    ret.push('.act(function(_' + (keyVarName ? ', __' : '') + ') { ');
-                    ret.push(valVarName + ' = _; ');
+                    ret.push('.act(function($C_' + (keyVarName ? ', $C__' : '') + ') { ');
+                    ret.push(valVarName + ' = $C_; ');
                     if (keyVarName) {
-                        ret.push(keyVarName + ' = __; ');
+                        ret.push(keyVarName + ' = $C__; ');
                     }
                     ret.push('})\n');
                 }
@@ -990,11 +990,11 @@ var conkittyCompile;
                     addIndent(ret, stack.length);
                     ret.push('})\n');
                 } else {
-                    ret.push('.act(function ' + funcName + '(' + (payload ? '__' : '') + ') {\n');
+                    ret.push('.act(function ' + funcName + '(' + (payload ? '$C__' : '') + ') {\n');
 
                     if (payload) {
                         ret.push(k + indentWith);
-                        ret.push('__ = function() {\n');
+                        ret.push('$C__ = function() {\n');
                         ret.push(k + indentWith + indentWith);
                         ret.push('return ');
                         ret.push(strip(payload).split('\n').join('\n' + k + indentWith));
@@ -1011,7 +1011,7 @@ var conkittyCompile;
                     ret.push('$C.tpl' + nameWrapped + '({parent: this');
 
                     if (payload) {
-                        ret.push(', payload: __');
+                        ret.push(', payload: $C__');
                     }
 
                     ret.push('}');
@@ -1121,7 +1121,7 @@ var conkittyCompile;
 
                     addIndent(ret, stack.length);
 
-                    ret.push('.act(function ' + funcName + '() { $C._p(_, _.payload, this); })\n');
+                    ret.push('.act(function ' + funcName + '() { $C._p($C_, $C_.payload, this); })\n');
                 } else {
                     conkittyError(index, i, 'Unexpected command');
                 }
@@ -1321,7 +1321,7 @@ var conkittyCompile;
             args.push(v);
         }
 
-        ret.splice(1, 0, indentWith + '_ = _ || {};\n' + (args.length ? indentWith + 'var ' + args.join(', ') + ';\n' : ''));
+        ret.splice(1, 0, indentWith + '$C_ = $C_ || {};\n' + (args.length ? indentWith + 'var ' + args.join(', ') + ';\n' : ''));
     }
 
 
@@ -1462,9 +1462,9 @@ var conkittyCompile;
                         variables = {};
 
                         args.shift();
-                        ret.push('function(_' + (args.length ? ', ' + args.join(', ') : '') + ') {\n');
+                        ret.push('function($C_' + (args.length ? ', ' + args.join(', ') : '') + ') {\n');
                         addIndent(ret, stack.length);
-                        ret.push('return $C(_.parent)\n');
+                        ret.push('return $C($C_.parent)\n');
                     } else {
                         // It's a PAYLOAD for CALL command or SET command.
                         break;

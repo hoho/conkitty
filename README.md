@@ -540,9 +540,9 @@ Generated code for a template like:
 
 will look like:
 
-    $C.tpl['b-checkbox'] = function(_, props) {
-        _ = _ || {};
-        return $C(_.parent)
+    $C.tpl['b-checkbox'] = function($C_, props) {
+        $C_ = $C_ || {};
+        return $C($C_.parent)
             .div({"class":"checkbox"})
                 .elem('label')
                     .elem('input', {"type":"checkbox"})

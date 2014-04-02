@@ -3,7 +3,7 @@ $C.tpl = {};
 $C._p = function getPayload(env, payload, parent) {
     /* This function is for internal use from compiled templates.
 
-    `env` is a `_` argument of a current template call.
+    `env` is a `$C_` argument of a current template call.
     `payload` is a function to get payload.
     `parent` is a parent node for payload.
 
