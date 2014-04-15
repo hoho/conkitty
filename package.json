@@ -1,7 +1,7 @@
 {
     "name": "conkitty",
-    "version": "0.4.9",
-    "description": "Concat.js Template Engine",
+    "version": "0.5.0",
+    "description": "Template Engine",
     "main": "conkitty",
     "directories": {
         "test": "test",
@@ -17,7 +17,8 @@
     },
     "keywords": [
         "conkitty",
-        "templates"
+        "templates",
+        "dom"
     ],
     "author": "Marat Abdullin <dakota@brokenpipe.ru>",
     "license": "MIT",

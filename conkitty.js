@@ -1,415 +1,90 @@
 /*!
- * conkitty v0.4.9, https://github.com/hoho/conkitty
- * Copyright 2013 Marat Abdullin
+ * conkitty v0.5.0, https://github.com/hoho/conkitty
+ * Copyright 2013-2014 Marat Abdullin
  * Released under the MIT license
  */
-var conkittyCompile;
-
-(function() {
+module.exports = (function() {
     'use strict';
 
-    var whitespace = /[\x20\t\r\n\f]/,
-        attrName = /^[a-zA-Z][a-zA-Z0-9-_]*$/g,
-        _tags = 'div|span|p|a|ul|ol|li|table|tr|td|th|br|img|b|i|s|u'.split('|'),
-        TAG_FUNCS = {},
-        i,
-        indentWith = '    ',
-        source,
-        code,
-        variables,
-        currentTemplateName;
-
-    for (i = 0; i < _tags.length; i++) {
-        TAG_FUNCS[_tags[i]] = true;
+    // Conkitty constructor.
+    function Conkitty() {
+        this.code = [];
     }
 
-
-    function strip(str) {
-        return str.replace(/^\s+|\s+$/g, '');
-    }
-
-    function addIndent(ret, size) {
-        ret.push((new Array(size)).join(indentWith));
-    }
-
-    function skipWhitespaces(str, col) {
-        while (col < str.length && whitespace.test(str[col])) {
-            col++;
-        }
-
-        return col;
-    }
-
-    function startsWith(str, pos, what) {
-        var i = pos + what.length;
-        return str.substring(pos, i) === what && (str.length === i || whitespace.test(str[i]));
-    }
-
-    function conkittyGetAnonymousFunctionName(line, col) {
-        return '$C_' + currentTemplateName.replace(/\-/g, '_') + '_' + (line + 1) + '_' + (col + 1);
-    }
-
-
-    function conkittyError(line, col, message) {
-        throw new Error(message + ' (line: ' + (line + 1) + ', col: ' + (col + 1) + '):\n' +
-                        source[line] + '\n' + (new Array(col + 1).join(' ')) + '^');
-    }
-
-    function conkittyErrorUnexpectedSymbol(line, col, chr) {
-        conkittyError(line, col, "Unexpected symbol '" + chr + "'");
-    }
-
-    function conkittyCheckName(line, col, name, isCall) {
-        var nameExpr = isCall ? /^[a-zA-Z_][a-zA-Z0-9_-]*$/ : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-        if (name === '$C_' || name === '$C__' || name === '$C___' || name === '$C_e' || !name.match(nameExpr)) {
-            conkittyError(line, col, "Illegal name '" + name + "'");
-        }
-    }
-
-
-    function conkittyTokenizeSelector(line, selector) {
-        selector = selector.replace(/\s+$/g, '');
-
-        var selectorLength = selector.length,
-            className = [],
-            attr = {},
-            mods = {},
-            elem,
-            val = [],
-            bemElem = [],
-            what,
-            i,
-            whatCol,
-
-            bemName = /^[a-zA-Z0-9-]+$/g,
-            blockPrefixes = /^(?:b-|l-)[a-zA-Z0-9-]/,
-            modSeparator = '_',
-            elemSeparator = '__',
-
-            processToken = function() {
-                if (!val.length) {
-                    if (what === undefined) {
-                        return;
-                    }
-
-                    conkittyError(line, whatCol, 'No name');
-                }
-
-                val = val.join('');
-
-                switch (what) {
-                    case '.':
-                        if (!val.match(attrName)) {
-                            conkittyError(line, whatCol, "Illegal class name '" + val + "'");
-                        }
-
-                        if ('class' in attr) {
-                            conkittyError(line, whatCol, "Previously assigned 'class' attribute is being rewritten");
-                        }
-
-                        className.push(val);
-                        break;
-
-                    case '#':
-                        if ('id' in attr) {
-                            conkittyError(line, whatCol, "'id' attribute is already set");
-                        }
-
-                        attr.id = val;
-                        break;
-
-                    case '%':
-                        if (!val.match(bemName) || !val.match(blockPrefixes)) {
-                            conkittyError(line, whatCol, "Illegal block name '" + val + "'");
-                        }
-
-                        if (bemElem.length) {
-                            if (!bemElem.match(bemName)) {
-                                conkittyError(line, whatCol, "Illegal element name '" + bemElem + "'");
-                            }
-
-                            val += elemSeparator + bemElem;
-                            bemElem = [];
-                        }
-
-                        if ('class' in attr) {
-                            conkittyError(line, whatCol, "Previously assigned 'class' attribute is being rewritten");
-                        }
-
-                        className.push(val);
-
-                        for (var name in mods) {
-                            className.push(val + modSeparator + name + (mods[name] === true ? '' : modSeparator + mods[name]));
-                        }
-
-                        break;
-
-                    case undefined:
-                        if (elem) {
-                            conkittyError(line, whatCol, "Duplicate tag name ('" + val + "')");
-                        }
-                        elem = val;
-                        break;
-                }
-
-            },
-
-            processAttrMod = function(closer) {
-                var name = [],
-                    value = [],
-                    hasValue = false,
-                    isString,
-                    attrmodCol = i;
-
-                if (closer === '}' && what !== '%') {
-                    conkittyError(line, i, 'Modifier has no block');
-                }
-
-                i++;
-
-                i = skipWhitespaces(selector, i);
-
-                while (i < selectorLength && !whitespace.test(selector[i]) && selector[i] !== '=' && selector[i] !== closer) {
-                    name.push(selector[i]);
-                    i++;
-                }
-
-                i = skipWhitespaces(selector, i);
-
-                if (selector[i] === '=') {
-                    hasValue = true;
-                    i++;
-                }
-
-                i = skipWhitespaces(selector, i);
-
-                if (selector[i] !== closer) {
-                    if (selector[i] === '"') {
-                        isString = true;
-                        i++;
-                    }
-
-                    while (i < selectorLength) {
-                        if (selector[i] === '"') {
-                            if (isString) {
-                                i++;
-                                break;
-                            } else {
-                                conkittyError(line, i, "Illegal symbol '" + selector[i] + "'");
-                            }
-                        } else if (selector[i] === '\\') {
-                            if (isString) {
-                                i++;
-
-                                if (selector[i] === '\\') {
-                                    value.push('\\');
-                                } else if (selector[i] === '"') {
-                                    value.push('"');
-                                } else {
-                                    conkittyError(line, i, "Illegal symbol '" + selector[i] + "'");
-                                }
-
-                                i++;
-                            } else {
-                                conkittyError(line, i, "Illegal symbol '" + selector[i] + "'");
-                            }
-                        } else {
-                            if (isString) {
-                                value.push(selector[i]);
-                            } else {
-                                if (selector[i] === closer || whitespace.test(selector[i])) {
-                                    break;
-                                } else {
-                                    value.push(selector[i]);
-                                }
-                            }
-
-                            i++;
-                        }
-                    }
-
-                    i = skipWhitespaces(selector, i);
-                }
-
-                if (selector[i] !== closer) {
-                    if (i === selectorLength) {
-                        conkittyError(line, i, 'Unterminated selector');
-                    } else {
-                        conkittyErrorUnexpectedSymbol(line, i, selector[i]);
-                    }
-                }
-
-                if (!name.length) {
-                    conkittyError(line, attrmodCol, 'No ' + (closer === ']' ? 'attribute' : 'modifier') + ' name');
-                }
-
-                name = name.join('');
-                value = value.join('');
-
-                if (closer === ']' && !name.match(attrName)) {
-                    conkittyError(line, attrmodCol, "Illegal attribute name '" + name + "'");
-                } else if (closer === '}' && !name.match(bemName)) {
-                    conkittyError(line, attrmodCol, "Illegal modifier name '" + name + "'");
-
-                    if (value && !value.match(bemName)) {
-                        conkittyError(line, attrmodCol, "Illegal modifier value '" + value + "'");
-                    }
-                }
-
-                if (closer === ']') {
-                    if (name in attr) {
-                        conkittyError(line, attrmodCol, "Attribute '" + name + "' is already set");
-                    }
-
-                    if (name === 'class' && className.length) {
-                        conkittyError(line, attrmodCol, "Previously assigned 'class' attribute is being rewritten");
-                    }
-
-                    attr[name] = hasValue ? (value || '') : name;
-                } else {
-                    if (name in mods) {
-                        conkittyError(line, attrmodCol, "Modifier '" + name + "' is already set");
-                    }
-
-                    mods[name] = hasValue ? (value || false) : true;
-                }
-
-                i++;
-
-                if (selector[i] === '[') {
-                    processAttrMod(']');
-                } else if (selector[i] === '{') {
-                    processAttrMod('}');
-                }
-            };
-
-        i = 0;
-
-        i = skipWhitespaces(selector, i);
-
-        while (i < selectorLength) {
-            switch (selector[i]) {
-                case '.':
-                case '#':
-                case '%':
-                    processToken();
-                    val = [];
-                    what = selector[i];
-                    whatCol = i + 1;
-                    i++;
-                    break;
-
-                case '(':
-                    if (what !== '%') {
-                        conkittyError(line, i, 'Element without a block');
-                    }
-
-                    if (bemElem.length) {
-                        conkittyError(line, i, 'Duplicate element');
-                    }
-
-                    i++;
-
-                    bemElem = [];
-
-                    i = skipWhitespaces(selector, i);
-
-                    while (i < selectorLength && !whitespace.test(selector[i]) && selector[i] !== ')') {
-                        bemElem.push(selector[i]);
-                        i++;
-                    }
-
-                    i = skipWhitespaces(selector, i);
-
-                    if (selector[i] !== ')') {
-                        conkittyErrorUnexpectedSymbol(line, i, selector[i]);
-                    }
-
-                    i++;
-
-                    if (!bemElem.length) {
-                        conkittyError(line, i, 'Empty element name');
-                    }
-
-                    bemElem = bemElem.join('');
-
-                    break;
-
-                case '[':
-                case '{':
-                    processAttrMod(selector[i] === '[' ? ']' : '}');
-                    processToken();
-                    mods = {};
-                    val = [];
-                    what = undefined;
-                    whatCol = i;
-
-                    break;
-
-                default:
-                    val.push(selector[i]);
-                    i++;
-                    break;
-            }
-        }
-
-        processToken();
-
-        if (!elem) {
-            conkittyError(line, 0, 'No tag name');
-        }
-
-        if (className.length) {
-            attr['class'] = className.join(' ');
-        }
-
-        return {elem: elem, attr: attr};
-    }
-
-
-    function conkittyClearComments() {
+    var uglify = require('uglify-js'),
+        jsParser = uglify.parser,
+        jsUglify = uglify.uglify,
+
+        CONKITTY_TYPE_VARIABLE = 'variable',
+        CONKITTY_TYPE_JAVASCRIPT = 'JavaScript',
+        CONKITTY_TYPE_STRING = 'string',
+        CONKITTY_TYPE_TEMPLATE_NAME = 'template name',
+        CONKITTY_TYPE_COMMAND_NAME = 'command name',
+        CONKITTY_TYPE_CSS = 'css selector',
+        CONKITTY_TYPE_CSS_TAG = 'tag name',
+        CONKITTY_TYPE_CSS_CLASS = 'css class name',
+        CONKITTY_TYPE_CSS_ID = 'css id',
+        CONKITTY_TYPE_CSS_BEM = 'css BEM name',
+        CONKITTY_TYPE_CSS_BEM_MOD = 'css BEM modifier',
+        CONKITTY_TYPE_CSS_ATTR = 'css attribute',
+        CONKITTY_TYPE_CSS_ATTR_NAME = 'css attribute name',
+        CONKITTY_TYPE_CSS_IF = 'css conditional',
+        CONKITTY_TYPE_ATTR = 'attribute',
+        CONKITTY_TYPE_INCLUDE = 'file include',
+
+        whitespace = /[\x20\t\r\n\f]/,
+
+        variableStopExpr = /[^a-zA-Z0-9_]/,
+        variableCheckExpr = /^[a-zA-Z_][a-zA-Z0-9_]*$/,
+        cssStopExpr = /[^a-zA-Z0-9_-]/,
+        cssNameCheckExpr = /^[a-zA-Z][a-zA-Z0-9_-]*$/,
+        tagCheckExpr = /^[a-z][a-zA-Z0-9_-]*$/,
+        bemStopExpr = /[^a-zA-Z0-9-]/,
+        bemCheckExpr = /^[a-zA-Z][a-zA-Z0-9-]*$/;
+
+    function clearComments(code) {
         var i,
             j,
             k,
-            tmp,
+            line,
             inComment,
             inString;
 
         i = 0;
         while (i < code.length) {
-            tmp = code[i];
+            line = code[i];
 
             if (!inComment) {
                 inString = false;
                 j = 0;
 
-                while (j < tmp.length) {
-                    if (tmp[j] === "'" || tmp[j] === '"') {
-                        if (inString === tmp[j] && tmp[j - 1] !== '\\') {
+                while (j < line.length) {
+                    if (line[j] === "'" || line[j] === '"') {
+                        if (inString === line[j] && line[j - 1] !== '\\') {
                             inString = false;
                             j++;
                             continue;
                         } else if (!inString) {
-                            inString = tmp[j];
+                            inString = line[j];
                             j++;
                             continue;
                         }
                     }
 
                     if (!inString) {
-                        if (tmp[j] === '/' && (tmp[j + 1] === '/' || tmp[j + 1] === '*')) {
-                            if (tmp[j + 1] === '*') {
-                                k = tmp.indexOf('*/');
+                        if (line[j] === '/' && (line[j + 1] === '/' || line[j + 1] === '*')) {
+                            if (line[j + 1] === '*') {
+                                k = line.indexOf('*/');
 
                                 if (k > j + 1) {
-                                    tmp = tmp.substring(0, j) + new Array(k + 3 - j).join(' ') + tmp.substring(k + 2);
+                                    line = line.substring(0, j) + new Array(k + 3 - j).join(' ') + line.substring(k + 2);
                                     continue;
                                 } else {
                                     inComment = true;
                                 }
                             }
 
-                            tmp = tmp.substring(0, j);
+                            line = line.substring(0, j);
                             break;
                         }
                     }
@@ -417,15 +92,17 @@ var conkittyCompile;
                     j++;
                 }
 
-                code[i] = tmp;
+                code[i] = line;
             } else { // In comment.
-                k = tmp.indexOf('*/');
+                k = line.indexOf('*/');
 
                 if (k >= 0) {
-                    code[i] = new Array(k + 3).join(' ') + tmp.substring(k + 2);
+                    // Fill comment part with spaces.
+                    code[i] = new Array(k + 3).join(' ') + line.substring(k + 2);
                     inComment = false;
                     i--;
                 } else {
+                    // Whole string is comment, clear it.
                     code[i] = '';
                 }
             }
@@ -439,1092 +116,1008 @@ var conkittyCompile;
     }
 
 
-    function conkittyCheckExpression(expr) {
-        try {
-            var tmp;
-            eval('tmp = function() { tmp = ' + expr + '}');
-            return tmp;
-        } catch(e) {
-            e.message = expr + '\n\n' + e.message + '\n';
-            throw e;
-        }
+    function strip(str) {
+        return str.replace(/^[\x20\t\r\n\f]+|[\x20\t\r\n\f]+$/g, '');
     }
 
 
-    function conkittyExtractExpression(index, col, hasMore, noWrap, noReturn) {
-        var i = col,
-            line = code[index],
-            expr = [],
-            inString,
-            brackets,
-            startIndex = index,
-            funcName;
+    function parseJS(code, stripFunc) {
+        /* jshint -W106 */
+        var ast = jsParser.parse(code);
 
-        i = skipWhitespaces(line, i);
+        ast = jsUglify.ast_lift_variables(ast);
 
-        funcName =  conkittyGetAnonymousFunctionName(index, i);
+        // Strip f() call.
+        stripFunc(ast);
 
-        if (line.substring(i).match(/^(?:PAYLOAD)(?:\s|$)/)) {
-            expr = '$C._p($C_, $C_.payload)';
-
-            if (!noWrap) {
-                expr = 'function ' + funcName + '() { return ' + expr + '; }';
-            }
-
-            i = skipWhitespaces(line, i + 7);
-
-            if (i < line.length && !hasMore) {
-                conkittyErrorUnexpectedSymbol(index, i, line[i]);
-            }
-
-            conkittyCheckExpression(expr);
-
-            return {index: index, col: i, expr: expr};
-        } else if (line[i] === '"' || line[i] === "'") {
-            var longStr = line.substring(i, i + 3),
-                temp,
-                noesc;
-
-            if (longStr !== '"""' && longStr !== "'''") {
-                longStr = null;
-            } else {
-                i += 2;
-                noesc = true;
-            }
-
-            inString = line[i];
-            expr.push(line[i++]);
-
-            while (i < line.length && inString) {
-                if (line[i] === inString && line[i - 1] !== '\\') {
-                    temp = line.substring(i, i + 3);
-
-                    if (!longStr || longStr === temp) {
-                        inString = false;
-                        if (longStr) {
-                            i += 2;
-                        }
-                        expr.push(line[i++]);
-                        break;
-                    } else {
-                        expr.push('\\');
-                    }
-                }
-
-                expr.push(line[i++]);
-            }
-
-            if (inString) {
-                conkittyError(index, i, 'Unterminated string');
-            }
-
-            i = skipWhitespaces(line, i);
-
-            if (i < line.length && !hasMore) {
-                conkittyErrorUnexpectedSymbol(index, i, line[i]);
-            }
-
-            expr = expr.join('');
-
-            conkittyCheckExpression(expr);
-
-            return {index: index, col: i, expr: expr, noesc: noesc};
-        } else {
-            if (line[i] !== '(') {
-                conkittyError(index, i, "Illegal symbol '" + line[i] + "'");
-            }
-
-            i++;
-            brackets = 1;
-
-            if (i === line.length) {
-                index++;
-
-                while (index < code.length && !strip(code[index])) {
-                    index++;
-                }
-
-                if (index < code.length) {
-                    line = code[index];
-                    i = 0;
-                } else {
-                    conkittyError(startIndex, col, 'Unterminated expression');
-                }
-            }
-
-            while (brackets > 0 && i < line.length) {
-                if (!inString) {
-                    if (line[i] === '(') {
-                        brackets++;
-                    } else if (line[i] === ')') {
-                        brackets--;
-
-                        if (brackets === 0) {
-                            i++;
-                            break;
-                        }
-                    } else if (line[i] === '"' || line[i] === "'") {
-                        inString = line[i];
-                    }
-                } else {
-                    if (line[i] === inString && line[i - 1] !== '\\') {
-                        inString = false;
-                    }
-                }
-
-                expr.push(line[i]);
-
-                i++;
-
-                if (i === line.length) {
-                    index++;
-                    expr.push('\n');
-
-                    while (index < code.length && !strip(code[index])) {
-                        index++;
-                    }
-
-                    if (index < code.length) {
-                        line = code[index];
-                        i = 0;
-                    } else {
-                        conkittyError(startIndex, col, 'Unterminated expression');
-                    }
-                }
-            }
-
-            expr = strip(expr.join(''));
-
-            if (!expr) {
-                conkittyError(startIndex, col, 'Empty expression');
-            }
-
-            var jsnoesc;
-
-            if (expr.substring(0, 2) === '((' && expr.substring(expr.length - 2) === '))') {
-                expr = expr.substring(2, expr.length - 2);
-                jsnoesc = true;
-            }
-
-            i = skipWhitespaces(line, i);
-
-            if (expr.substring(0, 8) !== 'function') {
-                if (noWrap || jsnoesc) {
-                    expr = '(' + expr + ')';
-                } else {
-                    if (noReturn) {
-                        expr = 'function ' + funcName + '() { ' + expr + ' }';
-                    } else {
-                        expr = 'function ' + funcName + '() { return (' + expr + '); }';
-                    }
-                }
-            } else {
-                if (noWrap || jsnoesc) {
-                    expr = '(' + expr + ').apply(this, arguments)';
-                }
-            }
-
-            if (i < line.length && !hasMore) {
-                conkittyErrorUnexpectedSymbol(index, i, line[i]);
-            }
-
-            conkittyCheckExpression(expr);
-
-            return {index: index, col: i, expr: expr, jsnoesc: jsnoesc};
-        }
+        return ast;
+        /* jshint +W106 */
     }
 
 
-    function conkittyProcessAtAttribute(index, stack, ret) {
-        stack[stack.length - 1].end = false;
-
-        var line = code[index],
-            i,
-            name = [],
-            val;
-
-        i = 0;
-
-        i = skipWhitespaces(line, i);
-
-        if (line[i] !== '@') {
-            conkittyErrorUnexpectedSymbol(index, i, line[i]);
-        }
-
-        i++;
-
-        while (i < line.length && !whitespace.test(line[i])) {
-            name.push(line[i]);
-            i++;
-        }
-
-        name = name.join('');
-
-        if (!name.length || !name.match(attrName)) {
-            conkittyError(index, i, "Illegal attribute name '" + name + "'");
-        }
-
-        i = skipWhitespaces(line, i);
-
-        val = conkittyExtractExpression(index, i);
-        index = val.index;
-        val = val.expr;
-
-        addIndent(ret, stack.length);
-        ret.push(".attr('" + name + "', " + val + ')\n');
-
-        return index;
+    function parseJSExpression(code) {
+        return parseJS(
+            'f(\n' + code + '\n)',
+            function(ast) { ast[1] = ast[1][0][1][2]; /* Strip f() call. */ }
+        );
     }
 
 
-    function conkittyProcessTextExpression(index, stack, ret) {
-        var expr = conkittyExtractExpression(index, 0);
-
-        if (expr.jsnoesc) {
-            var funcName = conkittyGetAnonymousFunctionName(index, skipWhitespaces(code[index], 0));
-
-            addIndent(ret, stack.length);
-            ret.push('.act(function ' + funcName + '($C__) {\n');
-            addIndent(ret, stack.length + 1);
-            ret.push('$C__ = ' + expr.expr + ';\n');
-            addIndent(ret, stack.length + 1);
-            ret.push('if ($C__ instanceof Node) { this.appendChild($C__); }\n');
-            addIndent(ret, stack.length + 1);
-            ret.push('else { $C(this).text($C__, true).end(); };\n');
-            addIndent(ret, stack.length);
-            ret.push('})\n');
-        } else {
-            addIndent(ret, stack.length);
-            ret.push('.text(');
-            ret.push(expr.expr);
-            ret.push((expr.noesc ? ', true' : '') + ')\n');
-        }
-
-        index = expr.index;
-
-        stack[stack.length - 1].end = false;
-
-        return index;
-    }
-
-    function conkittyProcessCommand(index, stack, ret) {
-        var i = 0,
-            line = code[index],
-            cmd,
-            expr,
-            expr2,
-            args,
-            name,
-            nameWrapped,
-            j,
-            k,
-            payload,
-            payload2,
-            funcName;
-
-        stack[stack.length - 1].end = false;
-
-        i = skipWhitespaces(line, i);
-
-        funcName = conkittyGetAnonymousFunctionName(index, i);
-
-        cmd = line.substring(i, i + 4);
-
-        switch (cmd) {
-            case 'CHOO':
-            case 'OTHE':
-                if (startsWith(line, i, 'CHOOSE') || startsWith(line, i, 'OTHERWISE')) {
-                    if (strip(line) === 'CHOOSE' || strip(line) === 'OTHERWISE') {
-                        stack[stack.length - 1].lastChild = false;
-
-                        addIndent(ret, stack.length);
-                        ret.push(cmd === 'CHOO' ? '.choose()\n' : '.otherwise()\n');
-
-                        stack[stack.length - 1].end = true;
-                        if (cmd === 'CHOO') {
-                            stack[stack.length - 1].choose = true;
-                        } else if (stack[stack.length - 2].choose) {
-                            delete stack[stack.length - 2].choose;
-                        }
-                    } else {
-                        i = skipWhitespaces(line, i + (cmd === 'CHOO' ? 6 : 9));
-                        conkittyErrorUnexpectedSymbol(index, i, line[i]);
-                    }
-                } else {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                break;
-
-            case 'TEST':
-            case 'ATTR':
-            case 'WHEN':
-                if ((!whitespace.test(line[i + 4])) || (cmd === 'WHEN' && !stack[stack.length - 2].choose)) {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                if (i + 4 >= line.length) {
-                    conkittyError(index, i + 4, 'Expression is expected');
-                }
-
-                stack[stack.length - 1].lastChild = false;
-
-                expr = conkittyExtractExpression(index, i + 4, cmd === 'ATTR');
-
-                index = expr.index;
-                i = expr.col;
-
-                break;
-
-            case 'EACH':
-                i += 4;
-
-                if (i >= line.length) {
-                    conkittyError(index, i, 'Expression is expected');
-                }
-
-                if (!whitespace.test(line[i])) {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                stack[stack.length - 1].lastChild = false;
-
-                i = j = k = skipWhitespaces(line, i);
-
-                var keyVarName,
-                    valVarName,
-                    exprStarters = {'"': true, "'": true, '(': true};
-
-                if (!(line[i] in exprStarters)) {
-                    keyVarName = [];
-                    while (i < line.length && !whitespace.test(line[i])) {
-                        keyVarName.push(line[i]);
-                        i++;
-                    }
-
-                    i = skipWhitespaces(line, i + 1);
-
-                    if (i < line.length) {
-                        keyVarName = keyVarName.join('');
-                        conkittyCheckName(index, j, keyVarName);
-
-                        j = i;
-
-                        if (!(line[i] in exprStarters)) {
-                            valVarName = [];
-                            while (i < line.length && !whitespace.test(line[i])) {
-                                valVarName.push(line[i]);
-                                i++;
-                            }
-
-                            i = skipWhitespaces(line, i + 1);
-
-                            if (i < line.length) {
-                                valVarName = valVarName.join('');
-                                conkittyCheckName(index, j, valVarName);
-                            } else {
-                                i = j;
-                                valVarName = keyVarName;
-                                keyVarName = undefined;
-                            }
-                        } else {
-                            valVarName = keyVarName;
-                            keyVarName = undefined;
-                        }
-                    } else {
-                        i = k;
-                        keyVarName = undefined;
-                    }
-                }
-
-                expr = conkittyExtractExpression(index, i);
-
-                index = expr.index;
-                i = expr.col;
-
-                addIndent(ret, stack.length);
-                ret.push('.each(' + expr.expr + ')\n');
-
-                if (keyVarName || valVarName) {
-                    if (keyVarName) {
-                        variables[keyVarName] = true;
-                    }
-
-                    variables[valVarName] = true;
-
-                    addIndent(ret, stack.length + 1);
-                    ret.push('.act(function($C_' + (keyVarName ? ', $C__' : '') + ') { ');
-                    ret.push(valVarName + ' = $C_; ');
-                    if (keyVarName) {
-                        ret.push(keyVarName + ' = $C__; ');
-                    }
-                    ret.push('})\n');
-                }
-
-                stack[stack.length - 1].end = true;
-
-                break;
-
-            case 'CALL':
-            case 'WITH':
-                args = [];
-                name = [];
-                j = i;
-
-                if (!whitespace.test(line[i + 4])) {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                i = skipWhitespaces(line, i + 4);
-
-                if (cmd === 'CALL' && line[i] === '(') {
-                    expr = conkittyExtractExpression(index, i, true, true);
-
-                    index = expr.index;
-                    i = expr.col;
-                    line = code[index];
-
-                    nameWrapped = '[' + expr.expr + ']';
-                } else {
-                    while (i < line.length && !whitespace.test(line[i])) {
-                        name.push(line[i]);
-                        i++;
-                    }
-
-                    if (!name.length) {
-                        conkittyError(index, i, 'No name');
-                    }
-
-                    name = name.join('');
-
-                    conkittyCheckName(index, i - name.length, name, cmd === 'CALL');
-
-                    nameWrapped = "['" + name + "']";
-                }
-
-                i = skipWhitespaces(line, i);
-
-                while (i < line.length) {
-                    expr = conkittyExtractExpression(index, i, cmd === 'CALL', true);
-                    index = expr.index;
-                    i = expr.col;
-                    line = code[index];
-                    args.push(expr.expr);
-                }
-
-                if (cmd === 'WITH' && !args.length) {
-                    conkittyError(index, i, 'Expression is expected');
-                }
-
-                index++;
-
-                payload = conkittyCompile(undefined, stack[stack.length - 1].indent, index);
-                index = payload.index;
-                payload = payload.ret;
-
-                if (index + 1 < code.length) {
-                    line = code[index + 1];
-                    i = skipWhitespaces(line, 0);
-
-                    if (i === stack[stack.length - 1].indent &&
-                        line.substring(i, i + 4) === 'ELSE' &&
-                        (i + 4 === line.length || whitespace.test(line[i + 4])))
-                    {
-                        i = skipWhitespaces(line, i + 4);
-
-                        if (i < line.length) {
-                            conkittyErrorUnexpectedSymbol(index + 1, i);
-                        }
-
-                        index += 2;
-
-                        payload2 = conkittyCompile(undefined, stack[stack.length - 1].indent, index);
-                        index = payload2.index;
-                        payload2 = payload2.ret;
-                    }
-                }
-
-                addIndent(ret, stack.length);
-
-                k = (new Array(stack.length)).join(indentWith);
-
-                if (payload2) {
-                    payload2 = payload2.replace('$C()', '$C(this)');
-                    payload2 = strip(payload2).split('\n').join('\n' + k + indentWith);
-                }
-
-                if (cmd === 'WITH') {
-                    variables[name] = true;
-
-                    expr = args[0];
-
-                    if (payload) {
-                        payload = payload.replace('$C()', '$C(this)');
-                        payload = strip(payload).split('\n').join('\n' + k + indentWith);
-                    }
-
-                    ret.push('.act(function ' + funcName + '() {\n');
-
-                    addIndent(ret, stack.length + 1);
-                    ret.push('try { ' + name + ' = ' + expr + ' } catch($C_e) { ' + name + ' = undefined; }\n');
-                    addIndent(ret, stack.length + 1);
-                    ret.push('if (' + name + ' === undefined || ' + name + ' === null) {\n');
-                    addIndent(ret, stack.length + (payload2 ? 2 : 1));
-
-                    if (payload2) {
-                        ret.push(payload2);
-                        ret.push('\n');
-                        addIndent(ret, stack.length + 1);
-                    }
-
-                    if (payload) {
-                        ret.push('} else {\n');
-                        addIndent(ret, stack.length + 2);
-                        ret.push(payload);
-                        ret.push('\n');
-                        addIndent(ret, stack.length + 1);
-                    }
-
-                    ret.push('}\n');
-
-                    addIndent(ret, stack.length);
-                    ret.push('})\n');
-                } else {
-                    ret.push('.act(function ' + funcName + '(' + (payload ? '$C__' : '') + ') {\n');
-
-                    if (payload) {
-                        ret.push(k + indentWith);
-                        ret.push('$C__ = function() {\n');
-                        ret.push(k + indentWith + indentWith);
-                        ret.push('return ');
-                        ret.push(strip(payload).split('\n').join('\n' + k + indentWith));
-                        ret.push(';\n');
-                        ret.push(k + indentWith + '};\n');
-                    }
-
-                    if (payload2) {
-                        ret.push(k + indentWith + 'try {\n');
-                    }
-
-                    ret.push(k + indentWith);
-                    if (payload2) { ret.push(indentWith); }
-                    ret.push('$C.tpl' + nameWrapped + '({parent: this');
-
-                    if (payload) {
-                        ret.push(', payload: $C__');
-                    }
-
-                    ret.push('}');
-
-                    if (args.length) {
-                        ret.push(',\n' + k + indentWith + indentWith);
-                        if (payload2) { ret.push(indentWith); }
-                        ret.push(args.join(',\n' + k + indentWith + indentWith + (payload2 ? indentWith : '')));
-                        ret.push('\n' + k + indentWith);
-                        if (payload2) { ret.push(indentWith); }
-                    }
-
-                    ret.push(');\n');
-
-                    if (payload2) {
-                        ret.push(k + indentWith);
-                        ret.push('} catch($C_e) {\n');
-                        ret.push(k + indentWith + indentWith);
-                        ret.push(payload2);
-                        ret.push('\n');
-                        ret.push(k + indentWith);
-                        ret.push('}\n');
-                    }
-
-                    addIndent(ret, stack.length);
-                    ret.push('})\n');
-                }
-
-                break;
-
-            case 'SET':
-            case 'SET ':
-                if (!startsWith(line, i, 'SET')) {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                name = [];
-
-                i = skipWhitespaces(line, i + 3);
-
-                j = i;
-
-                while (i < line.length && !whitespace.test(line[i])) {
-                    name.push(line[i]);
-                    i++;
-                }
-
-                if (!name.length) {
-                    conkittyError(index, j, 'No name');
-                }
-
-                name = name.join('');
-                conkittyCheckName(index, j, name);
-
-                variables[name] = true;
-
-                i = skipWhitespaces(line, i);
-
-                if (i < line.length) {
-                    expr = conkittyExtractExpression(index, i, false, true);
-                    index = expr.index;
-                    i = expr.col;
-                    line = code[index];
-                    expr = expr.expr;
-                }
-
-                j = index + 1;
-
-                payload = conkittyCompile(undefined, stack[stack.length - 1].indent, index + 1);
-                index = payload.index;
-                payload = payload.ret;
-
-                if (payload && expr) {
-                    i = skipWhitespaces(code[j], 0);
-                    conkittyError(j, i, 'Duplicate variable content');
-                }
-
-                if (!payload && !expr) {
-                    j--;
-                    conkittyError(j, i, 'No value');
-                } else if (payload) {
-                    expr = payload;
-                }
-
-                addIndent(ret, stack.length);
-
-                k = (new Array(stack.length)).join(indentWith);
-
-                ret.push('.act(function ' + funcName + '() {\n' + k + indentWith + name + ' = ');
-                ret.push(strip(expr).split('\n').join('\n' + k));
-                if (payload) {
-                    ret.push(';\n' + k + indentWith + name + ' = ' + name + '.firstChild ? ' + name + ' : undefined');
-                }
-                ret.push(';\n');
-
-                addIndent(ret, stack.length);
-                ret.push('})\n');
-
-                break;
-
-            case 'PAYL':
-                if (startsWith(line, i, 'PAYLOAD')) {
-                    i = skipWhitespaces(line, i + 7);
-                    if (i < line.length) {
-                        conkittyErrorUnexpectedSymbol(index, i, line[i]);
-                    }
-
-                    addIndent(ret, stack.length);
-
-                    ret.push('.act(function ' + funcName + '() { $C._p($C_, $C_.payload, this); })\n');
-                } else {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                break;
-
-            case 'MEM':
-            case 'MEM ':
-                if (!startsWith(line, i, 'MEM')) {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                i = skipWhitespaces(line, i + 3);
-
-                expr = conkittyExtractExpression(index, i, true);
-                index = expr.index;
-                i = expr.col;
-                line = code[index];
-                expr = expr.expr;
-
-                if (i < line.length) {
-                    expr2 = conkittyExtractExpression(index, i);
-                    index = expr2.index;
-                    i = expr2.col;
-                    line = code[index];
-                    expr2 = expr2.expr;
-                } else {
-                    expr2 = undefined;
-                }
-
-                addIndent(ret, stack.length);
-
-                k = (new Array(stack.length)).join(indentWith);
-
-                ret.push('.mem(');
-                ret.push(strip(expr).split('\n').join('\n' + k));
-
-                if (expr2) {
-                    ret.push(', ');
-                    ret.push(strip(expr2).split('\n').join('\n' + k));
-                }
-
-                ret.push(')\n');
-
-                break;
-
-            case 'ACT':
-            case 'ACT ':
-                if (!startsWith(line, i, 'ACT')) {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                i = skipWhitespaces(line, i + 3);
-
-                if (line[i] !== '(') {
-                    conkittyError(index, i, 'Expression is expected');
-                }
-
-                expr = conkittyExtractExpression(index, i, false, false, true);
-                index = expr.index;
-                i = expr.col;
-                line = code[index];
-                expr = expr.expr;
-
-                addIndent(ret, stack.length);
-
-                k = (new Array(stack.length)).join(indentWith);
-
-                ret.push('.act(');
-                ret.push(strip(expr).split('\n').join('\n' + k));
-                ret.push(')\n');
-
-                break;
-
-            case 'TRIG':
-                if (!startsWith(line, i, 'TRIGGER')) {
-                    conkittyError(index, i, 'Unexpected command');
-                }
-
-                i = skipWhitespaces(line, i + 7);
-
-                args = [];
-
-                while (i < line.length) {
-                    expr = conkittyExtractExpression(index, i, true, true);
-                    index = expr.index;
-                    i = expr.col;
-                    line = code[index];
-                    args.push(expr.expr);
-                }
-
-                addIndent(ret, stack.length);
-
-                k = (new Array(stack.length)).join(indentWith);
-
-                ret.push('.trigger(');
-
-                if (args.length) {
-                    ret.push('\n' + k + indentWith + (args.join(',\n' + k + indentWith)) + '\n' + k);
-                }
-
-                ret.push(')\n');
-
-                break;
-
-            default:
-                conkittyError(index, i, 'Unexpected command');
-        }
-
-        switch (cmd) {
-            case 'TEST':
-            case 'WHEN':
-                addIndent(ret, stack.length);
-                ret.push((cmd === 'TEST' ? '.test(' : '.when(') + expr.expr + ')\n');
-                stack[stack.length - 1].end = true;
-
-                break;
-
-            case 'ATTR':
-                expr2 = conkittyExtractExpression(index, i);
-
-                index = expr2.index;
-                i = expr2.col;
-
-                addIndent(ret, stack.length);
-                ret.push('.attr(' + expr.expr + ', ' + expr2.expr + ')\n');
-
-                break;
-        }
-
-        return index;
-    }
-
-    function conkittyProcessElement(index, stack, ret) {
-        var elem = conkittyTokenizeSelector(index, code[index]),
-            hasAttr,
-            needComma;
-
-        for (hasAttr in elem.attr) {
-            break;
-        }
-
-        stack[stack.length - 1].lastChild = false;
-
-        addIndent(ret, stack.length);
-
-        if (elem.elem in TAG_FUNCS) {
-            ret.push('.' + elem.elem + '(');
-            needComma = '';
-        } else {
-            ret.push(".elem('" + elem.elem + "'");
-            needComma = ', ';
-        }
-
-        if (hasAttr) {
-            ret.push(needComma + JSON.stringify(elem.attr));
-        }
-
-        ret.push(')\n');
-
-        stack[stack.length - 1].end = true;
+    function parseJSFunction(code) {
+        return parseJS(
+            'function f() {\n' + code + '\n}',
+            function(ast) { ast[1] = ast[1][0][3]; /* Strip function f() {} wrapper. */ }
+        );
     }
 
 
-    function conkittyProcess(index, stack, ret) {
-        var line = strip(code[index]);
+    //function adjustJS(ast) {
+        /* jshint -W106 */
+    //    return jsUglify.gen_code(ast, {beautify: true, indent_start: 0});
+        /* jshint +W106 */
+    //}
 
-        switch (line[0]) {
-            case '"':
-            case "'":
-            case '(':
-                index = conkittyProcessTextExpression(index, stack, ret);
-                break;
 
-            case '@':
-                index = conkittyProcessAtAttribute(index, stack, ret);
-                break;
-
-            default:
-                stack[stack.length - 1].end = true;
-                if (/[A-Z]/.test(line[0])) {
-                    index = conkittyProcessCommand(index, stack, ret);
-                } else {
-                    conkittyProcessElement(index, stack, ret);
-                }
+    function skipWhitespaces(line, charAt) {
+        while (charAt < line.length && whitespace.test(line[charAt])) {
+            charAt++;
         }
-
-        return index;
+        return charAt;
     }
 
 
-    function conkittyInsertVariables(ret) {
-        var args = [],
-            v;
-
-        for (v in variables) {
-            args.push(v);
-        }
-
-        ret.splice(1, 0, indentWith + '$C_ = $C_ || {};\n' + (args.length ? indentWith + 'var ' + args.join(', ') + ';\n' : ''));
+    function getIndent(line) {
+        return skipWhitespaces(line, 0);
     }
 
 
-    conkittyCompile = function(src, minIndent, startIndex) {
-        if (!startIndex) {
-            source = src.split(/\n\r|\r\n|\r|\n/);
-            code = src.split(/\n\r|\r\n|\r|\n/);
-            conkittyClearComments();
+    function ConkittyParser(code) {
+        this.src = code.split(/\n\r|\r\n|\r|\n/);
+        this.code = code.split(/\n\r|\r\n|\r|\n/);
+        clearComments(this.code);
+        this.lineAt = this.charAt = 0;
+    }
+
+
+    function ConkittyCommandPart(type, code, lineAt, charAt) {
+        this.type = type;
+        this.src = code;
+        this.lineAt = lineAt === undefined ? code.lineAt : lineAt;
+        this.charAt = charAt === undefined ? code.charAt : charAt;
+    }
+
+
+    function getErrorMessage(msg, code, lineAt, charAt) {
+        lineAt = lineAt === undefined ? code.lineAt : lineAt;
+        charAt = charAt === undefined ? code.charAt : charAt;
+        return msg +
+               ' (line: ' + (lineAt + 1) +
+               ', col: ' + (charAt + 1) + '):\n' +
+               code.src[lineAt] + '\n' + (new Array(charAt + 1).join(' ')) + '^';
+    }
+
+
+    Conkitty.BadIndentation = function(code) {
+        this.name = 'BadIndentation';
+        this.message = getErrorMessage('Bad indentation', code);
+        this.stack = (new Error()).stack;
+    };
+    Conkitty.UnexpectedSymbol = function(code) {
+        this.name = 'UnexpectedSymbol';
+        this.message = getErrorMessage('Unexpected symbol', code);
+        this.stack = (new Error()).stack;
+    };
+    Conkitty.IllegalName = function(part) {
+        this.name = 'IllegalName';
+        this.message = getErrorMessage('Illegal ' + part.type, part.src, part.lineAt, part.charAt);
+        this.stack = (new Error()).stack;
+    };
+    Conkitty.UnterminatedPart = function(part) {
+        this.name = 'UnterminatedPart';
+        this.message = getErrorMessage('Unterminated ' + part.type, part.src, part.lineAt, part.charAt);
+        this.stack = (new Error()).stack;
+    };
+    Conkitty.JSParseError = function(msg, code, lineAt, charAt) {
+        this.name = 'JSParseError';
+        this.message = getErrorMessage(msg, code, lineAt, charAt);
+        this.stack = (new Error()).stack;
+    };
+    Conkitty.DuplicateDecl = function(part) {
+        this.name = 'DuplicateDecl';
+        this.message = getErrorMessage('Duplicate ' + part.type, part.src, part.lineAt, part.charAt);
+        this.stack = (new Error()).stack;
+    };
+    Conkitty.InconsistentCommand = function(part) {
+        this.name = 'InconsistentCommand';
+        this.message = getErrorMessage(
+            part instanceof ConkittyPatternPart ?
+                'Incomplete command' : 'Unexpected ' + part.type,
+            part.src,
+            part.lineAt,
+            part.charAt
+        );
+        this.stack = (new Error()).stack;
+    };
+    Conkitty.BadIndentation.prototype = new Error();
+    Conkitty.UnexpectedSymbol.prototype = new Error();
+    Conkitty.IllegalName.prototype = new Error();
+    Conkitty.UnterminatedPart.prototype = new Error();
+    Conkitty.JSParseError.prototype = new Error();
+    Conkitty.DuplicateDecl.prototype = new Error();
+    Conkitty.InconsistentCommand.prototype = new Error();
+
+
+    ConkittyParser.prototype.skipEmptyLines = function skipEmptyLines() {
+        while (this.lineAt < this.code.length &&
+               skipWhitespaces(this.code[this.lineAt], 0) === this.code[this.lineAt].length)
+        {
+            this.lineAt++;
         }
 
-        var compiled = {},
-            curTpl,
-            template,
-            ret = [],
-            i,
-            j,
-            k,
-            ends,
-            line,
-            stack = [{indent: -1}],
-            tabs,
-            spaces,
-            args,
-            name;
+        this.charAt = 0;
 
-        if (minIndent) {
-            stack.push({indent: minIndent, end: true, lashChild: true});
-            ret.push('$C()\n');
-        }
-
-        for (i = startIndex || 0; i < code.length; i++) {
-            line = code[i];
-
-            if (!line) {
-                continue;
-            }
-
-            j = 0;
-            while (j < line.length && whitespace.test(line[j])) {
-                if (line[j] === '\t') {
-                    tabs = true;
-                } else if (line[j] === ' ') {
-                    spaces = true;
-                } else {
-                    conkittyError(i, j, 'Unexpected symbol (only tabs or spaces are allowed here)');
-                }
-
-                if (tabs && spaces) {
-                    conkittyError(i, j, 'Please, never ever mix tabs and spaces');
-                }
-
-                j++;
-            }
-
-            k = j;
-            ends = 0;
-
-            if ((j > stack[stack.length - 1].indent) && stack[stack.length - 1].lastChild) {
-                conkittyError(i, j, 'Bad indentation');
-            }
-
-            while (j <= stack[stack.length - 1].indent) {
-                k = stack.pop();
-
-                if (k.end) {
-                    ends++;
-                }
-
-                k = k.indent;
-            }
-
-            if (ends > 0) {
-                addIndent(ret, stack.length + 1);
-                ret.push('.end(' + (ends > 1 ? ends : '') + ')\n');
-            }
-
-            if ((k !== j) && (!minIndent || (minIndent && (j > minIndent)))) {
-                conkittyError(i, j, 'Bad indentation');
-            }
-
-            if (j >= stack[stack.length - 1].indent) {
-                if (j > stack[stack.length - 1].indent) {
-                    k = {indent: j, lastChild: true};
-                    if (stack.push(k) === 2) {
-                        k.end = true;
-                        k.lastChild = false;
-                    }
-                }
-
-                if (stack.length > 2) {
-                    i = conkittyProcess(i, stack, ret);
-                } else {
-                    if (curTpl) {
-                        addIndent(ret, 1);
-                        ret.push('}');
-
-                        conkittyInsertVariables(ret);
-
-                        ret.push(';');
-                        ret = ret.join('');
-
-                        try {
-                            if (eval('template = ' + ret) && template) {
-                                compiled[curTpl] = ret;
-                            }
-                        } catch (e) {
-                            e.message = ret + '\n\n' + e.message + '\n';
-                            throw e;
-                        }
-
-                        ret = [];
-                    }
-
-                    if (!minIndent) {
-                        args = [];
-                        name = [];
-
-                        k = skipWhitespaces(line, 0);
-                        line += ' ';
-
-                        while (k < line.length) {
-                            if (whitespace.test(line[k])) {
-                                if (name.length) {
-                                    name = name.join('');
-                                    conkittyCheckName(i, k - name.length, name, true);
-                                    args.push(name);
-                                    name = [];
-                                }
-                            } else {
-                                name.push(line[k]);
-                            }
-
-                            k++;
-                        }
-
-                        curTpl = currentTemplateName = args[0];
-
-                        variables = {};
-
-                        args.shift();
-                        ret.push('function($C_' + (args.length ? ', ' + args.join(', ') : '') + ') {\n');
-                        addIndent(ret, stack.length);
-                        ret.push('return $C($C_.parent)\n');
-                    } else {
-                        // It's a PAYLOAD for CALL command or SET command.
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (stack.length > 1) {
-            ends = 0;
-
-            if (minIndent && i < code.length) {
-                stack.pop();
-            }
-
-            while (stack.length > 1) {
-                k = stack.pop();
-
-                if (k.end) {
-                    ends++;
-                }
-            }
-
-            if (ends > 0) {
-                addIndent(ret, 2);
-                ret.push('.end(' + (ends > 1 ? ends : '') + ')\n');
-            }
-
-            if (!minIndent) {
-                ret.push('}');
-            } else if (ret.length <= 3) {
-                // Empty payload, just skip it.
-                ret = [];
-            }
-
-            if (minIndent) {
-                return {index: i - 1, ret: ret.join('')};
-            } else {
-                conkittyInsertVariables(ret);
-
-                ret.push(';');
-                ret = ret.join('');
-
-                try {
-                    if (eval('template = ' + ret) && template) {
-                        compiled[curTpl] = ret;
-                    }
-                } catch (e) {
-                    e.message = ret + '\n\n' + e.message + '\n';
-                    throw e;
-                }
-            }
-        }
-
-        return compiled;
+        return this.lineAt < this.code.length;
     };
 
-})();
 
-// Exporting conkittyCompile for command line interface.
-if (typeof module !== 'undefined') {
-    module.exports = conkittyCompile;
-}
+    ConkittyParser.prototype.readBlock = function readBlock(indent) {
+        if (!this.skipEmptyLines()) { return false; }
+
+        this.charAt = getIndent(this.code[this.lineAt]);
+
+        var block = [];
+
+        while (this.charAt === indent) {
+            block.push(this.readCommand(indent));
+
+            if (!this.skipEmptyLines()) { break; }
+
+            this.charAt = getIndent(this.code[this.lineAt]);
+        }
+
+        if (this.charAt > indent) {
+            throw new Conkitty.BadIndentation(this);
+        }
+
+        return block;
+    };
+
+
+    ConkittyParser.prototype.readCommand = function readCommand(indent) {
+        var ret = {lineAt: this.lineAt, charAt: this.charAt, src: this},
+            val = [],
+            i,
+            templateName = indent === 0 ? 1 : 0,
+            classAttrValue = 0,
+            attrValue = 0;
+
+        while (this.charAt < this.code[this.lineAt].length) {
+            if (templateName) {
+                templateName++;
+                if (templateName > 2) { templateName = 0; }
+            }
+
+            if (classAttrValue) {
+                classAttrValue++;
+                if (classAttrValue > 2) { classAttrValue = 0; }
+            }
+
+            if (attrValue) {
+                attrValue++;
+                if (attrValue > 2) { attrValue = 0; }
+            }
+
+            switch (this.code[this.lineAt][this.charAt]) {
+                case '$':
+                    if (classAttrValue || attrValue) {
+                        val[val.length - 1].mode = 'replace';
+                        val[val.length - 1].value = this.readVariable();
+                    } else {
+                        val.push(this.readVariable());
+                    }
+                    break;
+
+                case '"':
+                case "'":
+                    if (classAttrValue || attrValue) {
+                        val[val.length - 1].mode = 'replace';
+                        val[val.length - 1].value = this.readString(true);
+                    } else {
+                        val.push(this.readString());
+                    }
+                    break;
+
+                case '(':
+                    if (classAttrValue || attrValue) {
+                        val[val.length - 1].mode = 'replace';
+                        val[val.length - 1].value = this.readJS(undefined, true);
+                    } else {
+                        val.push(this.readJS());
+                    }
+                    break;
+
+                case '@':
+                    if (classAttrValue || attrValue) {
+                        throw new Conkitty.UnexpectedSymbol(this);
+                    }
+
+                    val.push(this.readAttrName());
+                    if (val[val.length - 1].name === 'class') {
+                        classAttrValue = 1;
+                    } else {
+                        attrValue = 1;
+                    }
+                    break;
+
+                case '+':
+                    if (classAttrValue || attrValue) {
+                        val[val.length - 1].mode = 'add';
+
+                        this.charAt++;
+
+                        switch (this.code[this.lineAt][this.charAt]) {
+                            case '$':
+                                val[val.length - 1].value = this.readVariable();
+                                break;
+
+                            case '"':
+                            case "'":
+                                val[val.length - 1].value = this.readString(true);
+                                break;
+
+                            case '(':
+                                val[val.length - 1].value = this.readJS(undefined, true);
+                                break;
+
+                            default:
+                                if (classAttrValue) {
+                                    val[val.length - 1].value = this.readCSS(true);
+                                }
+                        }
+                    }
+
+                    break;
+
+                case '-':
+                    if (classAttrValue) {
+                        val[val.length - 1].mode = 'remove';
+
+                        this.charAt++;
+
+                        switch (this.code[this.lineAt][this.charAt]) {
+                            case '$':
+                                val[val.length - 1].value = this.readVariable();
+                                break;
+
+                            case '"':
+                            case "'":
+                                val[val.length - 1].value = this.readString(true);
+                                break;
+
+                            case '(':
+                                val[val.length - 1].value = this.readJS(undefined, true);
+                                break;
+
+                            default:
+                                val[val.length - 1].value = this.readCSS(true);
+                        }
+                    }
+
+                    break;
+
+                case '&':
+                    val.push(this.readInclude());
+                    break;
+
+                default:
+                    if (!attrValue) {
+                        if (templateName) {
+                            val.push(this.readTemplateName());
+                        } else if (/[A-Z]/.test(this.code[this.lineAt][this.charAt])) {
+                            val.push(this.readCommandName());
+                            // Next part is a template name.
+                            if (val[val.length - 1].value === 'CALL') {
+                                templateName = 1;
+                            }
+                        } else {
+                            if (classAttrValue) {
+                                val[val.length - 1].mode = 'replace';
+                                val[val.length - 1].value = this.readCSS(true);
+                            } else {
+                                val.push(this.readCSS());
+                            }
+                        }
+                    }
+            }
+
+            if (this.charAt < this.code[this.lineAt].length) {
+                i = skipWhitespaces(this.code[this.lineAt], this.charAt);
+
+                if (this.charAt === i) {
+                    throw new Conkitty.UnexpectedSymbol(this);
+                }
+
+                this.charAt = i;
+            }
+        }
+
+        ret.value = val;
+
+        this.lineAt++;
+
+        if (this.skipEmptyLines()) {
+            this.charAt = getIndent(this.code[this.lineAt]);
+
+            if (this.charAt > indent) {
+                ret.children = this.readBlock(this.charAt);
+            }
+        }
+
+        return ret;
+    };
+
+
+    ConkittyParser.prototype._readName = function _readName(type, stopExpr, checkExpr) {
+        var val = [],
+            line = this.code[this.lineAt],
+            ret = new ConkittyCommandPart(type, this);
+
+        while (this.charAt < line.length && !stopExpr.test(line[this.charAt])) {
+            val.push(line[this.charAt++]);
+        }
+
+        val = val.join('');
+
+        if (!val.match(checkExpr)) {
+            throw new Conkitty.IllegalName(ret);
+        }
+
+        ret.value = val;
+
+        return ret;
+    };
+
+
+    ConkittyParser.prototype.readTemplateName = function readTemplateName() {
+        return this._readName(CONKITTY_TYPE_TEMPLATE_NAME, whitespace, /^[a-zA-Z_][a-zA-Z0-9_-]*:?[a-zA-Z0-9_-]*$/);
+    };
+
+
+    ConkittyParser.prototype.readCommandName = function readCommandName() {
+        return this._readName(CONKITTY_TYPE_COMMAND_NAME, /[^A-Z]/, /^(?:ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/);
+    };
+
+
+    ConkittyParser.prototype.readAttrName = function readAttrName() {
+        this.charAt++;
+        var ret = this._readName(CONKITTY_TYPE_ATTR, cssStopExpr, cssNameCheckExpr);
+        ret.name = ret.value;
+        delete ret.value;
+        return ret;
+    };
+
+
+    ConkittyParser.prototype.readInclude = function readInclude() {
+        this.charAt++;
+
+        var ret = this._readName(CONKITTY_TYPE_INCLUDE, cssStopExpr, /^(?:js|css|img)$/);
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+
+        if (this.code[this.lineAt][this.charAt] !== '"' &&
+            this.code[this.lineAt][this.charAt] !== "'")
+        {
+            throw new Conkitty.UnexpectedSymbol(this);
+        }
+
+        ret.fileType = ret.value;
+        ret.value = this.readString(true);
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+
+        if (this.charAt !== this.code[this.lineAt].length) {
+            throw new Conkitty.UnexpectedSymbol(this);
+        }
+
+        return ret;
+    };
+
+
+    ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
+        var line = this.code[this.lineAt],
+            ret = new ConkittyCommandPart(CONKITTY_TYPE_CSS, this),
+            tmp,
+            tmp2,
+            lastBEMBlock,
+            val = ret.value = {
+                tag: null,
+                id: null,
+                attrs: {},
+                classes: {},
+                ifs: []
+            };
+
+        while (this.charAt < line.length && !whitespace.test(line[this.charAt]) && line[this.charAt] !== ',' && line[this.charAt] !== ')') {
+            switch (line[this.charAt]) {
+                case '.':
+                    tmp = this.readCSSClass();
+                    // In case class looks like BEM class with modifier, cut
+                    // off modifier value (to check for duplicates):
+                    //     `b-block_mod_val` -> `b-block_mod`
+                    //     `b-block__elem_mod_val` -> `b-block__elem_mod`.
+                    tmp2 = tmp.value.replace(/^([a-zA-Z][a-zA-Z0-9-]*(?:__[a-zA-Z][a-zA-Z0-9-]*)?_[a-zA-Z][a-zA-Z0-9-]*)(?:_[a-zA-Z][a-zA-Z0-9-]*)?$/, '$1');
+                    if (tmp2 in val.classes) { throw new Conkitty.DuplicateDecl(tmp); }
+                    val.classes[tmp2] = tmp;
+                    break;
+
+                case '[':
+                    if (classesOnly) { throw new Conkitty.UnexpectedSymbol(this); }
+                    tmp = this.readCSSAttr();
+                    if (tmp.name in val.attrs) { throw new Conkitty.DuplicateDecl(tmp); }
+                    val.attrs[tmp.name] = tmp;
+                    break;
+
+                case '#':
+                    if (classesOnly) { throw new Conkitty.UnexpectedSymbol(this); }
+                    tmp = this.readCSSId();
+                    if (val.id !== null) { throw new Conkitty.DuplicateDecl(tmp); }
+                    val.id = tmp;
+                    break;
+
+                case '%':
+                    lastBEMBlock = this.readCSSBEMBlock();
+                    if (lastBEMBlock.value in val.classes) { throw new Conkitty.DuplicateDecl(lastBEMBlock); }
+                    val.classes[lastBEMBlock.value] = lastBEMBlock;
+                    break;
+
+                case '{':
+                    tmp = this.readCSSBEMMod(lastBEMBlock);
+                    if (tmp.name in val.classes) { throw new Conkitty.DuplicateDecl(tmp); }
+                    val.classes[tmp.name] = tmp;
+                    break;
+
+                case ':':
+                    val.ifs.push(this.readCSSIf(classesOnly));
+                    break;
+
+                default:
+                    if (!classesOnly && /[a-z]/.test(line[this.charAt])) {
+                        tmp = this.readCSSTag();
+                        if (val.tag !== null) { throw new Conkitty.DuplicateDecl(tmp); }
+                        val.tag = tmp;
+                    } else {
+                        throw new Conkitty.UnexpectedSymbol(this);
+                    }
+            }
+        }
+
+        return ret;
+    };
+
+
+    ConkittyParser.prototype.readCSSTag = function readCSSTag() {
+        return this._readName(CONKITTY_TYPE_CSS_TAG, cssStopExpr, tagCheckExpr);
+    };
+
+
+    ConkittyParser.prototype.readCSSClass = function readCSSClass() {
+        this.charAt++;
+        return this._readName(CONKITTY_TYPE_CSS_CLASS, cssStopExpr, cssNameCheckExpr);
+    };
+
+
+    ConkittyParser.prototype.readCSSAttr = function readCSSAttr() {
+        var ret = new ConkittyCommandPart(CONKITTY_TYPE_CSS_ATTR, this),
+            name,
+            val;
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+
+        if (this.charAt === this.code[this.lineAt].length) {
+            throw new Conkitty.UnterminatedPart(ret);
+        }
+
+        name = this._readName(CONKITTY_TYPE_CSS_ATTR_NAME, cssStopExpr, cssNameCheckExpr);
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+
+        if (this.code[this.lineAt][this.charAt] === '=') {
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+
+            if (this.charAt === this.code[this.lineAt].length) {
+                throw new Conkitty.UnterminatedPart(ret);
+            }
+
+            switch (this.code[this.lineAt][this.charAt]) {
+                case '$':
+                    val = this.readVariable();
+                    break;
+
+                case '(':
+                    val = this.readJS(undefined, true);
+                    break;
+
+                case '"':
+                case "'":
+                    val = this.readString(true);
+                    break;
+
+                case ']':
+                    throw new Conkitty.UnterminatedPart(ret);
+
+                default:
+                    throw new Conkitty.UnexpectedSymbol(this);
+            }
+
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        }
+
+        if (this.code[this.lineAt][this.charAt] !== ']') {
+            throw new Conkitty.UnterminatedPart(ret);
+        }
+
+        this.charAt++;
+
+        ret.name = name.value;
+        ret.value = val;
+
+        return ret;
+    };
+
+
+    ConkittyParser.prototype.readCSSId = function readCSSId() {
+        this.charAt++;
+        return this._readName(CONKITTY_TYPE_CSS_ID, cssStopExpr, cssNameCheckExpr);
+    };
+
+
+    ConkittyParser.prototype.readCSSBEMBlock = function readCSSBEMBlock() {
+        var block,
+            elem;
+
+        this.charAt++;
+
+        block = this._readName(CONKITTY_TYPE_CSS_BEM, bemStopExpr, bemCheckExpr);
+
+        if (this.code[this.lineAt][this.charAt] === '(') {
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+            elem = this._readName(CONKITTY_TYPE_CSS_BEM, bemStopExpr, bemCheckExpr);
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+
+            if (this.code[this.lineAt][this.charAt] !== ')') {
+                throw new Conkitty.UnexpectedSymbol(this);
+            }
+
+            this.charAt++;
+
+            block.value += '__' + elem.value;
+        }
+
+        return block;
+    };
+
+
+    ConkittyParser.prototype.readCSSBEMMod = function readCSSBEMMod(block) {
+        if (!block) { throw new Conkitty.UnexpectedSymbol(this); }
+
+        var ret = new ConkittyCommandPart(CONKITTY_TYPE_CSS_BEM_MOD, this),
+            name,
+            val;
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+
+        if (this.charAt === this.code[this.lineAt].length) {
+            throw new Conkitty.UnterminatedPart(ret);
+        }
+
+        name = this._readName(CONKITTY_TYPE_CSS_BEM, bemStopExpr, bemCheckExpr);
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+
+        if (this.code[this.lineAt][this.charAt] === '=') {
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+
+            if (this.charAt === this.code[this.lineAt].length) {
+                throw new Conkitty.UnterminatedPart(ret);
+            }
+
+            switch (this.code[this.lineAt][this.charAt]) {
+                case '$':
+                    val = this.readVariable();
+                    break;
+
+                case '(':
+                    val = this.readJS(undefined, true);
+                    break;
+
+                case '"':
+                case "'":
+                    val = this.readString(true);
+                    break;
+
+                case '}':
+                    throw new Conkitty.UnterminatedPart(ret);
+
+                default:
+                    throw new Conkitty.UnexpectedSymbol(this);
+            }
+
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        }
+
+        if (this.code[this.lineAt][this.charAt] !== '}') {
+            throw new Conkitty.UnterminatedPart(ret);
+        }
+
+        this.charAt++;
+
+        ret.name = block.value + '_' + name.value;
+        ret.value = val;
+
+        return ret;
+    };
+
+
+    ConkittyParser.prototype.readCSSIf = function readCSSIf(classesOnly) {
+        var ret = new ConkittyCommandPart(CONKITTY_TYPE_CSS_IF, this);
+
+        this.charAt++;
+
+        this._readName(CONKITTY_TYPE_CSS_CLASS, cssStopExpr, /^if$/);
+
+        if (this.code[this.lineAt][this.charAt] !== '(') { throw new Conkitty.UnexpectedSymbol(this); }
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+
+        switch (this.code[this.lineAt][this.charAt]) {
+            case '$':
+                ret.cond = this.readVariable();
+                break;
+
+            case '(':
+                ret.cond = this.readJS(undefined, true);
+                break;
+
+            default:
+                throw new Conkitty.UnexpectedSymbol(this);
+        }
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        if (this.code[this.lineAt][this.charAt] !== ',') { throw new Conkitty.UnexpectedSymbol(this); }
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+        if (this.code[this.lineAt][this.charAt] !== ',') {
+            ret.positive = this.readCSS(classesOnly);
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        }
+
+        if (this.code[this.lineAt][this.charAt] === ',') {
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+            ret.negative = this.readCSS(classesOnly);
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        }
+
+        if (this.code[this.lineAt][this.charAt] === ')') {
+            this.charAt++;
+        } else {
+            throw new Conkitty.UnexpectedSymbol(this);
+        }
+
+        return ret;
+    };
+
+
+    ConkittyParser.prototype.readVariable = function readVariable() {
+        this.charAt++;
+        return this._readName(CONKITTY_TYPE_VARIABLE, variableStopExpr, variableCheckExpr);
+    };
+
+
+    ConkittyParser.prototype.readString = function readString(noRaw) {
+        var line = this.code[this.lineAt],
+            closer = line[this.charAt],
+            raw = false, // Indicates that string is enclosed in triple quotes.
+            i = this.charAt + 1,
+            val = [],
+            ret = new ConkittyCommandPart(CONKITTY_TYPE_STRING, this);
+
+        if (!noRaw && line[i] === closer && line[i + 1] === closer) {
+            raw = true;
+            i += 2;
+        }
+
+        while (i < line.length) {
+            if (line[i] === '\\' && (line[i + 1] === '\\' || line[i + 1] === closer)) {
+                val.push('\\');
+                val.push(line[i + 1]);
+                i += 2;
+            } else {
+                if (line[i] === closer) { break; }
+                val.push(line[i++]);
+            }
+        }
+
+        if (line[i] !== closer ||
+            (raw && (line[i + 1] !== closer || line[i + 2] !== closer)))
+        {
+            throw new Conkitty.UnterminatedPart(ret);
+        }
+
+        this.charAt = i + (raw ? 3 : 1);
+
+        ret.value = closer + val.join('') + closer;
+        ret.raw = raw;
+
+        return ret;
+    };
+
+
+    ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
+        var ret = new ConkittyCommandPart(CONKITTY_TYPE_JAVASCRIPT, this),
+            val = [];
+
+        if (!indent) {
+            var brackets,
+                inString = false,
+                raw = 0;
+
+            brackets = 1;
+            this.charAt++;
+
+            if (!noRaw &&
+                this.code[this.lineAt][this.charAt] === '(' &&
+                this.code[this.lineAt][this.charAt + 1] === '(')
+            {
+                raw = 2;
+                this.charAt += 2;
+            }
+
+            if (this.charAt === this.code[this.lineAt].length) {
+                this.lineAt++;
+
+                val.push('\n');
+
+                if (!this.skipEmptyLines()) {
+                    throw new Conkitty.UnterminatedPart(ret);
+                }
+            }
+
+            while (this.charAt < this.code[this.lineAt].length) {
+                if (!inString) {
+                    if (this.code[this.lineAt][this.charAt] === '(') {
+                        brackets++;
+                    } else if (this.code[this.lineAt][this.charAt] === ')') {
+                        brackets--;
+                        // Avoiding this: (((   function(){})(   ))).
+                        if (brackets === 0) {
+                            if (raw &&
+                                (this.code[this.lineAt][this.charAt + 1] !== ')' ||
+                                 this.code[this.lineAt][this.charAt + 2] !== ')'))
+                            {
+                                brackets += raw;
+                                raw = 0;
+                                val.unshift('((');
+                            } else {
+                                this.charAt += (raw + 1);
+                                break;
+                            }
+                        }
+                    /* jshint -W109 */
+                    } else if (this.code[this.lineAt][this.charAt] === '"' ||
+                        this.code[this.lineAt][this.charAt] === "'")
+                    /* jshint +W109 */
+                    {
+                        inString = this.code[this.lineAt][this.charAt];
+                    }
+                } else {
+                    if (this.code[this.lineAt][this.charAt] === '\\' &&
+                        (this.code[this.lineAt][this.charAt + 1] === '\\' ||
+                         this.code[this.lineAt][this.charAt + 1] === inString))
+                    {
+                        val.push('\\');
+                        this.charAt++;
+                    } else if (this.code[this.lineAt][this.charAt] === inString) {
+                        inString = false;
+                    }
+                }
+
+                val.push(this.code[this.lineAt][this.charAt]);
+
+                this.charAt++;
+
+
+                if (this.charAt === this.code[this.lineAt].length) {
+                    this.lineAt++;
+
+                    val.push('\n');
+
+                    if (!this.skipEmptyLines()) {
+                        throw new Conkitty.UnterminatedPart(ret);
+                    }
+                }
+            }
+
+            val = val.join('');
+
+            if (!strip(val)) {
+                throw new Conkitty.JSParseError('Empty expression', this, ret.lineAt, ret.charAt);
+            }
+
+            ret.raw = !!raw;
+            ret.expr = true;
+            ret.value = val;
+        } else {
+            while (this.skipEmptyLines() && getIndent(this.code[this.lineAt]) > indent) {
+                val.push(this.code[this.lineAt].substring(indent));
+                this.lineAt++;
+            }
+
+            this.lineAt--;
+            this.charAt = this.code[this.lineAt].length;
+
+            val = val.join('\n');
+
+            ret.raw = false;
+            ret.expr = false;
+            ret.value = val;
+
+            if (!strip(val)) {
+                throw new Conkitty.JSParseError('Empty expression', this, ret.lineAt, ret.charAt);
+            }
+        }
+
+
+        try {
+            (indent ? parseJSFunction : parseJSExpression)(val);
+        } catch(e) {
+            throw new Conkitty.JSParseError(
+                e.message,
+                this,
+                ret.lineAt + e.line - 1 - (indent ? 0 : 1),
+                (indent || e.line > 2 ? -1 : ret.charAt + (ret.raw ? 2 : 0)) + e.col
+            );
+        }
+
+        return ret;
+    };
+
+
+    function conkittyMatch(value, pattern) {
+        if (value.length && !pattern.length) {
+            return value[0];
+        }
+
+        if (!value.length && pattern.length) {
+            for (var i = 0; i < pattern.length; i++) {
+                if (pattern[i].count !== '*') { return pattern[i]; }
+            }
+            return;
+        }
+
+        switch (pattern[0].match(value[0])) {
+            case 'stay':
+                return conkittyMatch(value.slice(1), pattern);
+
+            case 'next':
+                return conkittyMatch(value.slice(1), pattern.slice(1));
+
+            case 'both':
+                if (!conkittyMatch(value.slice(1), pattern)) { return; }
+                return conkittyMatch(value.slice(1), pattern.slice(1));
+
+            default:
+                return value[0];
+        }
+    }
+
+
+    function ConkittyPatternPart(parts, count) {
+        this.count = count;
+        this.candidates = {};
+        this.src = parts[0].src;
+        this.lineAt = parts[parts.length - 1].lineAt;
+        this.charAt = parts[parts.length - 1].charAt + 1;
+
+        for (var i = 2; i < arguments.length; i += 2) {
+            this.candidates[arguments[i]] = arguments[i + 1];
+        }
+    }
+
+
+    ConkittyPatternPart.prototype.match = function match(part) {
+        var m = this.candidates[part.type],
+            ret;
+
+        if (m === null || (m && m === part.value)) {
+            if (this.count === '*') {
+                ret = 'both';
+            } else {
+                this.count--;
+                ret = this.count > 0 ? 'stay' : 'next';
+            }
+        } else {
+            ret = false;
+        }
+
+        return ret;
+    };
+
+
+    function ConkittyGenerator(code) {
+        this.code = code;
+        this.deps = {};
+        this.tpls = {};
+    }
+
+
+    ConkittyGenerator.prototype.process = function process() {
+        for (var i = 0; i < this.code.length; i++) {
+            this.processTemplate(this.code[i]);
+        }
+    };
+
+
+    ConkittyGenerator.prototype.generate = function generate() {
+
+    };
+
+
+    ConkittyGenerator.prototype.processTemplate = function processTemplate(tree) {
+        var error,
+            pattern = [
+                new ConkittyPatternPart(tree.value, 1, CONKITTY_TYPE_TEMPLATE_NAME, null),
+                new ConkittyPatternPart(tree.value, '*', CONKITTY_TYPE_VARIABLE, null)
+            ];
+
+        error = conkittyMatch(tree.value, pattern);
+        if (error) { throw new Conkitty.InconsistentCommand(error); }
+
+        var name = tree.value[0].value;
+
+        if (name in this.tpls) {
+            throw new Conkitty.DuplicateDecl(tree.value[0]);
+        }
+
+        this.tpls[name] = {
+            getCodeBefore: function getCodeBefore() {
+
+            },
+
+            getCodeAfter: function getCodeAfter() {
+
+            }
+        };
+    };
+
+
+    ConkittyGenerator.prototype.processCall = function processCall() {
+        /*var pattern = [
+            new ConkittyPatternPart(1, CONKITTY_TYPE_COMMAND_NAME, 'CALL'),
+
+            new ConkittyPatternPart(1, CONKITTY_TYPE_TEMPLATE_NAME, null,
+                                       CONKITTY_TYPE_JAVASCRIPT, null,
+                                       CONKITTY_TYPE_VARIABLE, null),
+
+            new ConkittyPatternPart('*', CONKITTY_TYPE_VARIABLE, null,
+                                         CONKITTY_TYPE_JAVASCRIPT, null,
+                                         CONKITTY_TYPE_STRING, null,
+                                         CONKITTY_TYPE_COMMAND_NAME, 'PAYLOAD')
+        ];*/
+    };
+
+
+    Conkitty.prototype.push = function push(code) {
+        code = new ConkittyParser(code);
+        this.code = this.code.concat(code.readBlock(0));
+    };
+
+
+    Conkitty.prototype.compile = function compile() {
+        var gen = new ConkittyGenerator(this.code);
+        gen.process();
+        return gen.generate();
+    };
+
+
+    return Conkitty;
+})();
