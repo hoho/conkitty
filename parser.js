@@ -392,10 +392,12 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
 };
 
 
-ConkittyParser.prototype._readName = function _readName(type, stopExpr, checkExpr) {
+ConkittyParser.prototype._readName = function _readName(type, stopExpr, checkExpr, offset) {
     var val = [],
         line = this.code[this.lineAt],
         ret = new ConkittyCommandPart(type, this);
+
+    this.charAt += (offset || 0);
 
     while (this.charAt < line.length && !stopExpr.test(line[this.charAt])) {
         val.push(line[this.charAt++]);
@@ -482,8 +484,7 @@ ConkittyParser.prototype.readCommandName = function readCommandName() {
 
 
 ConkittyParser.prototype.readAttrName = function readAttrName() {
-    this.charAt++;
-    var ret = this._readName(ConkittyTypes.ATTR, cssStopExpr, cssNameCheckExpr);
+    var ret = this._readName(ConkittyTypes.ATTR, cssStopExpr, cssNameCheckExpr, 1);
     ret.name = ret.value;
     delete ret.value;
     return ret;
@@ -607,8 +608,7 @@ ConkittyParser.prototype.readCSSTag = function readCSSTag() {
 
 
 ConkittyParser.prototype.readCSSClass = function readCSSClass() {
-    this.charAt++;
-    return this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, cssNameCheckExpr);
+    return this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, cssNameCheckExpr, 1);
 };
 
 
@@ -672,8 +672,7 @@ ConkittyParser.prototype.readCSSAttr = function readCSSAttr() {
 
 
 ConkittyParser.prototype.readCSSId = function readCSSId() {
-    this.charAt++;
-    return this._readName(ConkittyTypes.CSS_ID, cssStopExpr, cssNameCheckExpr);
+    return this._readName(ConkittyTypes.CSS_ID, cssStopExpr, cssNameCheckExpr, 1);
 };
 
 
@@ -681,9 +680,7 @@ ConkittyParser.prototype.readCSSBEMBlock = function readCSSBEMBlock() {
     var block,
         elem;
 
-    this.charAt++;
-
-    block = this._readName(ConkittyTypes.CSS_BEM, bemStopExpr, bemCheckExpr);
+    block = this._readName(ConkittyTypes.CSS_BEM, bemStopExpr, bemCheckExpr, 1);
 
     if (this.code[this.lineAt][this.charAt] === '(') {
         this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
@@ -767,9 +764,7 @@ ConkittyParser.prototype.readCSSBEMMod = function readCSSBEMMod(block) {
 ConkittyParser.prototype.readCSSIf = function readCSSIf(classesOnly) {
     var ret = new ConkittyCommandPart(ConkittyTypes.CSS_IF, this);
 
-    this.charAt++;
-
-    this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, /^if$/);
+    this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, /^if$/, 1);
 
     if (this.code[this.lineAt][this.charAt] !== '(') { throw new ConkittyErrors.UnexpectedSymbol(this); }
 
@@ -814,8 +809,7 @@ ConkittyParser.prototype.readCSSIf = function readCSSIf(classesOnly) {
 
 
 ConkittyParser.prototype.readVariable = function readVariable() {
-    this.charAt++;
-    return this._readName(ConkittyTypes.VARIABLE, variableStopExpr, variableCheckExpr);
+    return this._readName(ConkittyTypes.VARIABLE, variableStopExpr, variableCheckExpr, 1);
 };
 
 
