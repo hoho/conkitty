@@ -205,7 +205,7 @@ ConkittyParser.prototype.readBlock = function readBlock(indent) {
 
 
 ConkittyParser.prototype.readCommand = function readCommand(indent) {
-    var ret = {lineAt: this.lineAt, charAt: this.charAt, src: this},
+    var ret = {lineAt: this.lineAt, charAt: this.charAt, src: this, children: []},
         val = [],
         i,
         templateName = indent === 0 ? 1 : 0,
@@ -416,7 +416,7 @@ ConkittyParser.prototype._readName = function _readName(type, stopExpr, checkExp
 
 
 ConkittyParser.prototype.readTemplateName = function readTemplateName() {
-    var ret = this._readName(ConkittyTypes.TEMPLATE_NAME, whitespace, /^(?:[a-zA-Z0-9_-]*(?:\:\:)?[a-zA-Z0-9_-]+)|(?:[a-zA-Z0-9_-]+\:\:)$/),
+    var ret = this._readName(ConkittyTypes.TEMPLATE_NAME, whitespace, /^(?:(?:[a-zA-Z0-9_-]*(?:\:\:)?[a-zA-Z0-9_-]+)|(?:[a-zA-Z0-9_-]+\:\:))$/),
         i;
 
     if (ret.value.substring(0, 2) === '::') { ret.value = ret.value.substring(2); }
@@ -427,6 +427,8 @@ ConkittyParser.prototype.readTemplateName = function readTemplateName() {
         // We have non-empty namespace.
         ret.namespace = ret.value.substring(0, i);
         ret.value = ret.value.substring(i + 2);
+    } else {
+        ret.namespace = '';
     }
 
     return ret;
@@ -434,7 +436,11 @@ ConkittyParser.prototype.readTemplateName = function readTemplateName() {
 
 
 ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
-    var ret = this._readName(isDecl ? ConkittyTypes.ARGUMENT_DECL : ConkittyTypes.ARGUMENT_VAL, variableStopExpr, variableCheckExpr);
+    var ret = this._readName(
+        isDecl ? ConkittyTypes.ARGUMENT_DECL : ConkittyTypes.ARGUMENT_VAL,
+        variableStopExpr,
+        variableCheckExpr
+    );
 
     ret.name = ret.value;
     delete ret.value;
@@ -472,6 +478,13 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
 
         this.charAt++;
 
+    } else if (!isDecl) {
+        if (ret.name === 'PAYLOAD') {
+            ret = new ConkittyCommandPart(ConkittyTypes.COMMAND_NAME, this, ret.lineAt, ret.charAt);
+            ret.value = 'PAYLOAD';
+        } else {
+            throw new ConkittyErrors.IncompletePart(ret);
+        }
     }
 
     return ret;
@@ -492,8 +505,8 @@ ConkittyParser.prototype.readAttrName = function readAttrName() {
 
 
 ConkittyParser.prototype.readInclude = function readInclude() {
-    this.charAt++;
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+    var charAt = this.charAt;
+    this.charAt = skipWhitespaces(this.code[this.lineAt], charAt + 1);
 
     if (this.code[this.lineAt][this.charAt] !== '"' &&
         this.code[this.lineAt][this.charAt] !== "'")
@@ -503,6 +516,7 @@ ConkittyParser.prototype.readInclude = function readInclude() {
 
     var ret = this.readString(true);
     ret.type = ConkittyTypes.INCLUDE;
+    ret.charAt = charAt;
 
     this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
 

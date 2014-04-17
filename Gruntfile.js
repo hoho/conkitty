@@ -8,7 +8,16 @@ module.exports = function(grunt) {
 
         jshint: {
             all: {
-                src: ['conkitty.js', 'browser.js', 'bin/conkitty', 'Gruntfile.js'],
+                src: [
+                    'conkitty.js',
+                    'parser.js',
+                    'generator.js',
+                    'types.js',
+                    'errors.js',
+                    'browser.js',
+                    'bin/conkitty',
+                    'Gruntfile.js'
+                ],
                 options: {
                     jshintrc: '.jshintrc'
                 }
@@ -55,7 +64,8 @@ module.exports = function(grunt) {
             tmp = new Conkitty();
 
         tmp.push(grunt.file.read(__dirname + '/ololo.ctpl'));
-        console.log(JSON.stringify(tmp.compile(), undefined, 4));
+        tmp.generate();
+        console.log(tmp.getTemplatesCode());
 
         this.files.forEach(function(f) {
             var ret = [fs.readFileSync(__dirname + '/_common.js', {encoding: 'utf8'}), '\n'];

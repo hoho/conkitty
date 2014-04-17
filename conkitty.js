@@ -22,10 +22,13 @@ Conkitty.prototype.push = function push(code) {
 };
 
 
-Conkitty.prototype.compile = function compile() {
-    var gen = new ConkittyGenerator(this.code);
-    gen.process();
-    return gen.generate();
+Conkitty.prototype.generate = function generate() {
+    this.generator = new ConkittyGenerator(this.code);
+};
+
+
+Conkitty.prototype.getTemplatesCode = function getTemplatesCode() {
+    return this.generator.generateCode();
 };
 
 

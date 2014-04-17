@@ -6,10 +6,25 @@
 'use strict';
 
 var ConkittyTypes = require(__dirname + '/types.js'),
-    ConkittyErrors = require(__dirname + '/errors.js');
+    ConkittyErrors = require(__dirname + '/errors.js'),
+
+    INDENT = '    ';
+
+
+function extend(Child, Parent) {
+    var F = function() {};
+    F.prototype = Parent.prototype;
+    Child.prototype = new F();
+    Child.prototype.constructor = Child;
+    Child.superclass = Parent.prototype;
+}
 
 
 function conkittyMatch(value, pattern) {
+    if (!value.length && !pattern.length) {
+        return;
+    }
+
     if (value.length && !pattern.length) {
         return value[0];
     }
@@ -29,8 +44,26 @@ function conkittyMatch(value, pattern) {
             return conkittyMatch(value.slice(1), pattern.slice(1));
 
         case 'both':
-            if (!conkittyMatch(value.slice(1), pattern)) { return; }
-            return conkittyMatch(value.slice(1), pattern.slice(1));
+            var error1,
+                error2,
+                index1,
+                index2;
+
+            error1 = conkittyMatch(value.slice(1), pattern.slice(1));
+            if (error1) {
+                error2 = conkittyMatch(value.slice(1), pattern);
+                if (error2) {
+                    // In case of both non-matches, return one with largest,
+                    // index.
+                    index1 = value.indexOf(error1);
+                    // When index is less than zero, errorX is from pattern.
+                    if (index1 < 0) { return error1; }
+                    index2 = value.indexOf(error2);
+                    if (index2 < 0) { return error2; }
+                    return index2 < index1 ? error1 : error2;
+                }
+            }
+            return;
 
         default:
             return value[0];
@@ -43,7 +76,7 @@ function ConkittyPatternPart(parts, count) {
     this.candidates = {};
     this.src = parts[0].src;
     this.lineAt = parts[parts.length - 1].lineAt;
-    this.charAt = parts[parts.length - 1].charAt + 1;
+    this.charAt = parts[parts.length - 1].charAt;
 
     for (var i = 2; i < arguments.length; i += 2) {
         this.candidates[arguments[i]] = arguments[i + 1];
@@ -70,66 +103,566 @@ ConkittyPatternPart.prototype.match = function match(part) {
 };
 
 
-function ConkittyGenerator(code) {
-    this.code = code;
-    this.deps = {};
-    this.tpls = {};
+function assertNoChildren(cmd) {
+    if (cmd.children.length) {
+        throw new ConkittyErrors.InconsistentCommand(cmd.children[0].value[0]);
+    }
 }
 
 
-ConkittyGenerator.prototype.process = function process() {
-    for (var i = 0; i < this.code.length; i++) {
-        this.processTemplate(this.code[i]);
+function evalString(val) {
+    /* jshint -W040 */
+    return eval(val);
+    /* jshint +W040 */
+}
+
+
+function getEnds(node) {
+    if (node.ends) {
+        if (node.next || !node.root) {
+            return '.end(' + (node.ends > 1 ? node.ends : '') + ')';
+        }
+
+        node.parent.ends += node.ends;
+        node.ends = 0;
+    }
+
+    return '';
+}
+
+
+function getExpressionString(val) {
+    switch (val.type) {
+        case ConkittyTypes.JAVASCRIPT:
+            return '(' + val.value + ')';
+
+        case ConkittyTypes.STRING:
+            return val.value;
+
+        case ConkittyTypes.VARIABLE:
+            return val.value;
+
+        default:
+            throw new ConkittyErrors.InconsistentCommand(val);
+    }
+
+}
+
+
+function ConkittyGeneratorNode(parent, hasEnd) {
+    this.parent = parent;
+    this.root = parent && parent.root ? parent.root : parent;
+    this.children = [];
+    this.next = this.prev = null;
+    this.ends = hasEnd ? 1 : 0;
+}
+
+
+ConkittyGeneratorNode.prototype.addVariable = function addVariable(name) {
+    (this.root || this).vars[name] = true;
+};
+
+
+ConkittyGeneratorNode.prototype.addCall = function addCall(namespace, name) {
+    var cur,
+        root = this.root || this;
+    if (!((cur = root.calls[namespace]))) {
+        cur = root.calls[namespace] = {};
+    }
+    cur[name] = true;
+};
+
+
+ConkittyGeneratorNode.prototype.addInclude = function addVariable(filename) {
+    (this.root || this).includes.push(filename);
+};
+
+
+ConkittyGeneratorNode.prototype.canAbsorb = function canAbsorb() {
+    return false;
+};
+
+
+ConkittyGeneratorNode.prototype.appendChild = function appendChild(child) {
+    if (this.children.length) {
+        var prev = this.children[this.children.length - 1];
+
+        if (prev.canAbsorb(child)) {
+            prev.absorb(child);
+        } else {
+            prev.next = child;
+            child.prev = prev;
+        }
+    }
+
+    if (child) {
+        this.children.push(child);
     }
 };
 
 
-ConkittyGenerator.prototype.generate = function generate() {
+function ConkittyGeneratorTemplate(cmd) {
+    ConkittyGeneratorTemplate.superclass.constructor.call(this, null, true);
 
+    this.args = {};
+    this.vars = {};
+
+    this.namespace = cmd[0].namespace;
+    this.name = cmd[0].value;
+
+    this.calls = {};
+    this.includes = [];
+}
+
+
+function ConkittyGeneratorElement(parent) {
+    ConkittyGeneratorElement.superclass.constructor.call(this, parent, true);
+}
+
+
+function ConkittyGeneratorCommand(parent, hasEnd) {
+    ConkittyGeneratorCommand.superclass.constructor.call(this, parent, hasEnd);
+}
+
+
+function ConkittyGeneratorValue(parent) {
+    ConkittyGeneratorValue.superclass.constructor.call(this, parent);
+}
+
+
+function ConkittyGeneratorAction(parent) {
+    ConkittyGeneratorAction.superclass.constructor.call(this, parent);
+}
+
+
+extend(ConkittyGeneratorTemplate, ConkittyGeneratorNode);
+extend(ConkittyGeneratorElement, ConkittyGeneratorNode);
+extend(ConkittyGeneratorCommand, ConkittyGeneratorNode);
+extend(ConkittyGeneratorValue, ConkittyGeneratorNode);
+extend(ConkittyGeneratorAction, ConkittyGeneratorNode);
+
+
+ConkittyGeneratorValue.prototype.canAbsorb = function absorb(val) {
+    return (val instanceof ConkittyGeneratorValue) &&
+           (this.raw === val.raw) &&
+           !this.isFunc &&
+           !val.isFunc;
 };
 
 
-ConkittyGenerator.prototype.processTemplate = function processTemplate(tree) {
-    var error,
+ConkittyGeneratorValue.prototype.absorb = function absorb(val) {
+    console.log(val);
+};
+
+
+ConkittyGeneratorAction.prototype.canAbsorb = function absorb(act) {
+    return (act instanceof ConkittyGeneratorAction) &&
+           !this.isFunc &&
+           !act.isFunc;
+};
+
+
+ConkittyGeneratorAction.prototype.absorb = function absorb(act) {
+    console.log(act);
+};
+
+
+function processAttr() {
+    return 1;
+}
+
+
+function processCall(parent, startsWithCALL, cmd, except) {
+    var pattern,
+        error,
+        offset;
+
+    if (startsWithCALL) {
         pattern = [
-            new ConkittyPatternPart(tree.value, 1, ConkittyTypes.TEMPLATE_NAME, null),
-            new ConkittyPatternPart(tree.value, '*', ConkittyTypes.ARGUMENT_DECL, null)
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'CALL'),
+            new ConkittyPatternPart(cmd.value, 1,
+                ConkittyTypes.TEMPLATE_NAME, null,
+                ConkittyTypes.JAVASCRIPT, null,
+                ConkittyTypes.VARIABLE, null
+            ),
+            new ConkittyPatternPart(cmd.value, '*',
+                ConkittyTypes.VARIABLE, null,
+                ConkittyTypes.JAVASCRIPT, null,
+                ConkittyTypes.STRING, null,
+                ConkittyTypes.COMMAND_NAME, 'PAYLOAD'
+            ),
+            new ConkittyPatternPart(cmd.value, '*', ConkittyTypes.ARGUMENT_VAL, null)
         ];
 
-    error = conkittyMatch(tree.value, pattern);
-    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+        error = conkittyMatch(cmd.value, pattern);
+        if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
 
-    var name = tree.value[0].value;
+        offset = 1;
+        if (except &&
+            except.value[0].type === ConkittyTypes.COMMAND_NAME &&
+            except.value[0].value === 'EXCEPT')
+        {
+            pattern = [new ConkittyPatternPart(except.value, 1, ConkittyTypes.COMMAND_NAME, 'EXCEPT')];
 
-    if (name in this.tpls) {
-        throw new ConkittyErrors.DuplicateDecl(tree.value[0]);
+            error = conkittyMatch(except.value, pattern);
+            if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+            offset++;
+        }
+
+        parent.addCall(cmd.value[1].namespace, cmd.value[1].value);
+    } else {
+        pattern = [
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.TEMPLATE_NAME, null),
+            new ConkittyPatternPart(cmd.value, '*',
+                ConkittyTypes.VARIABLE, null,
+                ConkittyTypes.JAVASCRIPT, null,
+                ConkittyTypes.STRING, null,
+                ConkittyTypes.COMMAND_NAME, 'PAYLOAD'
+            ),
+            new ConkittyPatternPart(cmd.value, '*', ConkittyTypes.ARGUMENT_VAL, null)
+        ];
+
+        error = conkittyMatch(cmd.value, pattern);
+        if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+        offset = 1;
+
+        parent.addCall(cmd.value[0].namespace, cmd.value[0].value);
     }
 
-    this.tpls[name] = {
-        getCodeBefore: function getCodeBefore() {
+    return offset;
+}
 
-        },
 
-        getCodeAfter: function getCodeAfter() {
+function processChoose() {
+    return 1;
+}
 
-        }
+
+function processEach() {
+    return 1;
+}
+
+
+function processMem() {
+    return 1;
+}
+
+
+function processPayload() {
+    return 1;
+}
+
+
+function processSet() {
+    return 1;
+}
+
+
+function processTest() {
+    return 1;
+}
+
+
+function processTrigger() {
+    return 1;
+}
+
+
+function processWith() {
+    return 1;
+}
+
+
+function processVariable() {
+    return 1;
+}
+
+
+function processJavascript() {
+    return 1;
+}
+
+
+function processString() {
+    return 1;
+}
+
+
+function processElement(parent, cmd) {
+    var node = new ConkittyGeneratorElement(parent);
+    parent.appendChild(node);
+
+    node.getCodeBefore = function getCodeBefore() {
+        return 'fuck';
     };
-};
+
+    node.getCodeAfter = function getCodeAfter() {
+        return getEnds(node);
+    };
+
+    if (cmd) {}
+    return 1;
+}
 
 
-ConkittyGenerator.prototype.processCall = function processCall() {
-    /*var pattern = [
-     new ConkittyPatternPart(1, ConkittyTypes.COMMAND_NAME, 'CALL'),
+function processInclude(parent, cmd) {
+    if (parent.root !== null) {
+        // Only direct template ancestors are allowed as includes.
+        throw new ConkittyErrors.InconsistentCommand(cmd.value[0]);
+    }
 
-     new ConkittyPatternPart(1, ConkittyTypes.TEMPLATE_NAME, null,
-     ConkittyTypes.JAVASCRIPT, null,
-     ConkittyTypes.VARIABLE, null),
+    var error = conkittyMatch(
+        cmd.value,
+        [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.INCLUDE, null)]
+    );
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
 
-     new ConkittyPatternPart('*', ConkittyTypes.VARIABLE, null,
-     ConkittyTypes.JAVASCRIPT, null,
-     ConkittyTypes.STRING, null,
-     ConkittyTypes.COMMAND_NAME, 'PAYLOAD')
-     ];*/
+    assertNoChildren(cmd);
+
+    parent.addInclude(evalString(cmd.value[0].value));
+
+    return 1;
+}
+
+
+function process(parent, index, commands) {
+    var cmd = commands[index],
+        ret;
+
+    switch (cmd.value[0].type) {
+        case ConkittyTypes.TEMPLATE_NAME:
+            ret = processCall(parent, false, cmd);
+            break;
+
+        case ConkittyTypes.COMMAND_NAME:
+            switch (cmd.value[0].value) {
+                case 'ATTR':
+                    ret = processAttr(parent, true, cmd);
+                    break;
+
+                case 'CALL':
+                    ret = processCall(parent, true, cmd, commands[index + 1]);
+                    break;
+
+                case 'CHOOSE':
+                    ret = processChoose(parent, cmd);
+                    break;
+
+                case 'EACH':
+                    ret = processEach(parent, cmd, commands[index + 1]);
+                    break;
+
+                case 'MEM':
+                    ret = processMem(parent, cmd);
+                    break;
+
+                case 'PAYLOAD':
+                    ret = processPayload(parent, cmd);
+                    break;
+
+                case 'SET':
+                    ret = processSet(parent, cmd);
+                    break;
+
+                case 'TEST':
+                    ret = processTest(parent, cmd);
+                    break;
+
+                case 'TRIGGER':
+                    ret = processTrigger(parent, cmd);
+                    break;
+
+                case 'WITH':
+                    ret = processWith(parent, cmd, commands[index + 1]);
+                    break;
+
+                default:
+                    throw new ConkittyErrors.InconsistentCommand(cmd.value[0]);
+            }
+
+            break;
+
+        case ConkittyTypes.VARIABLE:
+            ret = processVariable(parent, cmd);
+            break;
+
+        case ConkittyTypes.JAVASCRIPT:
+            ret = processJavascript(parent, cmd);
+            break;
+
+        case ConkittyTypes.STRING:
+            ret = processString(parent, cmd);
+            break;
+
+        case ConkittyTypes.CSS:
+            ret = processElement(parent, cmd);
+            break;
+
+        case ConkittyTypes.ATTR:
+            ret = processAttr(parent, false, cmd);
+            break;
+
+        case ConkittyTypes.INCLUDE:
+            ret = processInclude(parent, cmd);
+            break;
+
+        default:
+            throw new ConkittyErrors.InconsistentCommand(cmd.value[0]);
+    }
+
+    return index + ret;
+}
+
+
+function processTemplate(cmd) {
+    var error,
+        pattern = [
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.TEMPLATE_NAME, null),
+            new ConkittyPatternPart(cmd.value, '*', ConkittyTypes.ARGUMENT_DECL, null)
+        ],
+        tpl,
+        subCommands,
+        i,
+        arg;
+
+    error = conkittyMatch(cmd.value, pattern);
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+    tpl = new ConkittyGeneratorTemplate(cmd.value);
+
+    subCommands = cmd.children;
+
+    if (!tpl.name) {
+        // When template name is empty, it is a namespace common includes
+        // declarator. So, only `ConkittyTypes.INCLUDE` allowed here.
+        for (i = 0; i < subCommands.length; i++) {
+            if (subCommands[i].value[0].type !== ConkittyTypes.INCLUDE) {
+                throw new ConkittyErrors.InconsistentCommand(subCommands[i].value[0]);
+            }
+        }
+
+        if (cmd.value.length > 1) {
+            // It is not an actual template, no arguments are possible.
+            throw new ConkittyErrors.InconsistentCommand(cmd.value[1]);
+        }
+    } else {
+        // Remember arguments.
+        for (i = 1; i < cmd.value.length; i++) {
+            arg = cmd.value[i];
+            tpl.args[arg.name] = arg.value ? getExpressionString(arg.value) : '';
+        }
+
+        tpl.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+
+            ret.push('$C.');
+            if (tpl.namespace) { ret.push('_'); }
+            ret.push('tpl["');
+            if (tpl.namespace) {
+                ret.push(tpl.namespace);
+                ret.push('::');
+            }
+            ret.push(tpl.name);
+            ret.push('"] = function(');
+            ret.push(Object.keys(tpl.args).join(', '));
+            ret.push(') {');
+            ret.push('\n');
+            ret.push(INDENT);
+            ret.push('var $C_ = $C.u(this)');
+
+            arg = Object.keys(tpl.vars);
+            if (arg.length) {
+                ret.push(', ');
+                ret.push(arg.join(', '));
+            }
+
+            ret.push(';\n');
+            ret.push(INDENT);
+            ret.push('$C($C_.parent)');
+
+            return ret.join('');
+        };
+
+        tpl.getCodeAfter = function getCodeAfter() {
+            var ret = [],
+                end = getEnds(tpl);
+
+            if (end) {
+                ret.push(INDENT);
+                ret.push(end);
+                ret.push(';\n');
+            }
+            ret.push('};');
+
+            return ret.join('');
+        };
+    }
+
+    i = 0;
+    while (i < subCommands.length) {
+        i = process(tpl, i, subCommands);
+    }
+
+    return tpl;
+}
+
+
+function ConkittyGenerator(code) {
+    var tpls = {},
+        tpl,
+        ns;
+
+    for (var i = 0; i < code.length; i++) {
+        tpl = processTemplate(code[i]);
+
+        if (!((ns = tpls[tpl.namespace]))) {
+            ns = tpls[tpl.namespace] = {};
+        }
+
+        if (tpl.name in ns) {
+            throw new ConkittyErrors.DuplicateDecl(code[i].value[0]);
+        }
+
+        ns[tpl.name] = tpl;
+    }
+
+    this.templates = tpls;
+}
+
+
+function _generateCode(node, ret, level) {
+    var indent = (new Array(level || 1)).join(INDENT),
+        line;
+
+    level = level === undefined ? 3 : level + 1;
+
+    if (node.getCodeBefore && ((line = node.getCodeBefore()))) {
+        ret.push(indent + line);
+    }
+
+    for (var i = 0; i < node.children.length; i++) {
+        _generateCode(node.children[i], ret, level);
+    }
+
+    if (node.getCodeAfter && ((line = node.getCodeAfter()))) {
+        ret.push(indent + line);
+    }
+}
+
+
+ConkittyGenerator.prototype.generateCode = function generateCode() {
+    var ret = [],
+        i,
+        tpl;
+
+    for (i in this.templates['']) {
+        tpl = this.templates[''][i];
+        _generateCode(tpl, ret);
+    }
+
+    return ret.join('\n');
 };
 
 

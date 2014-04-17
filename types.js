@@ -6,11 +6,11 @@
 'use strict';
 
 module.exports = {
+    TEMPLATE_NAME: 'template name',
+    COMMAND_NAME: 'command name',
     VARIABLE: 'variable',
     JAVASCRIPT: 'JavaScript',
     STRING: 'string',
-    TEMPLATE_NAME: 'template name',
-    COMMAND_NAME: 'command name',
     CSS: 'css selector',
     CSS_TAG: 'tag name',
     CSS_CLASS: 'css class name',

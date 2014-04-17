@@ -63,6 +63,14 @@ function DuplicateDecl(part) {
 DuplicateDecl.prototype = new Error();
 
 
+function IncompletePart(part) {
+    this.name = 'IncompletePart';
+    this.message = getErrorMessage('Incomplete ' + part.type, part.src, part.lineAt, part.charAt);
+    this.stack = (new Error()).stack;
+}
+IncompletePart.prototype = new Error();
+
+
 function InconsistentCommand(part) {
     this.name = 'InconsistentCommand';
     this.message = getErrorMessage(
@@ -82,4 +90,5 @@ module.exports.IllegalName = IllegalName;
 module.exports.UnterminatedPart = UnterminatedPart;
 module.exports.JSParseError = JSParseError;
 module.exports.DuplicateDecl = DuplicateDecl;
+module.exports.IncompletePart = IncompletePart;
 module.exports.InconsistentCommand = InconsistentCommand;
