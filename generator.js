@@ -7,8 +7,13 @@
 
 var ConkittyTypes = require(__dirname + '/types.js'),
     ConkittyErrors = require(__dirname + '/errors.js'),
+    utils = require(__dirname + '/utils.js'),
+    parseJS = utils.parseJS,
+    adjustJS = utils.adjustJS,
 
-    INDENT = '    ';
+    INDENT = '    ',
+
+    tagFuncs = 'div|span|p|a|ul|ol|li|table|tr|td|th|br|img|b|i|s|u'.split('|');
 
 
 function extend(Child, Parent) {
@@ -103,6 +108,11 @@ ConkittyPatternPart.prototype.match = function match(part) {
 };
 
 
+function getAnonymousFunctionName(name, part) {
+    return '$C_' + name.replace(/\-/g, '_') + '_' + (part.lineAt + 1) + '_' + (part.charAt + 1);
+}
+
+
 function assertNoChildren(cmd) {
     if (cmd.children.length) {
         throw new ConkittyErrors.InconsistentCommand(cmd.children[0].value[0]);
@@ -114,20 +124,6 @@ function evalString(val) {
     /* jshint -W040 */
     return eval(val);
     /* jshint +W040 */
-}
-
-
-function getEnds(node) {
-    if (node.ends) {
-        if (node.next || !node.root) {
-            return '.end(' + (node.ends > 1 ? node.ends : '') + ')';
-        }
-
-        node.parent.ends += node.ends;
-        node.ends = 0;
-    }
-
-    return '';
 }
 
 
@@ -146,6 +142,206 @@ function getExpressionString(val) {
             throw new ConkittyErrors.InconsistentCommand(val);
     }
 
+}
+
+
+function getEnds(node) {
+    if (node.ends) {
+        if (node.next || !node.root) {
+            return '.end(' + (node.ends > 1 ? node.ends : '') + ')';
+        }
+
+        node.parent.ends += node.ends;
+        node.ends = 0;
+    }
+
+    return '';
+}
+
+
+function getTagNameByCSS(css, asString) {
+    var ret = [],
+        condVal,
+        ifs,
+        i,
+        isStatic;
+
+    isStatic = css.value.tag ? css.value.tag.value : (asString ? '' : 'div');
+
+    ifs = css.value.ifs;
+
+    if (ifs.length) {
+        for (i = 0; i < ifs.length; i++) {
+            condVal = [];
+            condVal.push('(');
+            condVal.push(getExpressionString(ifs[i].cond));
+            condVal.push(' ? ');
+            condVal.push(ifs[i].positive ? getTagNameByCSS(ifs[i].positive, true) : '""');
+            condVal.push(' : ');
+            condVal.push(ifs[i].negative ? getTagNameByCSS(ifs[i].negative, true) : '""');
+            condVal.push(')');
+            ret.push(condVal.join(''));
+        }
+        ret.push('"' + isStatic + '"');
+        isStatic = false;
+    } else {
+        ret.push('"' + isStatic + '"');
+    }
+
+    ret = ret.join(' || ');
+
+    return asString ? ret : {isStatic: !!isStatic, value: isStatic || ret};
+}
+
+
+function getExistingAttrs(css, ret) {
+    if (!css) { return; }
+    css = css.value;
+
+    var i;
+
+    if (ret === undefined) { ret = {}; }
+
+    if (Object.keys(css.classes)) { ret['class'] = true; }
+    for (i in css.attrs) { ret[i] = true; }
+
+    for (i = 0; i < css.ifs.length; i++) {
+        getExistingAttrs(css.ifs[i].positive, ret);
+        getExistingAttrs(css.ifs[i].negative, ret);
+    }
+
+    return ret;
+}
+
+
+function getAttrsByCSS(css) {
+    if (!css) { return {}; }
+
+    var hasAttrs = getExistingAttrs(css),
+        classes,
+        exprs,
+        ret = {},
+        cur,
+        positive,
+        negative,
+        i,
+        j;
+
+    css = css.value;
+
+    for (i in hasAttrs) {
+        if ((cur = css.attrs[i])) {
+            switch (cur.type) {
+                case ConkittyTypes.CSS_TAG:
+                    ret[''] = {plain: true, value: cur.value};
+                    break;
+
+                case ConkittyTypes.CSS_ID:
+                    ret.id = {plain: true, value: cur.value};
+                    break;
+
+                case ConkittyTypes.CSS_ATTR:
+                    if (cur.value) {
+                        switch (cur.value.type) {
+                            case ConkittyTypes.STRING:
+                                ret[cur.name] = {plain: true, value: evalString(cur.value.value)};
+                                break;
+
+                            case ConkittyTypes.JAVASCRIPT:
+                            case ConkittyTypes.VARIABLE:
+                                ret[cur.name] = {plain: false, value: getExpressionString(cur.value)};
+                                break;
+
+                            default:
+                                throw new ConkittyErrors.InconsistentCommand(cur.value);
+                        }
+                    } else {
+                        ret[cur.name] = {plain: true, value: cur.name};
+                    }
+                    break;
+
+                default:
+                    throw new ConkittyErrors.InconsistentCommand(cur);
+            }
+        }
+
+        if (i === 'class') {
+            exprs = [];
+            classes = [];
+            for (j in css.classes) {
+                cur = css.classes[j];
+                switch (cur.type) {
+                    case ConkittyTypes.CSS_CLASS:
+                    case ConkittyTypes.CSS_BEM:
+                        classes.push(cur.value);
+                        break;
+
+                    case ConkittyTypes.CSS_BEM_MOD:
+                        if (cur.value) {
+                            switch (cur.value.type) {
+                                case ConkittyTypes.STRING:
+                                    classes.push(cur.name + '_' + evalString(cur.value.value));
+                                    break;
+
+                                case ConkittyTypes.JAVASCRIPT:
+                                case ConkittyTypes.VARIABLE:
+                                    exprs.push('$ConkittyMod("' + cur.name + '", ' + getExpressionString(cur.value) + ')');
+                                    break;
+
+                                default:
+                                    throw new ConkittyErrors.InconsistentCommand(cur.value);
+                            }
+                        } else {
+                            classes.push(cur.name);
+                        }
+                        break;
+
+                    default:
+                        throw new ConkittyErrors.InconsistentCommand(cur);
+                }
+            }
+
+            cur = ret['class'];
+            if (cur) {
+                if (cur.plain) {
+                    classes.push(cur.value);
+                } else {
+                    exprs.push(cur.value);
+                }
+            }
+
+            classes = classes.length ? classes.join(' ') : '';
+
+            if (exprs.length) {
+                if (classes) {
+                    exprs.unshift('"' + classes + '"');
+                }
+
+                ret['class'] = {plain: false, value: exprs};
+            } else if (classes) {
+                ret['class'] = {plain: true, value: classes};
+            }
+        }
+    }
+
+    for (i = 0; i < css.ifs.length; i++) {
+        positive = getAttrsByCSS(css.ifs[i].positive);
+        negative = getAttrsByCSS(css.ifs[i].negative);
+
+        for (j in ret) {
+            if ((j in positive) || (j in negative)) {
+                if (j === 'class') {
+
+                } else {
+
+                }
+            }
+        }
+    }
+
+    console.log(ret);
+
+    return ret;
 }
 
 
@@ -265,6 +461,17 @@ ConkittyGeneratorAction.prototype.canAbsorb = function absorb(act) {
 ConkittyGeneratorAction.prototype.absorb = function absorb(act) {
     console.log(act);
 };
+
+
+function processSubcommands(parent, cmd) {
+    var subCommands = cmd.children,
+        i = 0;
+
+    while (i < subCommands.length) {
+        i = process(parent, i, subCommands);
+    }
+
+}
 
 
 function processAttr() {
@@ -391,18 +598,46 @@ function processString() {
 
 
 function processElement(parent, cmd) {
-    var node = new ConkittyGeneratorElement(parent);
+    var node,
+        error,
+        tag,
+        tmp,
+        attrs;
+
+    error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.CSS, null)]);
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+    node = new ConkittyGeneratorElement(parent);
     parent.appendChild(node);
 
+
+    tag = getTagNameByCSS(cmd.value[0]);
+    if (tag.isStatic) {
+        tag = tagFuncs.indexOf(tag.value) >= 0 ? '.' + tag.value + '(' : '.elem("' + tag.value + '"';
+    } else {
+        //console.log(cmd.value[0]);
+        tmp = [];
+        tmp.push('function ');
+        tmp.push(getAnonymousFunctionName(node.root.name, cmd.value[0]));
+        tmp.push('() { return ');
+        tmp.push(tag.value);
+        tmp.push('; }');
+        tag = adjustJS(parseJS(tmp.join('')));
+        tag = '.elem(' + tag;
+    }
+
+    attrs = getAttrsByCSS(cmd.value[0]);
+
     node.getCodeBefore = function getCodeBefore() {
-        return 'fuck';
+        return tag + (attrs ? ', ' + attrs : '') + ')';
     };
 
     node.getCodeAfter = function getCodeAfter() {
         return getEnds(node);
     };
 
-    if (cmd) {}
+    processSubcommands(node, cmd);
+
     return 1;
 }
 
@@ -427,6 +662,7 @@ function processInclude(parent, cmd) {
 }
 
 
+/* exported process */
 function process(parent, index, commands) {
     var cmd = commands[index],
         ret;
@@ -570,7 +806,7 @@ function processTemplate(cmd) {
             ret.push(') {');
             ret.push('\n');
             ret.push(INDENT);
-            ret.push('var $C_ = $C.u(this)');
+            ret.push('var $C_ = $C._u(this)');
 
             arg = Object.keys(tpl.vars);
             if (arg.length) {
@@ -600,10 +836,7 @@ function processTemplate(cmd) {
         };
     }
 
-    i = 0;
-    while (i < subCommands.length) {
-        i = process(tpl, i, subCommands);
-    }
+    processSubcommands(tpl, cmd);
 
     return tpl;
 }
@@ -632,34 +865,34 @@ function ConkittyGenerator(code) {
 }
 
 
-function _generateCode(node, ret, level) {
+function generateCode(node, ret, level) {
     var indent = (new Array(level || 1)).join(INDENT),
         line;
 
     level = level === undefined ? 3 : level + 1;
 
     if (node.getCodeBefore && ((line = node.getCodeBefore()))) {
-        ret.push(indent + line);
+        ret.push(indent + line.split('\n').join('\n' + indent));
     }
 
     for (var i = 0; i < node.children.length; i++) {
-        _generateCode(node.children[i], ret, level);
+        generateCode(node.children[i], ret, level);
     }
 
     if (node.getCodeAfter && ((line = node.getCodeAfter()))) {
-        ret.push(indent + line);
+        ret.push(indent + line.split('\n').join('\n' + indent));
     }
 }
 
 
-ConkittyGenerator.prototype.generateCode = function generateCode() {
+ConkittyGenerator.prototype.generateCode = function() {
     var ret = [],
         i,
         tpl;
 
     for (i in this.templates['']) {
         tpl = this.templates[''][i];
-        _generateCode(tpl, ret);
+        generateCode(tpl, ret);
     }
 
     return ret.join('\n');

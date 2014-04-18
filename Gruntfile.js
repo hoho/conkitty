@@ -14,6 +14,7 @@ module.exports = function(grunt) {
                     'generator.js',
                     'types.js',
                     'errors.js',
+                    'utils.js',
                     'browser.js',
                     'bin/conkitty',
                     'Gruntfile.js'

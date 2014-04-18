@@ -7,10 +7,9 @@
 
 var ConkittyErrors = require(__dirname + '/errors.js'),
     ConkittyTypes = require(__dirname + '/types.js'),
-
-    uglify = require('uglify-js'),
-    jsParser = uglify.parser,
-    jsUglify = uglify.uglify,
+    utils = require(__dirname + '/utils.js'),
+    parseJSFunction = utils.parseJSFunction,
+    parseJSExpression = utils.parseJSExpression,
 
     whitespace = /[\x20\t\r\n\f]/,
 
@@ -100,43 +99,6 @@ function clearComments(code) {
 function strip(str) {
     return str.replace(/^[\x20\t\r\n\f]+|[\x20\t\r\n\f]+$/g, '');
 }
-
-
-function parseJS(code, stripFunc) {
-    /* jshint -W106 */
-    var ast = jsParser.parse(code);
-
-    ast = jsUglify.ast_lift_variables(ast);
-
-    // Strip f() call.
-    stripFunc(ast);
-
-    return ast;
-    /* jshint +W106 */
-}
-
-
-function parseJSExpression(code) {
-    return parseJS(
-        'f(\n' + code + '\n)',
-        function(ast) { ast[1] = ast[1][0][1][2]; /* Strip f() call. */ }
-    );
-}
-
-
-function parseJSFunction(code) {
-    return parseJS(
-        'function f() {\n' + code + '\n}',
-        function(ast) { ast[1] = ast[1][0][3]; /* Strip function f() {} wrapper. */ }
-    );
-}
-
-
-//function adjustJS(ast) {
-/* jshint -W106 */
-//    return jsUglify.gen_code(ast, {beautify: true, indent_start: 0});
-/* jshint +W106 */
-//}
 
 
 function skipWhitespaces(line, charAt) {
@@ -551,8 +513,6 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
         tmp2,
         lastBEMBlock,
         val = ret.value = {
-            tag: null,
-            id: null,
             attrs: {},
             classes: {},
             ifs: []
@@ -581,8 +541,8 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
             case '#':
                 if (classesOnly) { throw new ConkittyErrors.UnexpectedSymbol(this); }
                 tmp = this.readCSSId();
-                if (val.id !== null) { throw new ConkittyErrors.DuplicateDecl(tmp); }
-                val.id = tmp;
+                if ('id' in val.attrs) { throw new ConkittyErrors.DuplicateDecl(tmp); }
+                val.attrs.id = tmp;
                 break;
 
             case '%':
@@ -604,8 +564,8 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
             default:
                 if (!classesOnly && /[a-z]/.test(line[this.charAt])) {
                     tmp = this.readCSSTag();
-                    if (val.tag !== null) { throw new ConkittyErrors.DuplicateDecl(tmp); }
-                    val.tag = tmp;
+                    if ('' in val.attrs) { throw new ConkittyErrors.DuplicateDecl(tmp); }
+                    val.attrs[''] = tmp;
                 } else {
                     throw new ConkittyErrors.UnexpectedSymbol(this);
                 }
