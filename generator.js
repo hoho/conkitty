@@ -159,41 +159,6 @@ function getEnds(node) {
 }
 
 
-function getTagNameByCSS(css, asString) {
-    var ret = [],
-        condVal,
-        ifs,
-        i,
-        isStatic;
-
-    isStatic = css.value.tag ? css.value.tag.value : (asString ? '' : 'div');
-
-    ifs = css.value.ifs;
-
-    if (ifs.length) {
-        for (i = 0; i < ifs.length; i++) {
-            condVal = [];
-            condVal.push('(');
-            condVal.push(getExpressionString(ifs[i].cond));
-            condVal.push(' ? ');
-            condVal.push(ifs[i].positive ? getTagNameByCSS(ifs[i].positive, true) : '""');
-            condVal.push(' : ');
-            condVal.push(ifs[i].negative ? getTagNameByCSS(ifs[i].negative, true) : '""');
-            condVal.push(')');
-            ret.push(condVal.join(''));
-        }
-        ret.push('"' + isStatic + '"');
-        isStatic = false;
-    } else {
-        ret.push('"' + isStatic + '"');
-    }
-
-    ret = ret.join(' || ');
-
-    return asString ? ret : {isStatic: !!isStatic, value: isStatic || ret};
-}
-
-
 function getExistingAttrs(css, ret) {
     if (!css) { return; }
     css = css.value;
@@ -220,6 +185,8 @@ function getAttrsByCSS(css) {
     var hasAttrs = getExistingAttrs(css),
         classes,
         exprs,
+        curRet = {},
+        ifsRet = {},
         ret = {},
         cur,
         positive,
@@ -231,38 +198,45 @@ function getAttrsByCSS(css) {
 
     for (i in hasAttrs) {
         if ((cur = css.attrs[i])) {
+            if (cur.name !== i) {
+                // This thing should never happen.
+                throw new Error('Wrong name');
+            }
+
             switch (cur.type) {
                 case ConkittyTypes.CSS_TAG:
-                    ret[''] = {plain: true, value: cur.value};
+                    curRet[i] = {plain: true, value: cur.value};
                     break;
 
                 case ConkittyTypes.CSS_ID:
-                    ret.id = {plain: true, value: cur.value};
+                    curRet[i] = {plain: true, value: cur.value};
                     break;
 
                 case ConkittyTypes.CSS_ATTR:
                     if (cur.value) {
                         switch (cur.value.type) {
                             case ConkittyTypes.STRING:
-                                ret[cur.name] = {plain: true, value: evalString(cur.value.value)};
+                                curRet[i] = {plain: true, value: evalString(cur.value.value)};
                                 break;
 
                             case ConkittyTypes.JAVASCRIPT:
                             case ConkittyTypes.VARIABLE:
-                                ret[cur.name] = {plain: false, value: getExpressionString(cur.value)};
+                                curRet[i] = {plain: false, value: getExpressionString(cur.value)};
                                 break;
 
                             default:
                                 throw new ConkittyErrors.InconsistentCommand(cur.value);
                         }
                     } else {
-                        ret[cur.name] = {plain: true, value: cur.name};
+                        curRet[i] = {plain: true, value: i};
                     }
                     break;
 
                 default:
                     throw new ConkittyErrors.InconsistentCommand(cur);
             }
+        } else {
+            curRet[i] = null;
         }
 
         if (i === 'class') {
@@ -301,7 +275,7 @@ function getAttrsByCSS(css) {
                 }
             }
 
-            cur = ret['class'];
+            cur = curRet['class'];
             if (cur) {
                 if (cur.plain) {
                     classes.push(cur.value);
@@ -317,9 +291,9 @@ function getAttrsByCSS(css) {
                     exprs.unshift('"' + classes + '"');
                 }
 
-                ret['class'] = {plain: false, value: exprs};
+                curRet['class'] = {plain: false, value: '$ConkittyClasses(' + exprs.join(', ') + ')'};
             } else if (classes) {
-                ret['class'] = {plain: true, value: classes};
+                curRet['class'] = {plain: true, value: classes};
             }
         }
     }
@@ -328,18 +302,67 @@ function getAttrsByCSS(css) {
         positive = getAttrsByCSS(css.ifs[i].positive);
         negative = getAttrsByCSS(css.ifs[i].negative);
 
-        for (j in ret) {
+        for (j in curRet) {
+
             if ((j in positive) || (j in negative)) {
-                if (j === 'class') {
-
+                cur = [];
+                cur.push('(');
+                cur.push(getExpressionString(css.ifs[i].cond));
+                cur.push(' ? ');
+                if (j in positive) {
+                    if (positive[j].plain) { cur.push('"'); }
+                    cur.push(positive[j].value);
+                    if (positive[j].plain) { cur.push('"'); }
                 } else {
+                    cur.push('undefined');
+                }
+                cur.push(' : ');
+                if (j in negative) {
+                    if (negative[j].plain) { cur.push('"'); }
+                    cur.push(negative[j].value);
+                    if (negative[j].plain) { cur.push('"'); }
+                } else {
+                    cur.push('undefined');
+                }
+                cur.push(')');
+                cur = cur.join('');
 
+                if (!(j in ifsRet)) { ifsRet[j] = []; }
+                if (j === 'class') {
+                    ifsRet[j].push({plain: false, value: cur});
+                } else {
+                    ifsRet[j].unshift({plain: false, value: cur});
                 }
             }
         }
     }
 
-    console.log(ret);
+    for (j in curRet) {
+        cur = j in ifsRet ? ifsRet[j] : [];
+        if (curRet[j] !== null) {
+            if (j === 'class') {
+                cur.unshift(curRet[j]);
+            } else {
+                cur.push(curRet[j]);
+            }
+        }
+
+        if (cur.length) {
+            if (cur.length === 1) {
+                ret[j] = cur[0];
+            } else {
+                cur = cur.map(function (val) {
+                    return val.plain ? '"' + val.value + '"' : val.value;
+                });
+
+                if (j === 'class') {
+                    ret[j] = {plain: false, value: '$ConkittyClasses(' + cur.join(', ') + ')'};
+                } else {
+                    ret[j] = {plain: false, value: cur.join(' || ')};
+                }
+            }
+        }
+    }
 
     return ret;
 }
@@ -470,7 +493,6 @@ function processSubcommands(parent, cmd) {
     while (i < subCommands.length) {
         i = process(parent, i, subCommands);
     }
-
 }
 
 
@@ -602,7 +624,10 @@ function processElement(parent, cmd) {
         error,
         tag,
         tmp,
-        attrs;
+        i,
+        plain,
+        attrs,
+        tagFunc;
 
     error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.CSS, null)]);
     if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
@@ -610,12 +635,47 @@ function processElement(parent, cmd) {
     node = new ConkittyGeneratorElement(parent);
     parent.appendChild(node);
 
+    tmp = getAttrsByCSS(cmd.value[0]);
+    tag = tmp[''];
+    delete tmp[''];
+    if (!tag) { tag = {plain: true, value: 'div'}; }
 
-    tag = getTagNameByCSS(cmd.value[0]);
-    if (tag.isStatic) {
-        tag = tagFuncs.indexOf(tag.value) >= 0 ? '.' + tag.value + '(' : '.elem("' + tag.value + '"';
+    plain = true;
+    attrs = [];
+    for (i in tmp) {
+        if (attrs.length) { attrs.push(', '); }
+        attrs.push('"');
+        attrs.push(i);
+        attrs.push('": ');
+        if (tmp[i].plain) { attrs.push('"'); }
+        else { plain = false; }
+        attrs.push(tmp[i].value);
+        if (tmp[i].plain) { attrs.push('"'); }
+    }
+
+    if (attrs.length) {
+        attrs.unshift('{');
+        attrs.push('}');
+
+        if (!plain) {
+            attrs.unshift('() { return ');
+            attrs.unshift(getAnonymousFunctionName(node.root.name, cmd.value[0]));
+            attrs.unshift('function ');
+            attrs.unshift();
+            attrs.push('; }');
+        }
+    }
+
+    attrs = attrs.join('');
+
+    if (!plain) {
+        attrs = adjustJS(parseJS(attrs));
+    }
+
+    if (tag.plain) {
+        tagFunc = tagFuncs.indexOf(tag.value) >= 0;
+        tag = tagFunc ? '.' + tag.value + '(' : '.elem("' + tag.value + '"';
     } else {
-        //console.log(cmd.value[0]);
         tmp = [];
         tmp.push('function ');
         tmp.push(getAnonymousFunctionName(node.root.name, cmd.value[0]));
@@ -626,10 +686,15 @@ function processElement(parent, cmd) {
         tag = '.elem(' + tag;
     }
 
-    attrs = getAttrsByCSS(cmd.value[0]);
-
     node.getCodeBefore = function getCodeBefore() {
-        return tag + (attrs ? ', ' + attrs : '') + ')';
+        var ret = [];
+        ret.push(tag);
+        if (attrs) {
+            if (!tagFunc) { ret.push(', '); }
+            ret.push(attrs);
+        }
+        ret.push(')');
+        return ret.join('');
     };
 
     node.getCodeAfter = function getCodeAfter() {

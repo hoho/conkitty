@@ -541,8 +541,8 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
             case '#':
                 if (classesOnly) { throw new ConkittyErrors.UnexpectedSymbol(this); }
                 tmp = this.readCSSId();
-                if ('id' in val.attrs) { throw new ConkittyErrors.DuplicateDecl(tmp); }
-                val.attrs.id = tmp;
+                if (tmp.name in val.attrs) { throw new ConkittyErrors.DuplicateDecl(tmp); }
+                val.attrs[tmp.name] = tmp;
                 break;
 
             case '%':
@@ -564,8 +564,8 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
             default:
                 if (!classesOnly && /[a-z]/.test(line[this.charAt])) {
                     tmp = this.readCSSTag();
-                    if ('' in val.attrs) { throw new ConkittyErrors.DuplicateDecl(tmp); }
-                    val.attrs[''] = tmp;
+                    if (tmp.name in val.attrs) { throw new ConkittyErrors.DuplicateDecl(tmp); }
+                    val.attrs[tmp.name] = tmp;
                 } else {
                     throw new ConkittyErrors.UnexpectedSymbol(this);
                 }
@@ -577,7 +577,9 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
 
 
 ConkittyParser.prototype.readCSSTag = function readCSSTag() {
-    return this._readName(ConkittyTypes.CSS_TAG, cssStopExpr, tagCheckExpr);
+    var ret = this._readName(ConkittyTypes.CSS_TAG, cssStopExpr, tagCheckExpr);
+    ret.name = '';
+    return ret;
 };
 
 
@@ -646,7 +648,9 @@ ConkittyParser.prototype.readCSSAttr = function readCSSAttr() {
 
 
 ConkittyParser.prototype.readCSSId = function readCSSId() {
-    return this._readName(ConkittyTypes.CSS_ID, cssStopExpr, cssNameCheckExpr, 1);
+    var ret = this._readName(ConkittyTypes.CSS_ID, cssStopExpr, cssNameCheckExpr, 1);
+    ret.name = 'id';
+    return ret;
 };
 
 
