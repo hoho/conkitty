@@ -10,6 +10,7 @@ var ConkittyTypes = require(__dirname + '/types.js'),
     utils = require(__dirname + '/utils.js'),
     parseJS = utils.parseJS,
     adjustJS = utils.adjustJS,
+    fs = require('fs'),
 
     INDENT = '    ',
 
@@ -108,266 +109,6 @@ ConkittyPatternPart.prototype.match = function match(part) {
 };
 
 
-function getAnonymousFunctionName(name, part) {
-    return '$C_' + name.replace(/\-/g, '_') + '_' + (part.lineAt + 1) + '_' + (part.charAt + 1);
-}
-
-
-function assertNoChildren(cmd) {
-    if (cmd.children.length) {
-        throw new ConkittyErrors.InconsistentCommand(cmd.children[0].value[0]);
-    }
-}
-
-
-function evalString(val) {
-    /* jshint -W040 */
-    return eval(val);
-    /* jshint +W040 */
-}
-
-
-function getExpressionString(val) {
-    switch (val.type) {
-        case ConkittyTypes.JAVASCRIPT:
-            return '(' + val.value + ')';
-
-        case ConkittyTypes.STRING:
-            return val.value;
-
-        case ConkittyTypes.VARIABLE:
-            return val.value;
-
-        default:
-            throw new ConkittyErrors.InconsistentCommand(val);
-    }
-
-}
-
-
-function getEnds(node) {
-    if (node.ends) {
-        if (node.next || !node.root) {
-            return '.end(' + (node.ends > 1 ? node.ends : '') + ')';
-        }
-
-        node.parent.ends += node.ends;
-        node.ends = 0;
-    }
-
-    return '';
-}
-
-
-function getExistingAttrs(css, ret) {
-    if (!css) { return; }
-    css = css.value;
-
-    var i;
-
-    if (ret === undefined) { ret = {}; }
-
-    if (Object.keys(css.classes)) { ret['class'] = true; }
-    for (i in css.attrs) { ret[i] = true; }
-
-    for (i = 0; i < css.ifs.length; i++) {
-        getExistingAttrs(css.ifs[i].positive, ret);
-        getExistingAttrs(css.ifs[i].negative, ret);
-    }
-
-    return ret;
-}
-
-
-function getAttrsByCSS(css) {
-    if (!css) { return {}; }
-
-    var hasAttrs = getExistingAttrs(css),
-        classes,
-        exprs,
-        curRet = {},
-        ifsRet = {},
-        ret = {},
-        cur,
-        positive,
-        negative,
-        i,
-        j;
-
-    css = css.value;
-
-    for (i in hasAttrs) {
-        if ((cur = css.attrs[i])) {
-            if (cur.name !== i) {
-                // This thing should never happen.
-                throw new Error('Wrong name');
-            }
-
-            switch (cur.type) {
-                case ConkittyTypes.CSS_TAG:
-                    curRet[i] = {plain: true, value: cur.value};
-                    break;
-
-                case ConkittyTypes.CSS_ID:
-                    curRet[i] = {plain: true, value: cur.value};
-                    break;
-
-                case ConkittyTypes.CSS_ATTR:
-                    if (cur.value) {
-                        switch (cur.value.type) {
-                            case ConkittyTypes.STRING:
-                                curRet[i] = {plain: true, value: evalString(cur.value.value)};
-                                break;
-
-                            case ConkittyTypes.JAVASCRIPT:
-                            case ConkittyTypes.VARIABLE:
-                                curRet[i] = {plain: false, value: getExpressionString(cur.value)};
-                                break;
-
-                            default:
-                                throw new ConkittyErrors.InconsistentCommand(cur.value);
-                        }
-                    } else {
-                        curRet[i] = {plain: true, value: i};
-                    }
-                    break;
-
-                default:
-                    throw new ConkittyErrors.InconsistentCommand(cur);
-            }
-        } else {
-            curRet[i] = null;
-        }
-
-        if (i === 'class') {
-            exprs = [];
-            classes = [];
-            for (j in css.classes) {
-                cur = css.classes[j];
-                switch (cur.type) {
-                    case ConkittyTypes.CSS_CLASS:
-                    case ConkittyTypes.CSS_BEM:
-                        classes.push(cur.value);
-                        break;
-
-                    case ConkittyTypes.CSS_BEM_MOD:
-                        if (cur.value) {
-                            switch (cur.value.type) {
-                                case ConkittyTypes.STRING:
-                                    classes.push(cur.name + '_' + evalString(cur.value.value));
-                                    break;
-
-                                case ConkittyTypes.JAVASCRIPT:
-                                case ConkittyTypes.VARIABLE:
-                                    exprs.push('$ConkittyMod("' + cur.name + '", ' + getExpressionString(cur.value) + ')');
-                                    break;
-
-                                default:
-                                    throw new ConkittyErrors.InconsistentCommand(cur.value);
-                            }
-                        } else {
-                            classes.push(cur.name);
-                        }
-                        break;
-
-                    default:
-                        throw new ConkittyErrors.InconsistentCommand(cur);
-                }
-            }
-
-            cur = curRet['class'];
-            if (cur) {
-                if (cur.plain) {
-                    classes.push(cur.value);
-                } else {
-                    exprs.push(cur.value);
-                }
-            }
-
-            classes = classes.length ? classes.join(' ') : '';
-
-            if (exprs.length) {
-                if (classes) {
-                    exprs.unshift('"' + classes + '"');
-                }
-
-                curRet['class'] = {plain: false, value: '$ConkittyClasses(' + exprs.join(', ') + ')'};
-            } else if (classes) {
-                curRet['class'] = {plain: true, value: classes};
-            }
-        }
-    }
-
-    for (i = 0; i < css.ifs.length; i++) {
-        positive = getAttrsByCSS(css.ifs[i].positive);
-        negative = getAttrsByCSS(css.ifs[i].negative);
-
-        for (j in curRet) {
-
-            if ((j in positive) || (j in negative)) {
-                cur = [];
-                cur.push('(');
-                cur.push(getExpressionString(css.ifs[i].cond));
-                cur.push(' ? ');
-                if (j in positive) {
-                    if (positive[j].plain) { cur.push('"'); }
-                    cur.push(positive[j].value);
-                    if (positive[j].plain) { cur.push('"'); }
-                } else {
-                    cur.push('undefined');
-                }
-                cur.push(' : ');
-                if (j in negative) {
-                    if (negative[j].plain) { cur.push('"'); }
-                    cur.push(negative[j].value);
-                    if (negative[j].plain) { cur.push('"'); }
-                } else {
-                    cur.push('undefined');
-                }
-                cur.push(')');
-                cur = cur.join('');
-
-                if (!(j in ifsRet)) { ifsRet[j] = []; }
-                if (j === 'class') {
-                    ifsRet[j].push({plain: false, value: cur});
-                } else {
-                    ifsRet[j].unshift({plain: false, value: cur});
-                }
-            }
-        }
-    }
-
-    for (j in curRet) {
-        cur = j in ifsRet ? ifsRet[j] : [];
-        if (curRet[j] !== null) {
-            if (j === 'class') {
-                cur.unshift(curRet[j]);
-            } else {
-                cur.push(curRet[j]);
-            }
-        }
-
-        if (cur.length) {
-            if (cur.length === 1) {
-                ret[j] = cur[0];
-            } else {
-                cur = cur.map(function (val) {
-                    return val.plain ? '"' + val.value + '"' : val.value;
-                });
-
-                if (j === 'class') {
-                    ret[j] = {plain: false, value: '$ConkittyClasses(' + cur.join(', ') + ')'};
-                } else {
-                    ret[j] = {plain: false, value: cur.join(' || ')};
-                }
-            }
-        }
-    }
-
-    return ret;
-}
-
-
 function ConkittyGeneratorNode(parent, hasEnd) {
     this.parent = parent;
     this.root = parent && parent.root ? parent.root : parent;
@@ -420,8 +161,15 @@ ConkittyGeneratorNode.prototype.appendChild = function appendChild(child) {
 };
 
 
-function ConkittyGeneratorTemplate(cmd) {
+ConkittyGeneratorNode.prototype.getVarName = function getVarName(name) {
+    return (this.root || this).names[name];
+};
+
+
+function ConkittyGeneratorTemplate(cmd, names) {
     ConkittyGeneratorTemplate.superclass.constructor.call(this, null, true);
+
+    this.names = names;
 
     this.args = {};
     this.vars = {};
@@ -463,9 +211,9 @@ extend(ConkittyGeneratorAction, ConkittyGeneratorNode);
 
 ConkittyGeneratorValue.prototype.canAbsorb = function absorb(val) {
     return (val instanceof ConkittyGeneratorValue) &&
-           (this.raw === val.raw) &&
-           !this.isFunc &&
-           !val.isFunc;
+        (this.raw === val.raw) &&
+        !this.isFunc &&
+        !val.isFunc;
 };
 
 
@@ -476,14 +224,277 @@ ConkittyGeneratorValue.prototype.absorb = function absorb(val) {
 
 ConkittyGeneratorAction.prototype.canAbsorb = function absorb(act) {
     return (act instanceof ConkittyGeneratorAction) &&
-           !this.isFunc &&
-           !act.isFunc;
+        !this.isFunc &&
+        !act.isFunc;
 };
 
 
 ConkittyGeneratorAction.prototype.absorb = function absorb(act) {
     console.log(act);
 };
+
+
+function getAnonymousFunctionName(node, part) {
+    return '$C_' + node.root.name.replace(/\-/g, '_') + '_' + (part.lineAt + 1) + '_' + (part.charAt + 1);
+}
+
+
+function assertNoChildren(cmd) {
+    if (cmd.children.length) {
+        throw new ConkittyErrors.InconsistentCommand(cmd.children[0].value[0]);
+    }
+}
+
+
+function evalString(val) {
+    /* jshint -W040 */
+    return eval(val);
+    /* jshint +W040 */
+}
+
+
+function getExpressionString(node, val) {
+    switch (val.type) {
+        case ConkittyTypes.JAVASCRIPT:
+            return '(' + val.value + ')';
+
+        case ConkittyTypes.STRING:
+            return val.value;
+
+        case ConkittyTypes.VARIABLE:
+            if (!(val.value in node.root.args || val.value in node.root.vars)) {
+                throw new ConkittyErrors.UnknownPart(val);
+            }
+            return val.value;
+
+        default:
+            throw new ConkittyErrors.InconsistentCommand(val);
+    }
+
+}
+
+
+function getEnds(node) {
+    if (node.ends) {
+        if (node.next || !node.root || !(node instanceof ConkittyGeneratorElement)) {
+            return '.end(' + (node.ends > 1 ? node.ends : '') + ')';
+        }
+
+        node.parent.ends += node.ends;
+        node.ends = 0;
+    }
+
+    return '';
+}
+
+
+function getExistingAttrs(css, ret) {
+    if (!css) { return; }
+    css = css.value;
+
+    var i;
+
+    if (ret === undefined) { ret = {}; }
+
+    if (Object.keys(css.classes)) { ret['class'] = true; }
+    for (i in css.attrs) { ret[i] = true; }
+
+    for (i = 0; i < css.ifs.length; i++) {
+        getExistingAttrs(css.ifs[i].positive, ret);
+        getExistingAttrs(css.ifs[i].negative, ret);
+    }
+
+    return ret;
+}
+
+
+function getAttrsByCSS(node, css) {
+    if (!css) { return {}; }
+
+    var hasAttrs = getExistingAttrs(css),
+        classes,
+        exprs,
+        curRet = {},
+        ifsRet = {},
+        ret = {},
+        cur,
+        positive,
+        negative,
+        i,
+        j;
+
+    css = css.value;
+
+    for (i in hasAttrs) {
+        if ((cur = css.attrs[i])) {
+            if (cur.name !== i) {
+                // This thing should never happen.
+                throw new Error('Wrong name');
+            }
+
+            switch (cur.type) {
+                case ConkittyTypes.CSS_TAG:
+                    curRet[i] = {plain: true, value: cur.value};
+                    break;
+
+                case ConkittyTypes.CSS_ID:
+                    curRet[i] = {plain: true, value: cur.value};
+                    break;
+
+                case ConkittyTypes.CSS_ATTR:
+                    if (cur.value) {
+                        switch (cur.value.type) {
+                            case ConkittyTypes.STRING:
+                                curRet[i] = {plain: true, value: evalString(cur.value.value)};
+                                break;
+
+                            case ConkittyTypes.JAVASCRIPT:
+                            case ConkittyTypes.VARIABLE:
+                                curRet[i] = {plain: false, value: getExpressionString(node, cur.value)};
+                                break;
+
+                            default:
+                                throw new ConkittyErrors.InconsistentCommand(cur.value);
+                        }
+                    } else {
+                        curRet[i] = {plain: true, value: i};
+                    }
+                    break;
+
+                default:
+                    throw new ConkittyErrors.InconsistentCommand(cur);
+            }
+        } else {
+            curRet[i] = null;
+        }
+
+        if (i === 'class') {
+            exprs = [];
+            classes = [];
+            for (j in css.classes) {
+                cur = css.classes[j];
+                switch (cur.type) {
+                    case ConkittyTypes.CSS_CLASS:
+                    case ConkittyTypes.CSS_BEM:
+                        classes.push(cur.value);
+                        break;
+
+                    case ConkittyTypes.CSS_BEM_MOD:
+                        if (cur.value) {
+                            switch (cur.value.type) {
+                                case ConkittyTypes.STRING:
+                                    classes.push(cur.name + '_' + evalString(cur.value.value));
+                                    break;
+
+                                case ConkittyTypes.JAVASCRIPT:
+                                case ConkittyTypes.VARIABLE:
+                                    exprs.push(node.getVarName('getModClass') + '("' + cur.name + '", ' + getExpressionString(node, cur.value) + ')');
+                                    break;
+
+                                default:
+                                    throw new ConkittyErrors.InconsistentCommand(cur.value);
+                            }
+                        } else {
+                            classes.push(cur.name);
+                        }
+                        break;
+
+                    default:
+                        throw new ConkittyErrors.InconsistentCommand(cur);
+                }
+            }
+
+            cur = curRet['class'];
+            if (cur) {
+                if (cur.plain) {
+                    classes.push(cur.value);
+                } else {
+                    exprs.push(cur.value);
+                }
+            }
+
+            classes = classes.length ? classes.join(' ') : '';
+
+            if (exprs.length) {
+                if (classes) {
+                    exprs.unshift('"' + classes + '"');
+                }
+
+                curRet['class'] = {plain: false, value: node.getVarName('joinClasses') + '(' + exprs.join(', ') + ')'};
+            } else if (classes) {
+                curRet['class'] = {plain: true, value: classes};
+            }
+        }
+    }
+
+    for (i = 0; i < css.ifs.length; i++) {
+        positive = getAttrsByCSS(node, css.ifs[i].positive);
+        negative = getAttrsByCSS(node, css.ifs[i].negative);
+
+        for (j in curRet) {
+
+            if ((j in positive) || (j in negative)) {
+                cur = [];
+                cur.push('(');
+                cur.push(getExpressionString(node, css.ifs[i].cond));
+                cur.push(' ? ');
+                if (j in positive) {
+                    if (positive[j].plain) { cur.push('"'); }
+                    cur.push(positive[j].value);
+                    if (positive[j].plain) { cur.push('"'); }
+                } else {
+                    cur.push('undefined');
+                }
+                cur.push(' : ');
+                if (j in negative) {
+                    if (negative[j].plain) { cur.push('"'); }
+                    cur.push(negative[j].value);
+                    if (negative[j].plain) { cur.push('"'); }
+                } else {
+                    cur.push('undefined');
+                }
+                cur.push(')');
+                cur = cur.join('');
+
+                if (!(j in ifsRet)) { ifsRet[j] = []; }
+                if (j === 'class') {
+                    ifsRet[j].push({plain: false, value: cur});
+                } else {
+                    ifsRet[j].unshift({plain: false, value: cur});
+                }
+            }
+        }
+    }
+
+    for (j in curRet) {
+        cur = j in ifsRet ? ifsRet[j] : [];
+        if (curRet[j] !== null) {
+            if (j === 'class') {
+                cur.unshift(curRet[j]);
+            } else {
+                cur.push(curRet[j]);
+            }
+        }
+
+        if (cur.length) {
+            if (cur.length === 1) {
+                ret[j] = cur[0];
+            } else {
+                cur = cur.map(function (val) {
+                    return val.plain ? '"' + val.value + '"' : val.value;
+                });
+
+                if (j === 'class') {
+                    ret[j] = {plain: false, value: node.getVarName('joinClasses') + '(' + cur.join(', ') + ')'};
+                } else {
+                    ret[j] = {plain: false, value: cur.join(' || ')};
+                }
+            }
+        }
+    }
+
+    return ret;
+}
 
 
 function processSubcommands(parent, cmd) {
@@ -584,7 +595,80 @@ function processPayload() {
 }
 
 
-function processSet() {
+function processSet(parent, cmd) {
+    var pattern1 = [
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'SET'),
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null)
+        ],
+        pattern2 = [
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'SET'),
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null),
+            new ConkittyPatternPart(cmd.value, 1,
+                ConkittyTypes.VARIABLE, null,
+                ConkittyTypes.JAVASCRIPT, null,
+                ConkittyTypes.STRING, null,
+                ConkittyTypes.COMMAND_NAME, 'PAYLOAD'
+            )
+        ],
+
+        error1 = conkittyMatch(cmd.value, pattern1),
+        error2,
+        node,
+        name;
+
+    if (error1) { error2 = conkittyMatch(cmd.value, pattern2); }
+    if (error1 && error2) { throw new ConkittyErrors.InconsistentCommand(error1); }
+    if (error1) { assertNoChildren(cmd); }
+
+    node = new ConkittyGeneratorCommand(parent, !error1);
+    parent.appendChild(node);
+    name = cmd.value[1].value;
+    node.addVariable(name);
+
+    if (error1) {
+        node.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+            ret.push('.act(function ');
+            ret.push(getAnonymousFunctionName(node, cmd.value[0]));
+            ret.push('() { ');
+            ret.push(name);
+            ret.push(' = ');
+            ret.push(getExpressionString(node, cmd.value[2]));
+            ret.push('; })');
+            return ret.join('');
+        };
+    } else if (cmd.children.length) {
+        node.extraIndent = 1;
+        node.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+            ret.push('.act(function ');
+            ret.push(getAnonymousFunctionName(node, cmd.value[0]));
+            ret.push('() {\n');
+            ret.push(INDENT);
+            ret.push(name);
+            ret.push(' = $C()');
+            return ret.join('');
+        };
+
+        node.getCodeAfter = function getCodeAfter() {
+            var ret = [];
+            ret.push(INDENT);
+            ret.push(getEnds(node));
+            ret.push(';\n');
+            ret.push(INDENT);
+            ret.push(name);
+            ret.push(' = ');
+            ret.push(name);
+            ret.push('.firstChild ? ');
+            ret.push(name);
+            ret.push(' : undefined;\n');
+            ret.push('})');
+            return ret.join('');
+        };
+    }
+
+    processSubcommands(node, cmd);
+
     return 1;
 }
 
@@ -604,30 +688,99 @@ function processWith() {
 }
 
 
-function processVariable() {
+function processVariable(parent, cmd) {
+    var node,
+        error;
+
+    error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null)]);
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+    assertNoChildren(cmd);
+
+    node = new ConkittyGeneratorValue(parent);
+    parent.appendChild(node);
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.text(function ');
+        ret.push(getAnonymousFunctionName(node, cmd.value[0]));
+        ret.push('() { return ');
+        ret.push(getExpressionString(node, cmd.value[0]));
+        ret.push('; })');
+        return ret.join('');
+    };
+
     return 1;
 }
 
 
-function processJavascript() {
+function processJavascript(parent, cmd) {
+    var node,
+        error;
+
+    error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.JAVASCRIPT, null)]);
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+    assertNoChildren(cmd);
+
+    node = new ConkittyGeneratorValue(parent);
+    parent.appendChild(node);
+
+    if (cmd.value[0].raw) {
+        node.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+            ret.push('.act(function ' + getAnonymousFunctionName(node, cmd.value[0]) + '($C__) {\n');
+            ret.push(INDENT);
+            ret.push('$C__ = ' + cmd.value[0].value + ';\n');
+            ret.push(INDENT);
+            ret.push('if ($C__ instanceof Node) { this.appendChild($C__); }\n');
+            ret.push(INDENT);
+            ret.push('else { $C(this).text($C__, true).end(); };\n');
+            ret.push('})\n');
+            return ret.join('');
+        };
+    } else {
+        node.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+            ret.push('.text(function ');
+            ret.push(getAnonymousFunctionName(node, cmd.value[0]));
+            ret.push('() { return ');
+            ret.push(getExpressionString(node, cmd.value[0]));
+            ret.push('; })');
+            return ret.join('');
+        };
+    }
+
     return 1;
 }
 
 
-function processString() {
+function processString(parent, cmd) {
+    var node,
+        error;
+
+    error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.STRING, null)]);
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+    assertNoChildren(cmd);
+
+    node = new ConkittyGeneratorValue(parent);
+    parent.appendChild(node);
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.text("');
+        ret.push(evalString(cmd.value[0].value));
+        ret.push('"');
+        if (cmd.value[0].raw) { ret.push(', true'); }
+        ret.push(')');
+        return ret.join('');
+    };
+
     return 1;
 }
 
 
 function processElement(parent, cmd) {
     var node,
-        error,
-        tag,
-        tmp,
-        i,
-        plain,
-        attrs,
-        tagFunc;
+        error;
 
     error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.CSS, null)]);
     if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
@@ -635,58 +788,65 @@ function processElement(parent, cmd) {
     node = new ConkittyGeneratorElement(parent);
     parent.appendChild(node);
 
-    tmp = getAttrsByCSS(cmd.value[0]);
-    tag = tmp[''];
-    delete tmp[''];
-    if (!tag) { tag = {plain: true, value: 'div'}; }
+    node.getCodeBefore = function getCodeBefore() {
+        var tag,
+            tmp,
+            i,
+            plain,
+            attrs,
+            tagFunc;
 
-    plain = true;
-    attrs = [];
-    for (i in tmp) {
-        if (attrs.length) { attrs.push(', '); }
-        attrs.push('"');
-        attrs.push(i);
-        attrs.push('": ');
-        if (tmp[i].plain) { attrs.push('"'); }
-        else { plain = false; }
-        attrs.push(tmp[i].value);
-        if (tmp[i].plain) { attrs.push('"'); }
-    }
+        tmp = getAttrsByCSS(node, cmd.value[0]);
+        tag = tmp[''];
+        delete tmp[''];
+        if (!tag) { tag = {plain: true, value: 'div'}; }
 
-    if (attrs.length) {
-        attrs.unshift('{');
-        attrs.push('}');
+        plain = true;
+        attrs = [];
+        for (i in tmp) {
+            if (attrs.length) { attrs.push(', '); }
+            attrs.push('"');
+            attrs.push(i);
+            attrs.push('": ');
+            if (tmp[i].plain) { attrs.push('"'); }
+            else { plain = false; }
+            attrs.push(tmp[i].value);
+            if (tmp[i].plain) { attrs.push('"'); }
+        }
+
+        if (attrs.length) {
+            attrs.unshift('{');
+            attrs.push('}');
+
+            if (!plain) {
+                attrs.unshift('() { return ');
+                attrs.unshift(getAnonymousFunctionName(node, cmd.value[0]));
+                attrs.unshift('function ');
+                attrs.unshift();
+                attrs.push('; }');
+            }
+        }
+
+        attrs = attrs.join('');
 
         if (!plain) {
-            attrs.unshift('() { return ');
-            attrs.unshift(getAnonymousFunctionName(node.root.name, cmd.value[0]));
-            attrs.unshift('function ');
-            attrs.unshift();
-            attrs.push('; }');
+            attrs = adjustJS(parseJS(attrs));
         }
-    }
 
-    attrs = attrs.join('');
+        if (tag.plain) {
+            tagFunc = tagFuncs.indexOf(tag.value) >= 0;
+            tag = tagFunc ? '.' + tag.value + '(' : '.elem("' + tag.value + '"';
+        } else {
+            tmp = [];
+            tmp.push('function ');
+            tmp.push(getAnonymousFunctionName(node, cmd.value[0]));
+            tmp.push('() { return ');
+            tmp.push(tag.value);
+            tmp.push('; }');
+            tag = adjustJS(parseJS(tmp.join('')));
+            tag = '.elem(' + tag;
+        }
 
-    if (!plain) {
-        attrs = adjustJS(parseJS(attrs));
-    }
-
-    if (tag.plain) {
-        tagFunc = tagFuncs.indexOf(tag.value) >= 0;
-        tag = tagFunc ? '.' + tag.value + '(' : '.elem("' + tag.value + '"';
-    } else {
-        tmp = [];
-        tmp.push('function ');
-        tmp.push(getAnonymousFunctionName(node.root.name, cmd.value[0]));
-        tmp.push('() { return ');
-        tmp.push(tag.value);
-        tmp.push('; }');
-        tag = adjustJS(parseJS(tmp.join('')));
-        tag = '.elem(' + tag;
-    }
-
-    node.getCodeBefore = function getCodeBefore() {
         var ret = [];
         ret.push(tag);
         if (attrs) {
@@ -817,7 +977,7 @@ function process(parent, index, commands) {
 }
 
 
-function processTemplate(cmd) {
+function processTemplate(cmd, names) {
     var error,
         pattern = [
             new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.TEMPLATE_NAME, null),
@@ -831,7 +991,7 @@ function processTemplate(cmd) {
     error = conkittyMatch(cmd.value, pattern);
     if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
 
-    tpl = new ConkittyGeneratorTemplate(cmd.value);
+    tpl = new ConkittyGeneratorTemplate(cmd.value, names);
 
     subCommands = cmd.children;
 
@@ -852,7 +1012,7 @@ function processTemplate(cmd) {
         // Remember arguments.
         for (i = 1; i < cmd.value.length; i++) {
             arg = cmd.value[i];
-            tpl.args[arg.name] = arg.value ? getExpressionString(arg.value) : '';
+            tpl.args[arg.name] = arg.value ? getExpressionString(tpl, arg.value) : '';
         }
 
         tpl.getCodeBefore = function getCodeBefore() {
@@ -871,7 +1031,11 @@ function processTemplate(cmd) {
             ret.push(') {');
             ret.push('\n');
             ret.push(INDENT);
-            ret.push('var $C_ = $C._u(this)');
+            ret.push('var ');
+            ret.push(tpl.getVarName('env'));
+            ret.push(' = ');
+            ret.push(tpl.getVarName('getEnv'));
+            ret.push('(this)');
 
             arg = Object.keys(tpl.vars);
             if (arg.length) {
@@ -881,7 +1045,9 @@ function processTemplate(cmd) {
 
             ret.push(';\n');
             ret.push(INDENT);
-            ret.push('$C($C_.parent)');
+            ret.push('$C(');
+            ret.push(tpl.getVarName('env'));
+            ret.push('.parent)');
 
             return ret.join('');
         };
@@ -910,10 +1076,18 @@ function processTemplate(cmd) {
 function ConkittyGenerator(code) {
     var tpls = {},
         tpl,
-        ns;
+        ns,
+        rnd = Math.round(Math.random() * 9999),
+        names = {
+            env: '$ConkittyEnv' + rnd,
+            envClass: '$ConkittyEnvClass' + rnd,
+            getEnv: '$ConkittyGetEnv' + rnd,
+            joinClasses: '$ConkittyClasses' + rnd,
+            getModClass: '$ConkittyMod' + rnd
+        };
 
     for (var i = 0; i < code.length; i++) {
-        tpl = processTemplate(code[i]);
+        tpl = processTemplate(code[i], names);
 
         if (!((ns = tpls[tpl.namespace]))) {
             ns = tpls[tpl.namespace] = {};
@@ -941,7 +1115,7 @@ function generateCode(node, ret, level) {
     }
 
     for (var i = 0; i < node.children.length; i++) {
-        generateCode(node.children[i], ret, level);
+        generateCode(node.children[i], ret, level + (node.extraIndent || 0));
     }
 
     if (node.getCodeAfter && ((line = node.getCodeAfter()))) {
@@ -959,6 +1133,20 @@ ConkittyGenerator.prototype.generateCode = function() {
         tpl = this.templates[''][i];
         generateCode(tpl, ret);
     }
+
+    if (tpl) {
+        var env = fs.readFileSync(__dirname + '/_env.js', {encoding: 'utf8'});
+        env = env
+            .replace(/envClass/g, tpl.getVarName('envClass'))
+            .replace(/getEnv/g, tpl.getVarName('getEnv'))
+            .replace(/joinClasses/g, tpl.getVarName('joinClasses'))
+            .replace(/getModClass/g, tpl.getVarName('getModClass'));
+        ret.unshift(env);
+    }
+
+    ret.unshift('(function($C, undefined) {\n');
+
+    ret.push('\n})($C);');
 
     return ret.join('\n');
 };

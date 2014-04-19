@@ -71,6 +71,14 @@ function IncompletePart(part) {
 IncompletePart.prototype = new Error();
 
 
+function UnknownPart(part) {
+    this.name = 'UnknownPart';
+    this.message = getErrorMessage('Unknown ' + part.type, part.src, part.lineAt, part.charAt);
+    this.stack = (new Error()).stack;
+}
+UnknownPart.prototype = new Error();
+
+
 function InconsistentCommand(part) {
     this.name = 'InconsistentCommand';
     this.message = getErrorMessage(
@@ -91,4 +99,5 @@ module.exports.UnterminatedPart = UnterminatedPart;
 module.exports.JSParseError = JSParseError;
 module.exports.DuplicateDecl = DuplicateDecl;
 module.exports.IncompletePart = IncompletePart;
+module.exports.UnknownPart = UnknownPart;
 module.exports.InconsistentCommand = InconsistentCommand;
