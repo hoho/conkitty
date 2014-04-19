@@ -8,8 +8,6 @@
 var ConkittyErrors = require(__dirname + '/errors.js'),
     ConkittyTypes = require(__dirname + '/types.js'),
     utils = require(__dirname + '/utils.js'),
-    parseJSFunction = utils.parseJSFunction,
-    parseJSExpression = utils.parseJSExpression,
 
     whitespace = /[\x20\t\r\n\f]/,
 
@@ -946,13 +944,26 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
 
 
     try {
-        (indent ? parseJSFunction : parseJSExpression)(val);
+        val = (indent ? utils.parseJSFunction : utils.parseJSExpression)(val);
+        if (val[1].length === 1 && val[1][0][0] === 'function') {
+            // Check if function has name or arguments in use.
+            ret.isFunc = val[1][0][1] || val[1][0][2].length > 0 || utils.hasReturn(val[1][0][3]);
+            if (!ret.isFunc) {
+                // It is just a wrapper, function name is not used, arguments,
+                // are not used, and no return statement — extract just body
+                // to be able to merge it with other bodies.
+                val[1] = val[1][0][3];
+                ret.value = utils.adjustJS(val);
+            }
+        } else {
+            ret.isFunc = false;
+        }
     } catch(e) {
         throw new ConkittyErrors.JSParseError(
             e.message,
             this,
-                ret.lineAt + e.line - 1 - (indent ? 0 : 1),
-                (indent || e.line > 2 ? -1 : ret.charAt + (ret.raw ? 2 : 0)) + e.col
+            ret.lineAt + e.line - 1 - (indent ? 0 : 1),
+            (indent || e.line > 2 ? -1 : ret.charAt + (ret.raw ? 2 : 0)) + e.col
         );
     }
 

@@ -44,8 +44,13 @@ function adjustJS(ast, beautify) {
 }
 
 
+function hasReturn() {
+    return true;
+}
+
+
 module.exports.parseJS = parseJS;
 module.exports.parseJSExpression = parseJSExpression;
 module.exports.parseJSFunction = parseJSFunction;
 module.exports.adjustJS = adjustJS;
-
+module.exports.hasReturn = hasReturn;

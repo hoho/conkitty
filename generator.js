@@ -109,6 +109,16 @@ ConkittyPatternPart.prototype.match = function match(part) {
 };
 
 
+function conkittyGetValuePatternPart(cmd, count) {
+    return new ConkittyPatternPart(cmd.value, count,
+        ConkittyTypes.VARIABLE, null,
+        ConkittyTypes.JAVASCRIPT, null,
+        ConkittyTypes.STRING, null,
+        ConkittyTypes.COMMAND_NAME, 'PAYLOAD'
+    );
+}
+
+
 function ConkittyGeneratorNode(parent, hasEnd) {
     this.parent = parent;
     this.root = parent && parent.root ? parent.root : parent;
@@ -118,8 +128,12 @@ function ConkittyGeneratorNode(parent, hasEnd) {
 }
 
 
-ConkittyGeneratorNode.prototype.addVariable = function addVariable(name) {
-    (this.root || this).vars[name] = true;
+ConkittyGeneratorNode.prototype.addVariable = function addVariable(part) {
+    var root = (this.root || this);
+    if (part.value in root.args) {
+        throw new ConkittyErrors.IllegalName(part, 'duplicates argument name');
+    }
+    root.vars[part.value] = true;
 };
 
 
@@ -133,7 +147,7 @@ ConkittyGeneratorNode.prototype.addCall = function addCall(namespace, name) {
 };
 
 
-ConkittyGeneratorNode.prototype.addInclude = function addVariable(filename) {
+ConkittyGeneratorNode.prototype.addInclude = function addInclude(filename) {
     (this.root || this).includes.push(filename);
 };
 
@@ -253,18 +267,46 @@ function evalString(val) {
 }
 
 
-function getExpressionString(node, val) {
+function getExpressionString(node, val, wrap, noReturn) {
+    var ret,
+        isVar;
+
     switch (val.type) {
-        case ConkittyTypes.JAVASCRIPT:
-            return '(' + val.value + ')';
-
-        case ConkittyTypes.STRING:
-            return val.value;
-
+        /* jshint -W086 */
         case ConkittyTypes.VARIABLE:
             if (!(val.value in node.root.args || val.value in node.root.vars)) {
                 throw new ConkittyErrors.UnknownPart(val);
             }
+            isVar = true;
+
+        case ConkittyTypes.JAVASCRIPT:
+        /* jshint +W086 */
+            ret = [];
+            if (wrap) {
+                if (val.isFunc) {
+                    if (!isVar) { ret.push('('); }
+                    ret.push(val.value);
+                    if (!isVar) { ret.push(')'); }
+                } else {
+                    ret.push('function ');
+                    ret.push(getAnonymousFunctionName(node, val));
+                    ret.push('() { ');
+                    if (!noReturn) { ret.push('return '); }
+                    if (!isVar) { ret.push('('); }
+                    ret.push(val.value);
+                    if (!isVar) { ret.push(')'); }
+                    ret.push('; }');
+                }
+            } else {
+                if (!isVar) { ret.push('('); }
+                ret.push(val.value);
+                if (!isVar) { ret.push(')'); }
+                if (val.isFunc) { ret.push('.apply(this, arguments)'); }
+            }
+
+            return ret.join('');
+
+        case ConkittyTypes.STRING:
             return val.value;
 
         default:
@@ -350,7 +392,7 @@ function getAttrsByCSS(node, css) {
 
                             case ConkittyTypes.JAVASCRIPT:
                             case ConkittyTypes.VARIABLE:
-                                curRet[i] = {plain: false, value: getExpressionString(node, cur.value)};
+                                curRet[i] = {plain: false, value: getExpressionString(node, cur.value, false)};
                                 break;
 
                             default:
@@ -388,7 +430,7 @@ function getAttrsByCSS(node, css) {
 
                                 case ConkittyTypes.JAVASCRIPT:
                                 case ConkittyTypes.VARIABLE:
-                                    exprs.push(node.getVarName('getModClass') + '("' + cur.name + '", ' + getExpressionString(node, cur.value) + ')');
+                                    exprs.push(node.getVarName('getModClass') + '(' + JSON.stringify(cur.name) + ', ' + getExpressionString(node, cur.value, false) + ')');
                                     break;
 
                                 default:
@@ -417,7 +459,7 @@ function getAttrsByCSS(node, css) {
 
             if (exprs.length) {
                 if (classes) {
-                    exprs.unshift('"' + classes + '"');
+                    exprs.unshift(JSON.stringify(classes));
                 }
 
                 curRet['class'] = {plain: false, value: node.getVarName('joinClasses') + '(' + exprs.join(', ') + ')'};
@@ -436,20 +478,18 @@ function getAttrsByCSS(node, css) {
             if ((j in positive) || (j in negative)) {
                 cur = [];
                 cur.push('(');
-                cur.push(getExpressionString(node, css.ifs[i].cond));
+                cur.push(getExpressionString(node, css.ifs[i].cond, false));
                 cur.push(' ? ');
                 if (j in positive) {
-                    if (positive[j].plain) { cur.push('"'); }
-                    cur.push(positive[j].value);
-                    if (positive[j].plain) { cur.push('"'); }
+                    if (positive[j].plain) { cur.push(JSON.stringify(positive[j].value)); }
+                    else { cur.push(positive[j].value); }
                 } else {
                     cur.push('undefined');
                 }
                 cur.push(' : ');
                 if (j in negative) {
-                    if (negative[j].plain) { cur.push('"'); }
-                    cur.push(negative[j].value);
-                    if (negative[j].plain) { cur.push('"'); }
+                    if (negative[j].plain) { cur.push(JSON.stringify(negative[j].value)); }
+                    else { cur.push(negative[j].value); }
                 } else {
                     cur.push('undefined');
                 }
@@ -481,7 +521,7 @@ function getAttrsByCSS(node, css) {
                 ret[j] = cur[0];
             } else {
                 cur = cur.map(function (val) {
-                    return val.plain ? '"' + val.value + '"' : val.value;
+                    return val.plain ? JSON.stringify(val.value) : val.value;
                 });
 
                 if (j === 'class') {
@@ -525,12 +565,7 @@ function processCall(parent, startsWithCALL, cmd, except) {
                 ConkittyTypes.JAVASCRIPT, null,
                 ConkittyTypes.VARIABLE, null
             ),
-            new ConkittyPatternPart(cmd.value, '*',
-                ConkittyTypes.VARIABLE, null,
-                ConkittyTypes.JAVASCRIPT, null,
-                ConkittyTypes.STRING, null,
-                ConkittyTypes.COMMAND_NAME, 'PAYLOAD'
-            ),
+            conkittyGetValuePatternPart(cmd, '*'),
             new ConkittyPatternPart(cmd.value, '*', ConkittyTypes.ARGUMENT_VAL, null)
         ];
 
@@ -554,12 +589,7 @@ function processCall(parent, startsWithCALL, cmd, except) {
     } else {
         pattern = [
             new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.TEMPLATE_NAME, null),
-            new ConkittyPatternPart(cmd.value, '*',
-                ConkittyTypes.VARIABLE, null,
-                ConkittyTypes.JAVASCRIPT, null,
-                ConkittyTypes.STRING, null,
-                ConkittyTypes.COMMAND_NAME, 'PAYLOAD'
-            ),
+            conkittyGetValuePatternPart(cmd, '*'),
             new ConkittyPatternPart(cmd.value, '*', ConkittyTypes.ARGUMENT_VAL, null)
         ];
 
@@ -603,12 +633,7 @@ function processSet(parent, cmd) {
         pattern2 = [
             new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'SET'),
             new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null),
-            new ConkittyPatternPart(cmd.value, 1,
-                ConkittyTypes.VARIABLE, null,
-                ConkittyTypes.JAVASCRIPT, null,
-                ConkittyTypes.STRING, null,
-                ConkittyTypes.COMMAND_NAME, 'PAYLOAD'
-            )
+            conkittyGetValuePatternPart(cmd, 1)
         ],
 
         error1 = conkittyMatch(cmd.value, pattern1),
@@ -623,7 +648,7 @@ function processSet(parent, cmd) {
     node = new ConkittyGeneratorCommand(parent, !error1);
     parent.appendChild(node);
     name = cmd.value[1].value;
-    node.addVariable(name);
+    node.addVariable(cmd.value[1]);
 
     if (error1) {
         node.getCodeBefore = function getCodeBefore() {
@@ -633,7 +658,7 @@ function processSet(parent, cmd) {
             ret.push('() { ');
             ret.push(name);
             ret.push(' = ');
-            ret.push(getExpressionString(node, cmd.value[2]));
+            ret.push(getExpressionString(node, cmd.value[2], false));
             ret.push('; })');
             return ret.join('');
         };
@@ -673,7 +698,33 @@ function processSet(parent, cmd) {
 }
 
 
-function processTest() {
+function processTest(parent, cmd) {
+    var node,
+        error;
+
+    error = conkittyMatch(cmd.value, [
+        new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'TEST'),
+        conkittyGetValuePatternPart(cmd, 1)
+    ]);
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+    if (cmd.children.length) {
+        node = new ConkittyGeneratorCommand(parent, true);
+        parent.appendChild(node);
+
+        node.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+            ret.push('.test(');
+            ret.push(getExpressionString(node, cmd.value[1], true));
+            ret.push(')');
+            return ret.join('');
+        };
+
+        node.getCodeAfter = function getCodeAfter() {
+            return getEnds(node);
+        };
+    }
+
     return 1;
 }
 
@@ -701,11 +752,9 @@ function processVariable(parent, cmd) {
 
     node.getCodeBefore = function getCodeBefore() {
         var ret = [];
-        ret.push('.text(function ');
-        ret.push(getAnonymousFunctionName(node, cmd.value[0]));
-        ret.push('() { return ');
-        ret.push(getExpressionString(node, cmd.value[0]));
-        ret.push('; })');
+        ret.push('.text(');
+        ret.push(getExpressionString(node, cmd.value[0], true));
+        ret.push(')');
         return ret.join('');
     };
 
@@ -729,22 +778,20 @@ function processJavascript(parent, cmd) {
             var ret = [];
             ret.push('.act(function ' + getAnonymousFunctionName(node, cmd.value[0]) + '($C__) {\n');
             ret.push(INDENT);
-            ret.push('$C__ = ' + cmd.value[0].value + ';\n');
-            ret.push(INDENT);
-            ret.push('if ($C__ instanceof Node) { this.appendChild($C__); }\n');
+            ret.push('if ((');
+            ret.push('$C__ = ' + getExpressionString(node, cmd.value[0], false));
+            ret.push(') instanceof Node) { this.appendChild($C__); }\n');
             ret.push(INDENT);
             ret.push('else { $C(this).text($C__, true).end(); };\n');
-            ret.push('})\n');
+            ret.push('})');
             return ret.join('');
         };
     } else {
         node.getCodeBefore = function getCodeBefore() {
             var ret = [];
-            ret.push('.text(function ');
-            ret.push(getAnonymousFunctionName(node, cmd.value[0]));
-            ret.push('() { return ');
-            ret.push(getExpressionString(node, cmd.value[0]));
-            ret.push('; })');
+            ret.push('.text(');
+            ret.push(getExpressionString(node, cmd.value[0], true));
+            ret.push(')');
             return ret.join('');
         };
     }
@@ -766,9 +813,8 @@ function processString(parent, cmd) {
 
     node.getCodeBefore = function getCodeBefore() {
         var ret = [];
-        ret.push('.text("');
-        ret.push(evalString(cmd.value[0].value));
-        ret.push('"');
+        ret.push('.text(');
+        ret.push(JSON.stringify(evalString(cmd.value[0].value)));
         if (cmd.value[0].raw) { ret.push(', true'); }
         ret.push(')');
         return ret.join('');
@@ -805,13 +851,10 @@ function processElement(parent, cmd) {
         attrs = [];
         for (i in tmp) {
             if (attrs.length) { attrs.push(', '); }
-            attrs.push('"');
-            attrs.push(i);
-            attrs.push('": ');
-            if (tmp[i].plain) { attrs.push('"'); }
-            else { plain = false; }
-            attrs.push(tmp[i].value);
-            if (tmp[i].plain) { attrs.push('"'); }
+            attrs.push(JSON.stringify(i));
+            attrs.push(': ');
+            if (tmp[i].plain) { attrs.push(JSON.stringify(tmp[i].value)); }
+            else { plain = false; attrs.push(tmp[i].value); }
         }
 
         if (attrs.length) {
@@ -835,7 +878,7 @@ function processElement(parent, cmd) {
 
         if (tag.plain) {
             tagFunc = tagFuncs.indexOf(tag.value) >= 0;
-            tag = tagFunc ? '.' + tag.value + '(' : '.elem("' + tag.value + '"';
+            tag = tagFunc ? '.' + tag.value + '(' : '.elem(' + JSON.stringify(tag.value);
         } else {
             tmp = [];
             tmp.push('function ');
@@ -1012,7 +1055,7 @@ function processTemplate(cmd, names) {
         // Remember arguments.
         for (i = 1; i < cmd.value.length; i++) {
             arg = cmd.value[i];
-            tpl.args[arg.name] = arg.value ? getExpressionString(tpl, arg.value) : '';
+            tpl.args[arg.name] = arg.value ? getExpressionString(tpl, arg.value, false) : '';
         }
 
         tpl.getCodeBefore = function getCodeBefore() {

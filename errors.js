@@ -31,9 +31,12 @@ function UnexpectedSymbol(code) {
 UnexpectedSymbol.prototype = new Error();
 
 
-function IllegalName(part) {
+function IllegalName(part, extMsg) {
     this.name = 'IllegalName';
-    this.message = getErrorMessage('Illegal ' + part.type, part.src, part.lineAt, part.charAt);
+    this.message = getErrorMessage(
+        'Illegal ' + part.type + (extMsg ? ': ' + extMsg: ''),
+        part.src, part.lineAt, part.charAt
+    );
     this.stack = (new Error()).stack;
 }
 IllegalName.prototype = new Error();
