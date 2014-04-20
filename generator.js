@@ -267,7 +267,7 @@ function evalString(val) {
 }
 
 
-function getExpressionString(node, val, wrap, noReturn) {
+function getExpressionString(node, val, wrap) {
     var ret,
         isVar;
 
@@ -290,8 +290,7 @@ function getExpressionString(node, val, wrap, noReturn) {
                 } else {
                     ret.push('function ');
                     ret.push(getAnonymousFunctionName(node, val));
-                    ret.push('() { ');
-                    if (!noReturn) { ret.push('return '); }
+                    ret.push('() { return ');
                     if (!isVar) { ret.push('('); }
                     ret.push(val.value);
                     if (!isVar) { ret.push(')'); }
@@ -307,7 +306,7 @@ function getExpressionString(node, val, wrap, noReturn) {
             return ret.join('');
 
         case ConkittyTypes.STRING:
-            return val.value;
+            return JSON.stringify(evalString(val.value));
 
         default:
             throw new ConkittyErrors.InconsistentCommand(val);
@@ -605,12 +604,139 @@ function processCall(parent, startsWithCALL, cmd, except) {
 }
 
 
-function processChoose() {
+function processChoose(parent, cmd) {
+    var choose,
+        error,
+        i;
+
+    error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'CHOOSE')]);
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+    if (cmd.children.length) {
+        choose = new ConkittyGeneratorCommand(parent, true);
+        parent.appendChild(choose);
+        choose.getCodeBefore = function getCodeBefore() { return '.choose()'; };
+        choose.getCodeAfter = function getCodeAfter() { return getEnds(choose); };
+
+        for (i = 0; i < cmd.children.length; i++) {
+            (function(subcmd) {
+                error = conkittyMatch(subcmd.value, [
+                    new ConkittyPatternPart(subcmd.value, 1, ConkittyTypes.COMMAND_NAME, 'WHEN'),
+                    conkittyGetValuePatternPart(subcmd, 1)
+                ]);
+
+                var node = new ConkittyGeneratorCommand(choose, true);
+                choose.appendChild(node);
+
+                if (error) {
+                    error = conkittyMatch(subcmd.value, [new ConkittyPatternPart(subcmd.value, 1, ConkittyTypes.COMMAND_NAME, 'OTHERWISE')]);
+                    if (!error && cmd.children[i + 1]) { error = cmd.children[i + 1].value[0]; }
+                    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+                    // It is OTHERWISE.
+                    node.getCodeBefore = function getCodeBefore() { return '.otherwise()'; };
+                    node.getCodeAfter = function getCodeAfter() { return getEnds(node); };
+                } else {
+                    // It is WHEN.
+                    node.getCodeBefore = function getCodeBefore() {
+                        var ret = [];
+                        ret.push('.when(');
+                        ret.push(getExpressionString(node, subcmd.value[1], true));
+                        ret.push(')');
+                        return ret.join('');
+                    };
+
+                    node.getCodeAfter = function getCodeAfter() {
+                        return getEnds(node);
+                    };
+                }
+
+                processSubcommands(node, subcmd);
+            })(cmd.children[i]);
+        }
+    }
+
     return 1;
 }
 
 
-function processEach() {
+function processEach(parent, cmd) {
+    var node,
+        error,
+        key,
+        val,
+        arr;
+
+    error = conkittyMatch(cmd.value, [
+        new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'EACH'),
+        new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.JAVASCRIPT, null, ConkittyTypes.VARIABLE, null)
+    ]);
+
+    if (error) {
+        error = conkittyMatch(cmd.value, [
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'EACH'),
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null),
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.JAVASCRIPT, null, ConkittyTypes.VARIABLE, null)
+        ]);
+
+        if (error) {
+            error = conkittyMatch(cmd.value, [
+                new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'EACH'),
+                new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null),
+                new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null),
+                new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.JAVASCRIPT, null, ConkittyTypes.VARIABLE, null)
+            ]);
+
+            if (error) {
+                throw new ConkittyErrors.InconsistentCommand(error);
+            } else {
+                key = cmd.value[1];
+                val = cmd.value[2];
+                arr = cmd.value[3];
+            }
+        } else {
+            val = cmd.value[1];
+            arr = cmd.value[2];
+        }
+    } else {
+        arr = cmd.value[1];
+    }
+
+    node = new ConkittyGeneratorCommand(parent, true);
+    parent.appendChild(node);
+
+    if (key) { node.addVariable(key); }
+    if (val) { node.addVariable(val); }
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.each(');
+        ret.push(getExpressionString(node, arr, true));
+        ret.push(')');
+        if (key || val) {
+            ret.push('\n');
+            ret.push(INDENT);
+            ret.push('.act(function($C_');
+            if (key) { ret.push(', $C__'); }
+            ret.push(') { ');
+            if (val) {
+                ret.push(val.value);
+                ret.push(' = C_; ');
+            }
+            if (key) {
+                ret.push(key.value);
+                ret.push(' = C__; ');
+            }
+            ret.push('})');
+        }
+        return ret.join('');
+    };
+
+    node.getCodeAfter = function getCodeAfter() {
+        return getEnds(node);
+    };
+
+    processSubcommands(node, cmd);
+
     return 1;
 }
 
