@@ -452,7 +452,7 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
 
 
 ConkittyParser.prototype.readCommandName = function readCommandName() {
-    return this._readName(ConkittyTypes.COMMAND_NAME, /[^A-Z]/, /^(?:ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/);
+    return this._readName(ConkittyTypes.COMMAND_NAME, /[^A-Z]/, /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/);
 };
 
 

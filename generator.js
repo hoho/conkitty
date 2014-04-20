@@ -902,13 +902,13 @@ function processJavascript(parent, cmd) {
     if (cmd.value[0].raw) {
         node.getCodeBefore = function getCodeBefore() {
             var ret = [];
-            ret.push('.act(function ' + getAnonymousFunctionName(node, cmd.value[0]) + '($C__) {\n');
+            ret.push('.act(function ' + getAnonymousFunctionName(node, cmd.value[0]) + '($C_) {\n');
             ret.push(INDENT);
             ret.push('if ((');
-            ret.push('$C__ = ' + getExpressionString(node, cmd.value[0], false));
-            ret.push(') instanceof Node) { this.appendChild($C__); }\n');
+            ret.push('$C_ = ' + getExpressionString(node, cmd.value[0], false));
+            ret.push(') instanceof Node) { this.appendChild($C_); }\n');
             ret.push(INDENT);
-            ret.push('else { $C(this).text($C__, true).end(); };\n');
+            ret.push('else { $C(this).text($C_, true).end(); };\n');
             ret.push('})');
             return ret.join('');
         };
@@ -952,13 +952,24 @@ function processString(parent, cmd) {
 
 function processElement(parent, cmd) {
     var node,
-        error;
+        error,
+        elemVar;
 
     error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.CSS, null)]);
-    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+    if (error) {
+        error = conkittyMatch(cmd.value, [
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.CSS, null),
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'AS'),
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null)
+        ]);
+        if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+        elemVar = cmd.value[2];
+    }
 
     node = new ConkittyGeneratorElement(parent);
     parent.appendChild(node);
+
+    if (elemVar) { node.addVariable(elemVar); }
 
     node.getCodeBefore = function getCodeBefore() {
         var tag,
@@ -1023,6 +1034,15 @@ function processElement(parent, cmd) {
             ret.push(attrs);
         }
         ret.push(')');
+
+        if (elemVar) {
+            ret.push('\n');
+            ret.push(INDENT);
+            ret.push('.act(function() { ');
+            ret.push(getExpressionString(node, elemVar, false));
+            ret.push(' = this; })');
+        }
+
         return ret.join('');
     };
 
