@@ -85,7 +85,9 @@ function ConkittyPatternPart(parts, count) {
     this.charAt = parts[parts.length - 1].charAt;
 
     for (var i = 2; i < arguments.length; i += 2) {
-        this.candidates[arguments[i]] = arguments[i + 1];
+        if (arguments[i]) {
+            this.candidates[arguments[i]] = arguments[i + 1];
+        }
     }
 }
 
@@ -109,12 +111,12 @@ ConkittyPatternPart.prototype.match = function match(part) {
 };
 
 
-function conkittyGetValuePatternPart(cmd, count) {
+function conkittyGetValuePatternPart(cmd, count, noPayload) {
     return new ConkittyPatternPart(cmd.value, count,
         ConkittyTypes.VARIABLE, null,
         ConkittyTypes.JAVASCRIPT, null,
         ConkittyTypes.STRING, null,
-        ConkittyTypes.COMMAND_NAME, 'PAYLOAD'
+        noPayload ? undefined : ConkittyTypes.COMMAND_NAME, noPayload ? undefined : 'PAYLOAD'
     );
 }
 
@@ -317,7 +319,7 @@ function getExpressionString(node, val, wrap) {
 
 function getEnds(node) {
     if (node.ends) {
-        if (node.next || !node.root || !(node instanceof ConkittyGeneratorElement)) {
+        if (node.next || !node.root || !node.parent || !node.parent.ends) {
             return '.end(' + (node.ends > 1 ? node.ends : '') + ')';
         }
 
@@ -546,7 +548,72 @@ function processSubcommands(parent, cmd) {
 }
 
 
-function processAttr() {
+function processAttr(parent, isCommand, cmd) {
+    var node,
+        error = conkittyMatch(
+            cmd.value,
+            isCommand ?
+                [
+                    new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'ATTR'),
+                    conkittyGetValuePatternPart(cmd, 2, true)
+                ]
+                :
+                [
+                    new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.ATTR, null)
+                ]
+        );
+
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+    assertNoChildren(cmd);
+
+    node = new ConkittyGeneratorCommand(parent, false);
+    parent.appendChild(node);
+
+    error = parent;
+    while (error && !(error instanceof ConkittyGeneratorElement)) {
+        error = error.parent;
+    }
+    if (!error) { throw new ConkittyErrors.InconsistentCommand(cmd.value[0]); }
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.attr(');
+        if (isCommand) {
+            ret.push(getExpressionString(node, cmd.value[1], true));
+        } else {
+            ret.push(JSON.stringify(cmd.value[0].name));
+        }
+        ret.push(', ');
+        if (isCommand) {
+            ret.push(getExpressionString(node, cmd.value[2]));
+        } else {
+            var val = cmd.value[0].value;
+            if (val.type === ConkittyTypes.CSS) {
+                // Is is `class` attribute modification.
+                val = getAttrsByCSS(node, val)['class'];
+                switch (cmd.value[0].mode) {
+                    case 'replace':
+                        break;
+
+                    default:
+                        throw new Error('Mode is not implemented');
+                }
+                if (val.plain) {
+                    ret.push(JSON.stringify(val.value));
+                } else {
+                    val.type = ConkittyTypes.JAVASCRIPT;
+                    val.lineAt = cmd.value[0].lineAt;
+                    val.charAt = cmd.value[0].charAt;
+                    ret.push(getExpressionString(node, val, true));
+                }
+            } else {
+                ret.push(getExpressionString(node, val));
+            }
+        }
+        ret.push(')');
+        return ret.join('');
+    };
+
     return 1;
 }
 
@@ -554,7 +621,9 @@ function processAttr() {
 function processCall(parent, startsWithCALL, cmd, except) {
     var pattern,
         error,
-        offset;
+        offset,
+        name,
+        node;
 
     if (startsWithCALL) {
         pattern = [
@@ -582,9 +651,11 @@ function processCall(parent, startsWithCALL, cmd, except) {
             if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
 
             offset++;
+        } else {
+            except = null;
         }
 
-        parent.addCall(cmd.value[1].namespace, cmd.value[1].value);
+        name = cmd.value[1];
     } else {
         pattern = [
             new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.TEMPLATE_NAME, null),
@@ -597,7 +668,42 @@ function processCall(parent, startsWithCALL, cmd, except) {
 
         offset = 1;
 
-        parent.addCall(cmd.value[0].namespace, cmd.value[0].value);
+        name = cmd.value[0];
+    }
+
+    parent.addCall(name.namespace, name.value);
+
+    node = new ConkittyGeneratorCommand(parent, cmd.children.length > 0);
+    parent.appendChild(node);
+    //node.extraIndent = 1;
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.act(function() { $C.tpl[');
+        if (name.type === ConkittyTypes.TEMPLATE_NAME) {
+            ret.push(JSON.stringify(name.value));
+        } else {
+            ret.push(getExpressionString(node, name, false));
+        }
+        ret.push('].call(new ');
+        ret.push(node.getVarName('EnvClass'));
+        ret.push('(this');
+        if (cmd.children.length) {
+            ret.push(', function() {\n');
+            ret.push(INDENT);
+            ret.push('return $C()');
+        } else {
+            ret.push(')); })');
+        }
+        return ret.join('');
+    };
+
+    if (cmd.children.length) {
+        node.getCodeAfter = function getCodeAfter() {
+            var ret = [];
+            ret.push('})); })');
+            return ret.join('');
+        };
     }
 
     return offset;
@@ -741,12 +847,71 @@ function processEach(parent, cmd) {
 }
 
 
-function processMem() {
+function processMem(parent, cmd) {
+    var node,
+        error,
+        expr;
+
+    error = conkittyMatch(cmd.value, [
+        new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'MEM'),
+        conkittyGetValuePatternPart(cmd, 1)
+    ]);
+
+    if (error) {
+        error = conkittyMatch(cmd.value, [
+            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'MEM'),
+            conkittyGetValuePatternPart(cmd, 2)
+        ]);
+
+        if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+        expr = cmd.value[2];
+    }
+
+    assertNoChildren(cmd);
+
+    node = new ConkittyGeneratorCommand(parent, false);
+    parent.appendChild(node);
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.mem(');
+        ret.push(getExpressionString(node, cmd.value[1], true));
+        if (expr) {
+            ret.push(', ');
+            ret.push(getExpressionString(node, expr, true));
+        }
+        ret.push(')');
+        return ret.join('');
+    };
+
     return 1;
 }
 
 
-function processPayload() {
+function processPayload(parent, cmd) {
+    var node,
+        error;
+
+    error = conkittyMatch(cmd.value, [
+        new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'PAYLOAD')
+    ]);
+
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+    assertNoChildren(cmd);
+
+    node = new ConkittyGeneratorCommand(parent, false);
+    parent.appendChild(node);
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.act(function() { ');
+        ret.push(node.getVarName('env'));
+        ret.push('.p(this); })');
+        return ret.join('');
+    };
+
     return 1;
 }
 
@@ -855,13 +1020,127 @@ function processTest(parent, cmd) {
 }
 
 
-function processTrigger() {
+function processTrigger(parent, cmd) {
+    var node,
+        error;
+
+    error = conkittyMatch(cmd.value, [
+        new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'TRIGGER'),
+        conkittyGetValuePatternPart(cmd, '*')
+    ]);
+
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+    assertNoChildren(cmd);
+
+    node = new ConkittyGeneratorCommand(parent, false);
+    parent.appendChild(node);
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [],
+            i;
+        ret.push('.trigger(');
+        for (i = 1; i < cmd.value.length; i++) {
+            if (i > 1) { ret.push(', '); }
+            ret.push(getExpressionString(node, cmd.value[i], true));
+        }
+        ret.push(')');
+        return ret.join('');
+    };
+
     return 1;
 }
 
 
-function processWith() {
-    return 1;
+function processWith(parent, cmd, otherwise) {
+    var node,
+        error,
+        name,
+        hasElse,
+        okNode,
+        elseNode;
+
+    error = conkittyMatch(cmd.value, [
+        new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'WITH'),
+        new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null),
+        conkittyGetValuePatternPart(cmd, 1)
+    ]);
+
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+    if (otherwise && conkittyMatch(otherwise.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'ELSE')])) {
+        otherwise = null;
+    }
+
+    node = new ConkittyGeneratorCommand(parent, false);
+    parent.appendChild(node);
+
+    name = cmd.value[1].value;
+    node.addVariable(cmd.value[1]);
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.act(function() { try { ');
+        ret.push(name);
+        ret.push(' = ');
+        ret.push(getExpressionString(node, cmd.value[2], false));
+        ret.push('; } catch($C_e) { ');
+        ret.push(name);
+        ret.push(' = undefined; }})');
+        return ret.join('');
+    };
+
+    hasElse = otherwise && otherwise.children.length;
+
+    if (cmd.children.length || hasElse) {
+        okNode = new ConkittyGeneratorCommand(parent, false);
+        okNode.extraIndent = 1;
+        okNode.ends = hasElse ? 1 : 2;
+
+        parent.appendChild(okNode);
+
+        okNode.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+            ret.push('.choose()\n');
+            ret.push(INDENT);
+            ret.push('.when(function() { return ');
+            ret.push(name);
+            ret.push(' === undefined || ');
+            ret.push(name);
+            ret.push(' === null; })');
+            return ret.join('');
+        };
+
+        okNode.getCodeAfter = function getCodeAfter() {
+            var ret = [];
+            if (hasElse) { ret.push(INDENT); }
+            ret.push(getEnds(okNode));
+            return ret.join('');
+        };
+
+        processSubcommands(okNode, cmd);
+    }
+
+    if (hasElse) {
+        elseNode = new ConkittyGeneratorCommand(parent);
+        elseNode.ends = 2;
+        elseNode.extraIndent = 1;
+
+        parent.appendChild(elseNode);
+
+        elseNode.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+            ret.push(INDENT);
+            ret.push('.otherwise()');
+            return ret.join('');
+        };
+
+        elseNode.getCodeAfter = function getCodeAfter() { return getEnds(elseNode); };
+
+        processSubcommands(elseNode, otherwise);
+    }
+
+    return otherwise ? 2 : 1;
 }
 
 
@@ -1269,7 +1548,7 @@ function ConkittyGenerator(code) {
         rnd = Math.round(Math.random() * 9999),
         names = {
             env: '$ConkittyEnv' + rnd,
-            envClass: '$ConkittyEnvClass' + rnd,
+            EnvClass: '$ConkittyEnvClass' + rnd,
             getEnv: '$ConkittyGetEnv' + rnd,
             joinClasses: '$ConkittyClasses' + rnd,
             getModClass: '$ConkittyMod' + rnd
@@ -1326,7 +1605,7 @@ ConkittyGenerator.prototype.generateCode = function() {
     if (tpl) {
         var env = fs.readFileSync(__dirname + '/_env.js', {encoding: 'utf8'});
         env = env
-            .replace(/envClass/g, tpl.getVarName('envClass'))
+            .replace(/EnvClass/g, tpl.getVarName('EnvClass'))
             .replace(/getEnv/g, tpl.getVarName('getEnv'))
             .replace(/joinClasses/g, tpl.getVarName('joinClasses'))
             .replace(/getModClass/g, tpl.getVarName('getModClass'));

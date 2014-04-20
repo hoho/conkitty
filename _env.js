@@ -1,10 +1,29 @@
-function envClass(parent, payload) {
+function EnvClass(parent, payload) {
     this.parent = parent;
     this.payload = payload;
 }
 
+EnvClass.prototype.p = function getPayload(parent) {
+    var self = this,
+        ret;
+
+    if (self.payload) {
+        // Trying to get cached payload.
+        if (!((ret = self._p))) {
+            ret = self._p = self.payload();
+        }
+
+        if (!parent) {
+            return ret.firstChild ? ret : undefined;
+        }
+
+        ret && parent.appendChild(ret);
+        delete self._p;
+    }
+};
+
 function getEnv(obj) {
-    return obj instanceof envClass ? obj : {};
+    return obj instanceof EnvClass ? obj : new EnvClass();
 }
 
 function joinClasses() {
