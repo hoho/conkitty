@@ -452,7 +452,30 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
 
 
 ConkittyParser.prototype.readCommandName = function readCommandName() {
-    return this._readName(ConkittyTypes.COMMAND_NAME, /[^A-Z]/, /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/);
+    var ret = this._readName(ConkittyTypes.COMMAND_NAME, /[^A-Z]/, /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|JS|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/);
+    if (ret.value === 'JS') {
+        var line = this.code[this.lineAt],
+            args = [];
+
+        while (this.charAt < line.length && args.length < 3) {
+            this.charAt = skipWhitespaces(line, this.charAt);
+            args.push(this.readVariable());
+        }
+
+        this.charAt = skipWhitespaces(line, this.charAt);
+
+        if (this.charAt < line.length) {
+            throw new ConkittyErrors.UnexpectedSymbol(this);
+        }
+
+        ret.args = args;
+
+        this.lineAt++;
+        this.charAt = 0;
+
+        ret.js = this.readJS(getIndent(line), true);
+    }
+    return ret;
 };
 
 
@@ -962,8 +985,8 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
         throw new ConkittyErrors.JSParseError(
             e.message,
             this,
-            ret.lineAt + e.line - 1 - (indent ? 0 : 1),
-            (indent || e.line > 2 ? -1 : ret.charAt + (ret.raw ? 2 : 0)) + e.col
+            ret.lineAt + e.line - 2,
+            (indent || e.line > 2 ? (indent || 0) - 1 : ret.charAt + (ret.raw ? 2 : 0)) + e.col
         );
     }
 

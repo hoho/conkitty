@@ -61,24 +61,18 @@ module.exports = function(grunt) {
 
     grunt.registerMultiTask('conkitty', function() {
         var Conkitty = require(__dirname + '/conkitty.js'),
-            conkitty = new Conkitty(),
-            tmp = new Conkitty();
-
-        tmp.push(grunt.file.read(__dirname + '/ololo.ctpl'));
-        tmp.generate();
-        console.log(tmp.getTemplatesCode());
+            conkitty;
 
         this.files.forEach(function(f) {
-            var ret = [fs.readFileSync(__dirname + '/_common.js', {encoding: 'utf8'}), '\n'];
-                //name;
+            conkitty = new Conkitty();
 
-            conkitty.push(grunt.file.read(f.src[0]));
+            f.src.map(function(filename) {
+                conkitty.push(grunt.file.read(filename));
+            });
 
-            //for (name in compiled) {
-            //    ret.push('$C.tpl[\'' + name + '\'] = ' + compiled[name] + '\n');
-            //}
+            conkitty.generate();
 
-            grunt.file.write(f.dest, ret.join('\n'));
+            grunt.file.write(f.dest, conkitty.getTemplatesCode());
             grunt.log.writeln('File "' + f.dest + '" created.');
         });
     });

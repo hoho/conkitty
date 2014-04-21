@@ -182,10 +182,21 @@ ConkittyGeneratorNode.prototype.getVarName = function getVarName(name) {
 };
 
 
-function ConkittyGeneratorTemplate(cmd, names) {
+ConkittyGeneratorNode.prototype.getTemplateArgDecls = function getTemplateArgDecls(part) {
+    var ret = (this.root || this).generator.templates[part.namespace || ''];
+    if (ret && ((ret = ret[part.value]))) {
+        return ret.args;
+    } else {
+        throw new ConkittyErrors.UnknownPart(part);
+    }
+};
+
+
+function ConkittyGeneratorTemplate(cmd, names, generator) {
     ConkittyGeneratorTemplate.superclass.constructor.call(this, null, true);
 
     this.names = names;
+    this.generator = generator;
 
     this.args = {};
     this.vars = {};
@@ -233,8 +244,9 @@ ConkittyGeneratorValue.prototype.canAbsorb = function absorb(val) {
 };
 
 
+/* jshint -W098 */
 ConkittyGeneratorValue.prototype.absorb = function absorb(val) {
-    console.log(val);
+    //console.log(val);
 };
 
 
@@ -246,7 +258,7 @@ ConkittyGeneratorAction.prototype.canAbsorb = function absorb(act) {
 
 
 ConkittyGeneratorAction.prototype.absorb = function absorb(act) {
-    console.log(act);
+    //console.log(act);
 };
 
 
@@ -310,16 +322,27 @@ function getExpressionString(node, val, wrap) {
         case ConkittyTypes.STRING:
             return JSON.stringify(evalString(val.value));
 
+        /* jshint -W086 */
+        case ConkittyTypes.COMMAND_NAME:
+            if (val.value === 'PAYLOAD') {
+                ret = [];
+                ret.push('function() { return ');
+                ret.push(node.getVarName('env'));
+                ret.push('.l(); }');
+                return ret.join('');
+            }
+
         default:
+        /* jshint +W086 */
             throw new ConkittyErrors.InconsistentCommand(val);
     }
 
 }
 
 
-function getEnds(node) {
+function getEnds(node, force) {
     if (node.ends) {
-        if (node.next || !node.root || !node.parent || !node.parent.ends) {
+        if (node.next || !node.root || !node.parent || !node.parent.ends || force) {
             return '.end(' + (node.ends > 1 ? node.ends : '') + ')';
         }
 
@@ -618,12 +641,35 @@ function processAttr(parent, isCommand, cmd) {
 }
 
 
+function getCallArguments(part, node, args) {
+    var ret = [],
+        i,
+        argDecls = part ? node.getTemplateArgDecls(part) : null;
+
+    //console.log(argDecls);
+
+    for (i = 0; i < args.length; i++) {
+        if (args[i].type === ConkittyTypes.ARGUMENT_VAL) { break; }
+        ret.push(', ');
+        ret.push(getExpressionString(node, args[i], false));
+    }
+
+    return ret.join('');
+}
+
+
 function processCall(parent, startsWithCALL, cmd, except) {
     var pattern,
         error,
         offset,
         name,
-        node;
+        node,
+        callNode,
+        tryNode,
+        catchNode,
+        payloadNode,
+        exceptNode,
+        args;
 
     if (startsWithCALL) {
         pattern = [
@@ -671,39 +717,134 @@ function processCall(parent, startsWithCALL, cmd, except) {
         name = cmd.value[0];
     }
 
-    parent.addCall(name.namespace, name.value);
+    if (name.type === ConkittyTypes.TEMPLATE_NAME) {
+        parent.addCall(name.namespace, name.value);
+    }
 
-    node = new ConkittyGeneratorCommand(parent, cmd.children.length > 0);
+    node = new ConkittyGeneratorCommand(parent, false);
     parent.appendChild(node);
-    //node.extraIndent = 1;
+
+    if (except) {
+        tryNode = new ConkittyGeneratorCommand(node, false);
+        catchNode = new ConkittyGeneratorCommand(node, false);
+        node.appendChild(tryNode);
+        node.appendChild(catchNode);
+
+        if (except.children.length) {
+            exceptNode = new ConkittyGeneratorCommand(catchNode, true);
+            catchNode.appendChild(exceptNode);
+        }
+    }
+
+    callNode = new ConkittyGeneratorCommand(tryNode || node, false);
+    if (tryNode) { tryNode.appendChild(callNode); }
+    else { node.appendChild(callNode); }
+
+    if (cmd.children.length) {
+        payloadNode = new ConkittyGeneratorCommand(tryNode || node, true);
+        callNode.appendChild(payloadNode);
+    }
+
 
     node.getCodeBefore = function getCodeBefore() {
+        return '.act(function() {';
+    };
+
+    node.getCodeAfter = function getCodeAfter() {
+        return '})';
+    };
+
+    callNode.getCodeBefore = function getCodeBefore() {
         var ret = [];
-        ret.push('.act(function() { $C.tpl[');
+        ret.push('$C.tpl[');
+
         if (name.type === ConkittyTypes.TEMPLATE_NAME) {
             ret.push(JSON.stringify(name.value));
         } else {
             ret.push(getExpressionString(node, name, false));
         }
+
+        args = getCallArguments(
+            name.type === ConkittyTypes.TEMPLATE_NAME ? name : null,
+            callNode,
+            cmd.value.slice(startsWithCALL ? 2 : 1)
+        );
+
         ret.push('].call(new ');
         ret.push(node.getVarName('EnvClass'));
-        ret.push('(this');
-        if (cmd.children.length) {
-            ret.push(', function() {\n');
+        ret.push('(');
+        if (payloadNode) {
+            ret.push('\n');
             ret.push(INDENT);
-            ret.push('return $C()');
+        }
+        ret.push('this');
+        if (payloadNode) {
+            ret.push(',');
         } else {
-            ret.push(')); })');
+            ret.push(')');
+            if (args) { ret.push(args); }
+            ret.push(');');
         }
         return ret.join('');
     };
 
-    if (cmd.children.length) {
-        node.getCodeAfter = function getCodeAfter() {
+    if (payloadNode) {
+        callNode.getCodeAfter = function getCodeAfter() {
             var ret = [];
-            ret.push('})); })');
+            ret.push(')');
+            if (args) { ret.push(args); }
+            ret.push(');');
             return ret.join('');
         };
+
+        payloadNode.extraIndent = 1;
+
+        payloadNode.getCodeBefore = function getCodeBefore() {
+            var ret = [];
+            ret.push('function() {\n');
+            ret.push(INDENT);
+            ret.push('return $C()');
+            return ret.join('');
+        };
+
+        payloadNode.getCodeAfter = function getCodeAfter() {
+            var ret = [];
+            ret.push(INDENT);
+            ret.push(getEnds(payloadNode, true));
+            ret.push(';\n}');
+            return ret.join('');
+        };
+
+        processSubcommands(payloadNode, cmd);
+    }
+
+    if (tryNode) {
+        tryNode.getCodeBefore = function getCodeBefore() {
+            return 'try {';
+        };
+
+        tryNode.getCodeAfter = function getCodeAfter() {
+            return '} catch($C_e) {';
+        };
+
+        catchNode.getCodeAfter = function getCodeAfter() {
+            return '}';
+        };
+    }
+
+    if (exceptNode) {
+        exceptNode.getCodeBefore = function getCodeBefore() {
+            return '$C(this)';
+        };
+
+        exceptNode.getCodeAfter = function getCodeAfter() {
+            var ret = [];
+            ret.push(getEnds(exceptNode, true));
+            ret.push(';');
+            return ret.join('');
+        };
+
+        processSubcommands(exceptNode, except);
     }
 
     return offset;
@@ -826,11 +967,11 @@ function processEach(parent, cmd) {
             ret.push(') { ');
             if (val) {
                 ret.push(val.value);
-                ret.push(' = C_; ');
+                ret.push(' = $C_; ');
             }
             if (key) {
                 ret.push(key.value);
-                ret.push(' = C__; ');
+                ret.push(' = $C__; ');
             }
             ret.push('})');
         }
@@ -842,6 +983,32 @@ function processEach(parent, cmd) {
     };
 
     processSubcommands(node, cmd);
+
+    return 1;
+}
+
+
+function processJS(parent, cmd) {
+    var node;
+
+    node = new ConkittyGeneratorCommand(parent, false);
+    parent.appendChild(node);
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [],
+            args = cmd.value[0].args,
+            i;
+
+        ret.push('.act(function(');
+        for (i = 0; i < args.length; i++) {
+            if (i > 0) { ret.push(', '); }
+            ret.push(args[i].value);
+        }
+        ret.push(') {\n');
+        ret.push(cmd.value[0].js.value);
+        ret.push('\n})');
+        return ret.join('');
+    };
 
     return 1;
 }
@@ -908,7 +1075,7 @@ function processPayload(parent, cmd) {
         var ret = [];
         ret.push('.act(function() { ');
         ret.push(node.getVarName('env'));
-        ret.push('.p(this); })');
+        ret.push('.l(this); })');
         return ret.join('');
     };
 
@@ -1016,6 +1183,8 @@ function processTest(parent, cmd) {
         };
     }
 
+    processSubcommands(node, cmd);
+
     return 1;
 }
 
@@ -1105,9 +1274,9 @@ function processWith(parent, cmd, otherwise) {
             ret.push(INDENT);
             ret.push('.when(function() { return ');
             ret.push(name);
-            ret.push(' === undefined || ');
+            ret.push(' !== undefined && ');
             ret.push(name);
-            ret.push(' === null; })');
+            ret.push(' !== null; })');
             return ret.join('');
         };
 
@@ -1383,6 +1552,10 @@ function process(parent, index, commands) {
                     ret = processEach(parent, cmd, commands[index + 1]);
                     break;
 
+                case 'JS':
+                    ret = processJS(parent, cmd);
+                    break;
+
                 case 'MEM':
                     ret = processMem(parent, cmd);
                     break;
@@ -1445,7 +1618,7 @@ function process(parent, index, commands) {
 }
 
 
-function processTemplate(cmd, names) {
+function processTemplate(cmd, names, generator) {
     var error,
         pattern = [
             new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.TEMPLATE_NAME, null),
@@ -1459,7 +1632,7 @@ function processTemplate(cmd, names) {
     error = conkittyMatch(cmd.value, pattern);
     if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
 
-    tpl = new ConkittyGeneratorTemplate(cmd.value, names);
+    tpl = new ConkittyGeneratorTemplate(cmd.value, names, generator);
 
     subCommands = cmd.children;
 
@@ -1515,7 +1688,7 @@ function processTemplate(cmd, names) {
             ret.push(INDENT);
             ret.push('$C(');
             ret.push(tpl.getVarName('env'));
-            ret.push('.parent)');
+            ret.push('.p)');
 
             return ret.join('');
         };
@@ -1545,17 +1718,16 @@ function ConkittyGenerator(code) {
     var tpls = {},
         tpl,
         ns,
-        rnd = Math.round(Math.random() * 9999),
         names = {
-            env: '$ConkittyEnv' + rnd,
-            EnvClass: '$ConkittyEnvClass' + rnd,
-            getEnv: '$ConkittyGetEnv' + rnd,
-            joinClasses: '$ConkittyClasses' + rnd,
-            getModClass: '$ConkittyMod' + rnd
+            env: '$ConkittyEnv',
+            EnvClass: '$ConkittyEnvClass',
+            getEnv: '$ConkittyGetEnv',
+            joinClasses: '$ConkittyClasses',
+            getModClass: '$ConkittyMod'
         };
 
     for (var i = 0; i < code.length; i++) {
-        tpl = processTemplate(code[i], names);
+        tpl = processTemplate(code[i], names, this);
 
         if (!((ns = tpls[tpl.namespace]))) {
             ns = tpls[tpl.namespace] = {};

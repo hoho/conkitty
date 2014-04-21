@@ -1,7 +1,7 @@
 /*/ Comment test
 */
 page
-    div.class#id[data-ololo=123].ahah[attr1][attr2=""]
+    div.class#id[data-ololo="123"].ahah[attr1][attr2=""]
         "Hello "
         strong
             ('wo' + 'r')
@@ -23,17 +23,17 @@ tpl1 arg1 arg2
                 "hihihi"
         CALL tpl-2 "test"
 
-        SET somevar ({a: {b: arg1}})
-        SET somevar2
+        SET $somevar ({a: {b: arg1}})
+        SET $somevar2
             p
                 "000"
 
-        WITH somevar3 (somevar.a.b.c)
+        WITH $somevar3 (somevar.a.b.c)
             "no"
         ELSE
             "yes"
 
-        WITH somevar4 (somevar.a.b)
+        WITH $somevar4 (somevar.a.b)
             (((somevar2)))
             (somevar4)
             "!!!"
@@ -70,13 +70,13 @@ tpl3 b
 
 eachtest arg
     ul
-        EACH cur (arg)
+        EACH $cur (arg)
             li
-                (cur)
+                $cur
                 "|"
-                EACH cur (cur)
+                EACH $cur (cur)
                     b
-                        (cur)
+                        $cur
                 "|"
 
 
@@ -84,10 +84,10 @@ eachtest2 arg
     EACH (arg)
         "eeee"
     ul
-        EACH value (arg)
+        EACH $value (arg)
             li
                 "|"
-                EACH key val (value)
+                EACH $key $val $value
                     b
                         (key + ' = ' + val)
                 "|"
@@ -96,10 +96,10 @@ eachtest2 arg
 // More comment
 unescaped
     div
-        @aa """s"<>ss"""
+        @aa "s\"<>ss"
         ATTR '''he''' '''ha'''
-    """<p>"hello"</p>"""
-    '''<a>'world'</a>'''
+    """<p>\"hello\"</p>"""
+    '''<a>\'world\'</a>'''
     ((('<div>' + 'indeed' + '</div>')))
 
 
@@ -126,8 +126,12 @@ mem-test2
 
 
 act-test
-    ACT (if (true) { document.actTest = 'Yo!'; })
-    ACT (function() { document.actTest2 = 'Hahaha'; })
+    JS
+        if (true) { document.actTest = 'Yo!'; }
+    div
+        EACH ({piu: 'boom'})
+            JS $item $index $obj
+                document.actTest2 = 'Hahaha' + item + index + (obj && obj.piu);
 
 
 trigger-test
@@ -141,12 +145,13 @@ trigger-test
 
 
 with-test e
-    WITH details (e.ololo.piupiu)
-        (details)
+    WITH $details (e.ololo.piupiu)
+        $details
 
 
 lazy-payload-test
-    ACT (window._lazyPayload = 1)
+    JS
+        window._lazyPayload = 1
 
     h1
         CALL lazy-payload-inner "test1"
@@ -159,7 +164,8 @@ lazy-payload-test
             em
                 (window._lazyPayload++)
 
-    ACT (delete window._lazyPayload)
+    JS
+        delete window._lazyPayload
 
 
 lazy-payload-inner prefix
@@ -181,18 +187,18 @@ safe-call-test
     CALL safe-call-test-inner (true)
         span
             "payload"
-    ELSE
+    EXCEPT
         em
             "error1"
     CALL safe-call-test-inner (false)
-    ELSE
+    EXCEPT
         strong
             "error2"
 
     CALL ('ololo' + 'piu')
 
 
-    ELSE
+    EXCEPT
         div
             "error3"
 
@@ -200,7 +206,8 @@ safe-call-test
 safe-call-test-inner error
     CHOOSE
         WHEN (error)
-            ACT (throw new Error('No pasaran'))
+            JS
+                throw new Error('No pasaran')
         OTHERWISE
             p
                 "ok"

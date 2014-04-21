@@ -1,7 +1,6 @@
 $C.define('callTemplate', function(item, index, arr, args) {
     var name = args[0];
-    args = Array.prototype.slice.call(args, 0);
-    args[0] = {parent: this};
+    args = Array.prototype.slice.call(args, 1);
     $C.tpl[name].apply(this, args);
 });
 
@@ -207,7 +206,7 @@ test('Dynamic call name test', function() {
 
 test('Memorize test', function() {
     var container = document.getElementById('container'),
-        ret = $C.tpl['mem-test']({parent: container});
+        ret = $C.tpl['mem-test'].call(container);
 
     deepEqual(ret, undefined);
 
@@ -226,7 +225,7 @@ test('Memorize test', function() {
 
     $C.mem = {m0: 'ppppp', mmm: 'uuuuu'};
 
-    ret = $C.tpl['mem-test']({parent: container});
+    ret = $C.tpl['mem-test'].call(container);
 
     deepEqual(ret, undefined);
 
@@ -252,7 +251,7 @@ test('ACT test', function() {
     $C().callTemplate('act-test').end();
 
     deepEqual(document.actTest, 'Yo!', 'ACT worked');
-    deepEqual(document.actTest2, 'Hahaha', 'ACT worked');
+    deepEqual(document.actTest2, 'Hahahaboompiuboom', 'ACT worked');
 
     document.actTest = undefined;
     document.actTest2 = undefined;
@@ -266,17 +265,19 @@ test('TRIGGER test', function() {
         'span|["span2"]'
     ];
 
-    $C.define('trigger', function(item, index, arr, args) {
-        var ret = this.tagName.toLowerCase() + '|' + JSON.stringify(Array.prototype.slice.call(args, 0));
+    $C.on(function() {
+        var ret = this.tagName.toLowerCase() + '|' + JSON.stringify(Array.prototype.slice.call(arguments, 0));
         deepEqual(ret, expected.shift());
     });
 
     $C().callTemplate('trigger-test').end();
+
+    $C.off();
 });
 
 test('WITH test', function() {
     var container = document.getElementById('container'),
-        ret = $C.tpl['with-test']({parent: container}, {ololo: {piupiu: "yo!"}});
+        ret = $C.tpl['with-test'].call(container, {ololo: {piupiu: "yo!"}});
 
     deepEqual(ret, undefined);
     domEqual(domToArray(container), ["yo!"]);
