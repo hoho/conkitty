@@ -10,7 +10,7 @@ page
 
 
 /* Another comment test */
-tpl1 arg1 arg2
+tpl1 $arg1 $arg2
     div
         ATTR ('a' + 1) "bebe"
 
@@ -42,7 +42,7 @@ tpl1 arg1 arg2
 /* Mulitline
    comment
    test */
-tpl-2 a
+tpl-2 $a
     h1
         (a)
     TEST PAYLOAD
@@ -57,7 +57,7 @@ tpl-2 a
             "nothing"
 
 
-tpl3 b
+tpl3 $b
     CHOOSE
         WHEN (b)
             "bbbbb"
@@ -68,7 +68,7 @@ tpl3 b
             PAYLOAD
 
 
-eachtest arg
+eachtest $arg
     ul
         EACH $cur (arg)
             li
@@ -80,7 +80,7 @@ eachtest arg
                 "|"
 
 
-eachtest2 arg
+eachtest2 $arg
     EACH (arg)
         "eeee"
     ul
@@ -108,7 +108,7 @@ dynamic-call
         "ooooo"
 
 
-dynamic-call-call arg
+dynamic-call-call $arg
     PAYLOAD
     (arg + arg + arg)
 
@@ -144,7 +144,7 @@ trigger-test
             TRIGGER "span2"
 
 
-with-test e
+with-test $e
     WITH $details (e.ololo.piupiu)
         $details
 
@@ -168,7 +168,7 @@ lazy-payload-test
         delete window._lazyPayload
 
 
-lazy-payload-inner prefix
+lazy-payload-inner $prefix
     TEST PAYLOAD
         TEST PAYLOAD
             p
@@ -203,7 +203,7 @@ safe-call-test
             "error3"
 
 
-safe-call-test-inner error
+safe-call-test-inner $error
     CHOOSE
         WHEN (error)
             JS
@@ -226,7 +226,7 @@ default-args-test
         CALL default-args-test-inner arg2["222"]
 
 
-default-args-test-inner arg1 arg2["hello"] arg3 arg4[({a: 'b'})]
+default-args-test-inner $arg1 $arg2["hello"] $arg3 $arg4[({a: 'b'})]
     span
         $arg1
     em

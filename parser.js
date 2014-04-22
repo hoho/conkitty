@@ -112,7 +112,8 @@ function getIndent(line) {
 }
 
 
-function ConkittyParser(code) {
+function ConkittyParser(code, base) {
+    this.base = base;
     this.src = code.split(/\n\r|\r\n|\r|\n/);
     this.code = code.split(/\n\r|\r\n|\r|\n/);
     clearComments(this.code);
@@ -192,7 +193,9 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
 
         switch (this.code[this.lineAt][this.charAt]) {
             case '$':
-                if (classAttrValue || attrValue) {
+                if (argumentsDecl) {
+                    val.push(this.readArgument(true));
+                } else if (classAttrValue || attrValue) {
                     val[val.length - 1].mode = 'replace';
                     val[val.length - 1].value = this.readVariable();
                 } else {
@@ -294,7 +297,6 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
 
             default:
                 if (argumentsDecl) {
-                    val.push(this.readArgument(true));
                 } else if (argumentsVal) {
                     val.push(this.readArgument(false));
                 } else if (!attrValue) {
@@ -399,7 +401,8 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
     var ret = this._readName(
         isDecl ? ConkittyTypes.ARGUMENT_DECL : ConkittyTypes.ARGUMENT_VAL,
         variableStopExpr,
-        variableCheckExpr
+        variableCheckExpr,
+        isDecl ? 1 : 0
     );
 
     ret.name = ret.value;
@@ -496,6 +499,8 @@ ConkittyParser.prototype.readInclude = function readInclude() {
     {
         throw new ConkittyErrors.UnexpectedSymbol(this);
     }
+
+    console.log(this.base);
 
     var ret = this.readString(true);
     ret.type = ConkittyTypes.INCLUDE;
