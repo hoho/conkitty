@@ -322,3 +322,44 @@ test('Safe CALL test', function() {
 
     container.innerHTML = '';
 });
+
+test('Default argument values and named arguments test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('default-args-test').end();
+
+    domEqual(domToArray(container), [
+        {name: 'h1', children: [
+            {name: 'span', children: []},
+            {name: 'em', children: ["hello"]},
+            {name: 'strong', children: []},
+            {name: 'u', children: ['{"a":"b"}']}
+        ]},
+        {name: 'h2', children: [
+            {name: 'span', children: []},
+            {name: 'em', children: ["hello"]},
+            {name: 'strong', children: ["3"]},
+            {name: 'u', children: ['"999"']}
+        ]},
+        {name: 'h3', children: [
+            {name: 'span', children: ["1"]},
+            {name: 'em', children: ["2"]},
+            {name: 'strong', children: ["3"]},
+            {name: 'u', children: ['"4"']}
+        ]},
+        {name: 'h4', children: [
+            {name: 'span', children: ["11"]},
+            {name: 'em', children: ["hello"]},
+            {name: 'strong', children: []},
+            {name: 'u', children: ['"22"']}
+        ]},
+        {name: 'h5', children: [
+            {name: 'span', children: []},
+            {name: 'em', children: ["222"]},
+            {name: 'strong', children: []},
+            {name: 'u', children: ['{"a":"b"}']}
+        ]}
+    ]);
+
+    container.innerHTML = '';
+});

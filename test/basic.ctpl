@@ -211,3 +211,27 @@ safe-call-test-inner error
         OTHERWISE
             p
                 "ok"
+
+
+default-args-test
+    h1
+        CALL default-args-test-inner
+    h2
+        CALL default-args-test-inner arg4["999"] arg3[(1 + 2)]
+    h3
+        CALL default-args-test-inner "1" "2" "3" "4"
+    h4
+        CALL default-args-test-inner "11" arg4["22"]
+    h5
+        CALL default-args-test-inner arg2["222"]
+
+
+default-args-test-inner arg1 arg2["hello"] arg3 arg4[({a: 'b'})]
+    span
+        $arg1
+    em
+        $arg2
+    strong
+        $arg3
+    u
+        (JSON.stringify(arg4))

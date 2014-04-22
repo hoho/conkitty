@@ -1,7 +1,8 @@
 module.exports = function(grunt) {
     'use strict';
 
-    var fs = require('fs');
+    var fs = require('fs'),
+        path = require('path');
 
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
@@ -33,7 +34,10 @@ module.exports = function(grunt) {
         conkitty: {
             test: {
                 files: {
-                    'tmp/test.ctpl.js': ['test/test.ctpl']
+                    'tmp/test.ctpl.js': [
+                        'test/basic.ctpl',
+                        'test/selectors.ctpl'
+                    ]
                 }
             }
         },
@@ -67,7 +71,7 @@ module.exports = function(grunt) {
             conkitty = new Conkitty();
 
             f.src.map(function(filename) {
-                conkitty.push(grunt.file.read(filename));
+                conkitty.push(grunt.file.read(filename), path.resolve(path.dirname(filename)));
             });
 
             conkitty.generate();
