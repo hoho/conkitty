@@ -71,6 +71,9 @@ function conkittyMatch(value, pattern) {
             }
             return;
 
+        case 'shift':
+            return conkittyMatch(value, pattern.slice(1));
+
         default:
             return value[0];
     }
@@ -96,7 +99,7 @@ ConkittyPatternPart.prototype.match = function match(part) {
     var m = this.candidates[part.type],
         ret;
 
-    if (m === null || (m && m === part.value)) {
+    if (m === null || (m && (m === part.value))) {
         if (this.count === '*') {
             ret = 'both';
         } else {
@@ -104,7 +107,11 @@ ConkittyPatternPart.prototype.match = function match(part) {
             ret = this.count > 0 ? 'stay' : 'next';
         }
     } else {
-        ret = false;
+        if (this.count === '*') {
+            ret = 'shift';
+        } else {
+            ret = false;
+        }
     }
 
     return ret;
