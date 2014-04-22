@@ -644,14 +644,35 @@ function processAttr(parent, isCommand, cmd) {
 function getCallArguments(part, node, args) {
     var ret = [],
         i,
-        argDecls = part ? node.getTemplateArgDecls(part) : null;
-
-    //console.log(argDecls);
+        j,
+        argNames = part ? Object.keys(node.getTemplateArgDecls(part)) : [],
+        kwArgs = [];
 
     for (i = 0; i < args.length; i++) {
         if (args[i].type === ConkittyTypes.ARGUMENT_VAL) { break; }
+        argNames.shift();
         ret.push(', ');
         ret.push(getExpressionString(node, args[i], false));
+    }
+
+    for (i; i < args.length; i++) {
+        if (args[i].type !== ConkittyTypes.ARGUMENT_VAL ||
+            ((j = argNames.indexOf(args[i].name))) < 0)
+        {
+            throw new ConkittyErrors.InconsistentCommand(args[i]);
+        }
+
+        kwArgs[j] = args[i].value;
+        argNames[j] = null;
+    }
+
+    for (i = 0; i < kwArgs.length; i++) {
+        ret.push(', ');
+        if (kwArgs[i] === undefined) {
+            ret.push('undefined');
+        } else {
+            ret.push(getExpressionString(node, kwArgs[i], false));
+        }
     }
 
     return ret.join('');
@@ -1671,6 +1692,20 @@ function processTemplate(cmd, names, generator) {
             ret.push(Object.keys(tpl.args).join(', '));
             ret.push(') {');
             ret.push('\n');
+
+            for (var arg in tpl.args) {
+                if (tpl.args[arg]) {
+                    ret.push(INDENT);
+                    ret.push('(');
+                    ret.push(arg);
+                    ret.push(' === undefined) && (');
+                    ret.push(arg);
+                    ret.push(' = ');
+                    ret.push(tpl.args[arg]);
+                    ret.push(');\n');
+                }
+            }
+
             ret.push(INDENT);
             ret.push('var ');
             ret.push(tpl.getVarName('env'));
@@ -1702,7 +1737,7 @@ function processTemplate(cmd, names, generator) {
                 ret.push(end);
                 ret.push(';\n');
             }
-            ret.push('};');
+            ret.push('};\n');
 
             return ret.join('');
         };
