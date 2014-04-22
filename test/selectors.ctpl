@@ -1,0 +1,21 @@
+selectors-test
+    h1
+        CALL selectors-test-inner (false) (false) (false)
+    h2
+        ::selectors-test-inner (false) (false) (true)
+    h3
+        CALL selectors-test-inner (false) (true) (false)
+    h4
+        CALL selectors-test-inner (false) (true) (true)
+    h5
+        CALL selectors-test-inner (true) (false) (false)
+    h6
+        CALL selectors-test-inner (true) (false) (true)
+    div
+        CALL selectors-test-inner (true) (true) (false)
+    p
+        CALL selectors-test-inner (true) (true) (true)
+
+
+selectors-test-inner cond1 cond2 cond3
+    span.something#very[good="indeed"]:if($cond1, .ccond1-true):if((cond2), #icond2-true.ccond2-true:if($cond3, tcond3-true, [acond3-false=('ye' + 'p!')]), .ccond2-false[acond2-false="ololo"])

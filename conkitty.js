@@ -16,8 +16,9 @@ function Conkitty() {
 }
 
 
-Conkitty.prototype.push = function push(code) {
-    code = new ConkittyParser(code);
+Conkitty.prototype.push = function push(code, base) {
+    if (!code) { return; }
+    code = new ConkittyParser(code, base);
     this.code = this.code.concat(code.readBlock(0));
 };
 
