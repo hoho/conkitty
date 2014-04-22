@@ -295,6 +295,10 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                 val.push(this.readInclude());
                 break;
 
+            case '^':
+                val.push(this.readAppender());
+                break;
+
             default:
                 if (argumentsDecl) {
                 } else if (argumentsVal) {
@@ -510,6 +514,28 @@ ConkittyParser.prototype.readInclude = function readInclude() {
 
     if (this.charAt !== this.code[this.lineAt].length) {
         throw new ConkittyErrors.UnexpectedSymbol(this);
+    }
+
+    return ret;
+};
+
+
+ConkittyParser.prototype.readAppender = function readAppender() {
+    var ret = new ConkittyCommandPart(ConkittyTypes.NODE_APPENDER, this);
+
+    this.charAt++;
+
+    switch (this.code[this.lineAt][this.charAt]) {
+        case '$':
+            ret.value = this.readVariable();
+            break;
+
+        case '(':
+            ret.value = this.readJS(undefined, true);
+            break;
+
+        default:
+            throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
     return ret;

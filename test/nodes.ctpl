@@ -1,0 +1,12 @@
+nodes-test
+    div.some-class AS $d
+        "Hello"
+
+    ^$d
+        " "
+        span
+            "World"
+
+    ^(d)
+        @aaa "bbb"
+        ATTR ('ccc') ('dd' + 'd')

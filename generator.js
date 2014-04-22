@@ -1552,6 +1552,41 @@ function processInclude(parent, cmd) {
 }
 
 
+function processAppender(parent, cmd) {
+    var error = conkittyMatch(cmd.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.NODE_APPENDER, null)]),
+        node;
+
+    if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+
+    node = new ConkittyGeneratorElement(parent);
+    parent.appendChild(node);
+
+    node.extraIndent = 1;
+
+    node.getCodeBefore = function getCodeBefore() {
+        var ret = [];
+        ret.push('.act(function() {\n');
+        ret.push(INDENT);
+        ret.push('$C(');
+        ret.push(getExpressionString(node, cmd.value[0].value, false));
+        ret.push(', false, true)');
+        return ret.join('');
+    };
+
+    node.getCodeAfter = function getCodeAfter() {
+        var ret = [];
+        ret.push(INDENT);
+        ret.push(getEnds(node, true));
+        ret.push(';\n})');
+        return ret.join('');
+    };
+
+    processSubcommands(node, cmd);
+
+    return 1;
+}
+
+
 /* exported process */
 function process(parent, index, commands) {
     var cmd = commands[index],
@@ -1636,6 +1671,10 @@ function process(parent, index, commands) {
 
         case ConkittyTypes.INCLUDE:
             ret = processInclude(parent, cmd);
+            break;
+
+        case ConkittyTypes.NODE_APPENDER:
+            ret = processAppender(parent, cmd);
             break;
 
         default:

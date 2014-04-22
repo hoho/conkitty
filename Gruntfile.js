@@ -36,7 +36,8 @@ module.exports = function(grunt) {
                 files: {
                     'tmp/test.ctpl.js': [
                         'test/basic.ctpl',
-                        'test/selectors.ctpl'
+                        'test/selectors.ctpl',
+                        'test/nodes.ctpl'
                     ]
                 }
             }
