@@ -1,6 +1,8 @@
 Conkitty Template Engine
 ========================
 
+### WARNING! This README is about 0.4.x versions. New 0.5.x README is coming soon.
+
 Conkitty templates are being compiled to
 [concat.js](https://github.com/hoho/concat.js) chains.
 

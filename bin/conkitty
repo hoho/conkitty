@@ -3,11 +3,6 @@
 'use strict';
 
 
-function list(val) {
-    return val.split(',');
-}
-
-
 try {
     var Conkitty = require('../conkitty'),
         fs = require('fs'),
@@ -15,7 +10,6 @@ try {
         conkittyPath = path.dirname(require.resolve('../conkitty')),
         program = require('commander'),
 
-        src = [],
         tplFilename,
         commonFilename,
         depsFilename;
