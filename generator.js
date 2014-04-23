@@ -685,21 +685,22 @@ function processAttr(parent, isCommand, cmd) {
 }
 
 
-function getCallArguments(part, node, args) {
+function getCallArguments(part, node, args, withAS) {
     var ret = [],
         i,
         j,
         argNames = part ? Object.keys(node.getTemplateArgDecls(part)) : [],
-        kwArgs = [];
+        kwArgs = [],
+        maxi = args.length - (withAS ? 2 : 0);
 
-    for (i = 0; i < args.length; i++) {
+    for (i = 0; i < maxi; i++) {
         if (args[i].type === ConkittyTypes.ARGUMENT_VAL) { break; }
         argNames.shift();
         ret.push(', ');
         ret.push(getExpressionString(node, args[i], false));
     }
 
-    for (i; i < args.length; i++) {
+    for (i; i < maxi; i++) {
         if (args[i].type !== ConkittyTypes.ARGUMENT_VAL ||
             ((j = argNames.indexOf(args[i].name))) < 0)
         {
@@ -723,9 +724,34 @@ function getCallArguments(part, node, args) {
 }
 
 
+function getCallPattern(cmd, startsWithCALL, withAS) {
+    var ret = [];
+
+    if (startsWithCALL) {
+        ret.push(new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'CALL'));
+        ret.push(new ConkittyPatternPart(cmd.value, 1,
+            ConkittyTypes.TEMPLATE_NAME, null,
+            ConkittyTypes.JAVASCRIPT, null,
+            ConkittyTypes.VARIABLE, null
+        ));
+    } else {
+        ret.push(new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.TEMPLATE_NAME, null));
+    }
+
+    ret.push(conkittyGetValuePatternPart(cmd, '*'));
+    ret.push(new ConkittyPatternPart(cmd.value, '*', ConkittyTypes.ARGUMENT_VAL, null));
+
+    if (withAS) {
+        ret.push(new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'AS'));
+        ret.push(new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.VARIABLE, null));
+    }
+
+    return ret;
+}
+
+
 function processCall(parent, startsWithCALL, cmd, except) {
-    var pattern,
-        error,
+    var error,
         offset,
         name,
         node,
@@ -734,31 +760,23 @@ function processCall(parent, startsWithCALL, cmd, except) {
         catchNode,
         payloadNode,
         exceptNode,
-        args;
+        args,
+        asVar;
 
     if (startsWithCALL) {
-        pattern = [
-            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'CALL'),
-            new ConkittyPatternPart(cmd.value, 1,
-                ConkittyTypes.TEMPLATE_NAME, null,
-                ConkittyTypes.JAVASCRIPT, null,
-                ConkittyTypes.VARIABLE, null
-            ),
-            conkittyGetValuePatternPart(cmd, '*'),
-            new ConkittyPatternPart(cmd.value, '*', ConkittyTypes.ARGUMENT_VAL, null)
-        ];
-
-        error = conkittyMatch(cmd.value, pattern);
-        if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+        error = conkittyMatch(cmd.value, getCallPattern(cmd, true, false));
+        if (error) {
+            error = conkittyMatch(cmd.value, getCallPattern(cmd, true, true));
+            if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+            asVar = cmd.value[cmd.value.length - 1];
+        }
 
         offset = 1;
         if (except &&
             except.value[0].type === ConkittyTypes.COMMAND_NAME &&
             except.value[0].value === 'EXCEPT')
         {
-            pattern = [new ConkittyPatternPart(except.value, 1, ConkittyTypes.COMMAND_NAME, 'EXCEPT')];
-
-            error = conkittyMatch(except.value, pattern);
+            error = conkittyMatch(except.value, [new ConkittyPatternPart(except.value, 1, ConkittyTypes.COMMAND_NAME, 'EXCEPT')]);
             if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
 
             offset++;
@@ -768,14 +786,12 @@ function processCall(parent, startsWithCALL, cmd, except) {
 
         name = cmd.value[1];
     } else {
-        pattern = [
-            new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.TEMPLATE_NAME, null),
-            conkittyGetValuePatternPart(cmd, '*'),
-            new ConkittyPatternPart(cmd.value, '*', ConkittyTypes.ARGUMENT_VAL, null)
-        ];
-
-        error = conkittyMatch(cmd.value, pattern);
-        if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+        error = conkittyMatch(cmd.value, getCallPattern(cmd, false, false));
+        if (error) {
+            error = conkittyMatch(cmd.value, getCallPattern(cmd, false, true));
+            if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
+            asVar = cmd.value[cmd.value.length - 1];
+        }
 
         offset = 1;
 
@@ -819,6 +835,10 @@ function processCall(parent, startsWithCALL, cmd, except) {
         return '})';
     };
 
+    if (asVar) {
+        callNode.addVariable(asVar);
+    }
+
     callNode.getCodeBefore = function getCodeBefore() {
         var ret = [];
 
@@ -827,10 +847,14 @@ function processCall(parent, startsWithCALL, cmd, except) {
             ret.push(' = ');
         }
 
+        if (asVar) {
+            ret.push(asVar.value);
+            ret.push(' = ');
+        }
+
         ret.push('$C.');
         if (name.namespace) { ret.push('_'); }
         ret.push('tpl[');
-
 
         if (name.type === ConkittyTypes.TEMPLATE_NAME) {
             ret.push(JSON.stringify((name.namespace ? name.namespace + '::' : '') + name.value));
@@ -841,7 +865,8 @@ function processCall(parent, startsWithCALL, cmd, except) {
         args = getCallArguments(
             name.type === ConkittyTypes.TEMPLATE_NAME ? name : null,
             callNode,
-            cmd.value.slice(startsWithCALL ? 2 : 1)
+            cmd.value.slice(startsWithCALL ? 2 : 1),
+            asVar
         );
 
         ret.push('].call(new ');

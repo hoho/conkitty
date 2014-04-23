@@ -20,6 +20,18 @@ ret-var-test
     "yo"
 
 
+ret-var-test2
+    ::ret-test-inner "test9" AS $tmp1
+    "yo"
+    =$tmp1
+
+
+ret-var-test3
+    "yo"
+    CALL ret-test-inner "test10" AS $tmp2
+    =$tmp2
+
+
 ret-expr-test
     "yo"
     =('test' + '5')

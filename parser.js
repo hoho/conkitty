@@ -313,6 +313,9 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                 if (argumentsDecl) {
                 } else if (argumentsVal) {
                     val.push(this.readArgument(false));
+                    if (val[val.length - 1].type === ConkittyTypes.COMMAND_NAME) {
+                        argumentsVal = false;
+                    }
                 } else if (!attrValue) {
                     if (templateName) {
                         val.push(this.readTemplateName());
@@ -459,6 +462,9 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
         if (ret.name === 'PAYLOAD') {
             ret = new ConkittyCommandPart(ConkittyTypes.COMMAND_NAME, this, ret.lineAt, ret.charAt);
             ret.value = 'PAYLOAD';
+        } else if (ret.name === 'AS') {
+            ret = new ConkittyCommandPart(ConkittyTypes.COMMAND_NAME, this, ret.lineAt, ret.charAt);
+            ret.value = 'AS';
         } else {
             throw new ConkittyErrors.IncompletePart(ret);
         }

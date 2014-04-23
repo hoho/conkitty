@@ -22,6 +22,16 @@ test('Ret test', function() {
     deepEqual(domToArray(container), ['test4', 'yo']);
     container.innerHTML = '';
 
+    ret = $C.tpl['ret-var-test2'].call(container);
+    deepEqual(ret, 'test9');
+    deepEqual(domToArray(container), ['ololo', 'test9', 'yo', 'test9']);
+    container.innerHTML = '';
+
+    ret = $C.tpl['ret-var-test3'].call(container);
+    deepEqual(ret, 'test10');
+    deepEqual(domToArray(container), ['yo', 'ololo', 'test10', 'test10']);
+    container.innerHTML = '';
+
     ret = $C.tpl['ret-expr-test'].call(container);
     deepEqual(ret, 'test5');
     deepEqual(domToArray(container), ['yo', 'test5']);
