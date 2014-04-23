@@ -524,7 +524,7 @@ ConkittyParser.prototype.readInclude = function readInclude() {
     ret.type = ConkittyTypes.INCLUDE;
     ret.charAt = charAt;
 
-    ret.value = path.normalize(path.join(this.base, utils.evalString(ret.value)));
+    ret.value = path.normalize(path.join(this.base || '.', utils.evalString(ret.value)));
 
     this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
 

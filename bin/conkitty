@@ -2,41 +2,67 @@
 
 'use strict';
 
+
+function list(val) {
+    return val.split(',');
+}
+
+
 try {
-    var conkittyCompile = require('../conkitty.js'),
+    var Conkitty = require('../conkitty'),
         fs = require('fs'),
-        filenames = process.argv.slice(2);
+        path = require('path'),
+        conkittyPath = path.dirname(require.resolve('../conkitty')),
+        program = require('commander'),
 
-    if (filenames.length) {
-        var compiled = {},
-            tmp,
-            code,
-            tplName,
-            hasTemplates;
+        src = [],
+        tplFilename,
+        commonFilename,
+        depsFilename;
 
-        for (var i = 0; i < filenames.length; i++) {
-            code = fs.readFileSync(filenames[i], 'utf8');
 
-            tmp = conkittyCompile(code);
+    program
+        .version(JSON.parse(fs.readFileSync(conkittyPath + '/package.json', {encoding: 'utf8'})).version)
+        .usage('[options] <filename ...>')
+        .option('-c, --common [filename]', 'File for common code')
+        .option('-t, --templates [filename]', 'File for compiled templates code')
+        .option('-d, --deps [filename]', 'File for dependencies declared inside templates')
+        .parse(process.argv);
 
-            for (tplName in tmp) {
-                compiled[tplName] = tmp[tplName];
-                hasTemplates = true;
-            }
-        }
+    tplFilename = program.templates;
+    commonFilename = program.common;
+    depsFilename = program.deps;
 
-        if (!hasTemplates) {
-            throw new Error('No templates compiled');
-        }
-
-        console.log(fs.readFileSync(__dirname + '/../_common.js', {encoding: 'utf8'}));
-
-        for (tplName in compiled) {
-            console.log("$C.tpl['" + tplName + "'] = " + compiled[tplName] + '\n');
-        }
-
+    if (!program.args.length) {
+        console.log('No template files specified.');
+    } else if (!tplFilename && !commonFilename && !depsFilename) {
+        console.log('No output options specified.');
     } else {
-        throw new Error('Filename is not supplied');
+        var conkitty = new Conkitty(),
+            i,
+            filename;
+
+        for (i = 0; i < program.args.length; i++) {
+            filename = path.resolve(program.args[i]);
+            conkitty.push(fs.readFileSync(filename, {encoding: 'utf8'}), path.dirname(filename));
+        }
+
+        conkitty.generate();
+
+        if (commonFilename) {
+            fs.writeFileSync(commonFilename, conkitty.getCommonCode());
+            console.log('File "' + commonFilename + '" created.');
+        }
+
+        if (tplFilename) {
+            fs.writeFileSync(tplFilename, conkitty.getTemplatesCode());
+            console.log('File "' + tplFilename + '" created.');
+        }
+
+        if (depsFilename) {
+            fs.writeFileSync(depsFilename, conkitty.getIncludes().join('\n'));
+            console.log('File "' + depsFilename + '" created.');
+        }
     }
 } catch(e) {
     console.log(e.message);
