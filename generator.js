@@ -156,8 +156,8 @@ ConkittyGeneratorNode.prototype.addCall = function addCall(namespace, name) {
 };
 
 
-ConkittyGeneratorNode.prototype.addInclude = function addInclude(filename) {
-    (this.root || this).includes.push(filename);
+ConkittyGeneratorNode.prototype.addInclude = function addInclude(part) {
+    (this.root || this).includes[part.value] = part;
 };
 
 
@@ -212,7 +212,7 @@ function ConkittyGeneratorTemplate(cmd, names, generator) {
     this.name = cmd[0].value;
 
     this.calls = {};
-    this.includes = [];
+    this.includes = {};
 }
 
 
@@ -278,13 +278,6 @@ function assertNoChildren(cmd) {
     if (cmd.children.length) {
         throw new ConkittyErrors.InconsistentCommand(cmd.children[0].value[0]);
     }
-}
-
-
-function evalString(val) {
-    /* jshint -W040 */
-    return eval(val);
-    /* jshint +W040 */
 }
 
 
@@ -365,7 +358,7 @@ function getExpressionString(node, val, wrap, retMaker) {
                 ret.push(' = ');
             }
 
-            ret.push(JSON.stringify(evalString(val.value)));
+            ret.push(JSON.stringify(utils.evalString(val.value)));
 
             if (retMaker) {
                 ret.push(')');
@@ -462,7 +455,7 @@ function getAttrsByCSS(node, css) {
                     if (cur.value) {
                         switch (cur.value.type) {
                             case ConkittyTypes.STRING:
-                                curRet[i] = {plain: true, value: evalString(cur.value.value)};
+                                curRet[i] = {plain: true, value: utils.evalString(cur.value.value)};
                                 break;
 
                             case ConkittyTypes.JAVASCRIPT:
@@ -500,7 +493,7 @@ function getAttrsByCSS(node, css) {
                         if (cur.value) {
                             switch (cur.value.type) {
                                 case ConkittyTypes.STRING:
-                                    classes.push(cur.name + '_' + evalString(cur.value.value));
+                                    classes.push(cur.name + '_' + utils.evalString(cur.value.value));
                                     break;
 
                                 case ConkittyTypes.JAVASCRIPT:
@@ -834,10 +827,13 @@ function processCall(parent, startsWithCALL, cmd, except) {
             ret.push(' = ');
         }
 
-        ret.push('$C.tpl[');
+        ret.push('$C.');
+        if (name.namespace) { ret.push('_'); }
+        ret.push('tpl[');
+
 
         if (name.type === ConkittyTypes.TEMPLATE_NAME) {
-            ret.push(JSON.stringify(name.value));
+            ret.push(JSON.stringify((name.namespace ? name.namespace + '::' : '') + name.value));
         } else {
             ret.push(getExpressionString(node, name, false));
         }
@@ -1620,7 +1616,7 @@ function processInclude(parent, cmd) {
 
     assertNoChildren(cmd);
 
-    parent.addInclude(evalString(cmd.value[0].value));
+    parent.addInclude(cmd.value[0]);
 
     return 1;
 }
@@ -1967,31 +1963,102 @@ function generateCode(node, ret, level) {
 }
 
 
+function getCalledNSTemplates(tpls, tpl, ret, includes) {
+    var calls = tpl.calls,
+        callsns,
+        retns,
+        ns,
+        name,
+        i,
+        incs,
+        inc;
+
+    for (ns in calls) {
+        callsns = calls[ns];
+
+        if (!((retns = ret[ns]))) {
+            retns = ret[ns] = {};
+            tpl = retns[''] = tpls[ns][''];
+            if (tpl) {
+                incs = Object.keys(tpl.includes);
+                for (i = 0; i < incs.length; i++) {
+                    inc = incs[i];
+                    if (!(inc in includes)) {
+                        includes[inc] = tpl.includes[inc];
+                    }
+                }
+            }
+        }
+
+        for (name in callsns) {
+            if (!(name in retns)) {
+                tpl = retns[name] = tpls[ns][name];
+                getCalledNSTemplates(tpls, tpl, ret, includes);
+                incs = Object.keys(tpl.includes);
+                for (i = 0; i < incs.length; i++) {
+                    inc = incs[i];
+                    if (!(inc in includes)) {
+                        includes[inc] = tpl.includes[inc];
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 ConkittyGenerator.prototype.generateCode = function() {
     var ret = [],
         i,
-        tpl;
+        tpl,
+        calls = {'': {}},
+        includes = {},
+        tpls,
+        ns,
+        name,
+        common = [],
+        args;
 
     for (i in this.templates['']) {
         tpl = this.templates[''][i];
-        generateCode(tpl, ret);
+        if (!(i in calls[''])) { calls[''][i] = tpl; }
+        getCalledNSTemplates(this.templates, tpl, calls, includes);
+    }
+
+    for (ns in calls) {
+        tpls = calls[ns];
+
+        for (name in tpls) {
+            if (name !== '') {
+                generateCode(tpls[name], ret);
+            }
+        }
     }
 
     if (tpl) {
-        var env = fs.readFileSync(__dirname + '/_env.js', {encoding: 'utf8'});
-        env = env
-            .replace(/EnvClass/g, tpl.getVarName('EnvClass'))
-            .replace(/getEnv/g, tpl.getVarName('getEnv'))
-            .replace(/joinClasses/g, tpl.getVarName('joinClasses'))
-            .replace(/getModClass/g, tpl.getVarName('getModClass'));
-        ret.unshift(env);
+        common.push(fs.readFileSync(__dirname + '/node_modules/concat.js/concat.js', {encoding: 'utf8'}));
+        common.push(fs.readFileSync(__dirname + '/_env.js', {encoding: 'utf8'}));
+
+        args = [];
+        args.push('(function($C, ');
+        args.push(tpl.getVarName('EnvClass'));
+        args.push(', ');
+        args.push(tpl.getVarName('getEnv'));
+        args.push(', ');
+        args.push(tpl.getVarName('joinClasses'));
+        args.push(', ');
+        args.push(tpl.getVarName('getModClass'));
+        args.push(', undefined) {\n');
+
+        ret.unshift(args.join(''));
+        ret.push('\n}).apply(null, $C._$args);');
     }
 
-    ret.unshift('(function($C, undefined) {\n');
-
-    ret.push('\n})($C);');
-
-    return ret.join('\n');
+    return {
+        includes: includes,
+        common: common.join('\n'),
+        code: ret.join('\n')
+    };
 };
 
 

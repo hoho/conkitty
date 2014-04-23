@@ -49,8 +49,16 @@ function hasReturn() {
 }
 
 
+function evalString(val) {
+    /* jshint -W040 */
+    return eval(val);
+    /* jshint +W040 */
+}
+
+
 module.exports.parseJS = parseJS;
 module.exports.parseJSExpression = parseJSExpression;
 module.exports.parseJSFunction = parseJSFunction;
 module.exports.adjustJS = adjustJS;
+module.exports.evalString = evalString;
 module.exports.hasReturn = hasReturn;

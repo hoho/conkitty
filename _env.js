@@ -1,79 +1,98 @@
-$C.tpl = {};
 
 
-var $ConkittyEventHandlers = [];
+(function($C) {
 
-$C.on = function on(callback) {
-    $ConkittyEventHandlers.push(callback);
-};
+    $C.tpl = {};
+    $C._tpl = {};
 
-$C.off = function off(callback) {
-    if (callback) {
-        var i = $ConkittyEventHandlers.length - 1;
 
-        while (i >= 0) {
-            if ($ConkittyEventHandlers[i] === callback) {
-                $ConkittyEventHandlers.splice(i, 1);
-            } else {
-                i--;
+    var $ConkittyEventHandlers = [];
+
+    $C.on = function on(callback) {
+        $ConkittyEventHandlers.push(callback);
+    };
+
+    $C.off = function off(callback) {
+        if (callback) {
+            var i = $ConkittyEventHandlers.length - 1;
+
+            while (i >= 0) {
+                if ($ConkittyEventHandlers[i] === callback) {
+                    $ConkittyEventHandlers.splice(i, 1);
+                } else {
+                    i--;
+                }
+            }
+        } else {
+            $ConkittyEventHandlers = [];
+        }
+    };
+
+    $C.define('trigger', function (val, key, obj, args) {
+        var i,
+            arg;
+
+        for (i = 0; i < args.length; i++) {
+            if (typeof ((arg = args[i])) === 'function') {
+                args[i] = arg.call(this, val, key, obj);
             }
         }
-    } else {
-        $ConkittyEventHandlers = [];
-    }
-};
 
-$C.define('trigger', function(val, key, obj, args) {
-    var i,
-        arg;
-
-    for (i = 0; i < args.length; i++) {
-        if (typeof ((arg = args[i])) === 'function') {
-            args[i] = arg.call(this, val, key, obj);
+        for (i = 0; i < $ConkittyEventHandlers.length; i++) {
+            $ConkittyEventHandlers[i].apply(this, args);
         }
+    });
+
+
+    function EnvClass(parent, payload) {
+        this.p = parent;
+        this.d = payload;
     }
 
-    for (i = 0; i < $ConkittyEventHandlers.length; i++) {
-        $ConkittyEventHandlers[i].apply(this, args);
-    }
-});
+    EnvClass.prototype.l = function getPayload(parent) {
+        var self = this,
+            ret;
 
-function EnvClass(parent, payload) {
-    this.p = parent;
-    this.d = payload;
-}
+        if (self.d) {
+            // Trying to get cached payload.
+            if (!((ret = self._p))) {
+                ret = self._p = self.d();
+            }
 
-EnvClass.prototype.l = function getPayload(parent) {
-    var self = this,
-        ret;
+            if (!parent) {
+                return ret.firstChild ? ret : undefined;
+            }
 
-    if (self.d) {
-        // Trying to get cached payload.
-        if (!((ret = self._p))) {
-            ret = self._p = self.d();
+            ret && parent.appendChild(ret);
+            delete self._p;
         }
+    };
 
-        if (!parent) {
-            return ret.firstChild ? ret : undefined;
+
+    $C._$args = [
+        $C,
+
+        EnvClass,
+
+        function getEnv(obj) {
+            return obj instanceof EnvClass ? obj : new EnvClass(obj instanceof Node ? obj : undefined);
+        },
+
+        function joinClasses() {
+            var i, ret = [], arg;
+            for (i = 0; i < arguments.length; i++) {
+                if ((arg = arguments[i])) {
+                    ret.push(arg);
+                }
+            }
+            return ret.length ? ret.join(' ') : undefined;
+        },
+
+        function getModClass(name, val) {
+            if (val) {
+                return val === true ? name : name + '_' + val;
+            }
         }
+    ];
 
-        ret && parent.appendChild(ret);
-        delete self._p;
-    }
-};
-
-function getEnv(obj) {
-    return obj instanceof EnvClass ? obj : new EnvClass(obj instanceof Node ? obj : undefined);
-}
-
-function joinClasses() {
-    var i, ret = [], arg;
-    for (i = 0; i < arguments.length; i++) {
-        if ((arg = arguments[i])) { ret.push(arg); }
-    }
-    return ret.length ? ret.join(' ') : undefined;
-}
-
-function getModClass(name, val) {
-    if (val) { return val === true ? name : name + '_' + val; }
-}
+})($C);

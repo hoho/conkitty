@@ -7,7 +7,9 @@
 
 
 var ConkittyParser = require(__dirname + '/parser.js').ConkittyParser,
-    ConkittyGenerator = require(__dirname + '/generator.js').ConkittyGenerator;
+    ConkittyGenerator = require(__dirname + '/generator.js').ConkittyGenerator,
+    ConkittyErrors = require(__dirname + '/errors.js'),
+    fs = require('fs');
 
 
 // Conkitty constructor.
@@ -24,13 +26,31 @@ Conkitty.prototype.push = function push(code, base) {
 
 
 Conkitty.prototype.generate = function generate() {
-    this.generator = new ConkittyGenerator(this.code);
+    this.generated = (new ConkittyGenerator(this.code)).generateCode();
+
+    var includes = this.generated.includes,
+        i;
+
+    for (i in includes) {
+        if (!fs.existsSync(i)) {
+            throw new ConkittyErrors.IllegalName(includes[i], 'File "' + i + '" does not exist.');
+        }
+    }
+};
+
+
+Conkitty.prototype.getCommonCode = function getCommonCode() {
+    return this.generated.common;
 };
 
 
 Conkitty.prototype.getTemplatesCode = function getTemplatesCode() {
-    return this.generator.generateCode();
+    return this.generated.code;
 };
 
+
+Conkitty.prototype.getIncludes = function getIncludes() {
+    return Object.keys(this.generated.includes);
+};
 
 module.exports = Conkitty;

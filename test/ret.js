@@ -7,7 +7,6 @@ test('Ret test', function() {
     deepEqual(domToArray(container), ['ololo', 'test1', 'yo']);
     container.innerHTML = '';
 
-
     ret = $C.tpl['ret-call-test'].call(container);
     deepEqual(ret, 'test2');
     deepEqual(domToArray(container), ['ololo', 'test2', 'yo']);

@@ -8,6 +8,7 @@
 var ConkittyErrors = require(__dirname + '/errors.js'),
     ConkittyTypes = require(__dirname + '/types.js'),
     utils = require(__dirname + '/utils.js'),
+    path = require('path'),
 
     whitespace = /[\x20\t\r\n\f]/,
 
@@ -513,11 +514,11 @@ ConkittyParser.prototype.readInclude = function readInclude() {
         throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
-    console.log(this.base);
-
     var ret = this.readString(true);
     ret.type = ConkittyTypes.INCLUDE;
     ret.charAt = charAt;
+
+    ret.value = path.normalize(path.join(this.base, utils.evalString(ret.value)));
 
     this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
 

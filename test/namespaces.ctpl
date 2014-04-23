@@ -1,0 +1,89 @@
+namespaces-test
+    header
+        ns1::logo "Bebebe"
+
+    section
+        ns2::button title["Hello"]
+        ns2::textarea value["World"]
+
+    footer
+        ns3::copyright
+
+
+ns1::
+    &"includes/ns1_file1.css"
+    &"includes/ns1_file1.js"
+
+
+ns2::
+    &"./includes/ns2_file1.css"
+    &"./includes/ns2_file1.js"
+
+
+ns100500::
+    &"./includes/ns100500_file1.css"
+    &"includes/ns100500_file1.js"
+
+
+ns1::logo $name
+    &"./includes/logo.png"
+    &"includes/logo.css"
+    .logo
+        $name
+        ns1::logo-img
+
+
+ns1::logo-img
+    &"includes/logo-img.png"
+    img[src="logo-img.png"]
+
+
+ns1::login
+    &"includes/login.css"
+    &"includes/login.js"
+    span.login
+        "Login"
+
+
+ns2::button $title["Bye"]
+    &"includes/button.css"
+    button
+        $title
+
+
+ns2::textarea $value
+    &"includes/textarea.css"
+    textarea
+        $value
+
+
+ns2::dropdown
+    &"includes/dropdown.css"
+    select
+        option
+            "ololo"
+
+
+ns3::copyright
+    "Cooooooo"
+    CALL ns3::c
+
+
+ns3::c
+    &"includes/c.css"
+    "(C)"
+
+
+ns3::copyleft
+    &"includes/copyleft.css"
+    "Nonononon"
+
+
+ns3::button
+    &"includes/ns3btn.css"
+    input[type="submit"]
+
+
+ns100500::yep
+    &"includes/yep.js"
+    "Yep"
