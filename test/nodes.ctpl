@@ -9,4 +9,13 @@ nodes-test
 
     ^(d)
         @aaa "bbb"
-        ATTR ('ccc') ('dd' + 'd')
+
+    ^(d)
+        EACH $val ([1, 2, 3, 4])
+            TEST (val % 2 === 0)
+                ATTR ('ccc' + val) ('dd' + 'd')
+
+    EACH $val ([1, 2, 3, 4])
+        ^$d
+            TEST (val % 2 === 1)
+                ATTR ('eee' + val) "fff"

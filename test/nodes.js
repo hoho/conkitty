@@ -4,7 +4,7 @@ test('Nodes test', function() {
     $C(container).callTemplate('nodes-test').end();
 
     domEqual(domToArray(container), [
-        {name: 'div', attr: {'class': 'some-class', aaa: 'bbb', ccc: 'ddd'}, children: [
+        {name: 'div', attr: {'class': 'some-class', aaa: 'bbb', ccc2: 'ddd', ccc4: 'ddd', eee1: 'fff', eee3: 'fff'}, children: [
             'Hello',
             ' ',
             {name: 'span', children: ['World']}

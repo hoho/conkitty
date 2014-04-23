@@ -615,7 +615,7 @@ function processAttr(parent, isCommand, cmd) {
         }
         ret.push(', ');
         if (isCommand) {
-            ret.push(getExpressionString(node, cmd.value[2]));
+            ret.push(getExpressionString(node, cmd.value[2], true));
         } else {
             var val = cmd.value[0].value;
             if (val.type === ConkittyTypes.CSS) {
@@ -637,7 +637,7 @@ function processAttr(parent, isCommand, cmd) {
                     ret.push(getExpressionString(node, val, true));
                 }
             } else {
-                ret.push(getExpressionString(node, val));
+                ret.push(getExpressionString(node, val, true));
             }
         }
         ret.push(')');

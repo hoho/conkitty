@@ -8,7 +8,6 @@
         "bin": "bin"
     },
     "scripts": {
-        "prepublish": "grunt browser.js",
         "test": "grunt"
     },
     "repository": {
