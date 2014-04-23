@@ -288,7 +288,7 @@ function evalString(val) {
 }
 
 
-function getExpressionString(node, val, wrap) {
+function getExpressionString(node, val, wrap, retMaker) {
     var ret,
         isVar;
 
@@ -305,29 +305,73 @@ function getExpressionString(node, val, wrap) {
             ret = [];
             if (wrap) {
                 if (val.isFunc) {
+                    if (retMaker) {
+                        ret.push('function() { return ');
+                        ret.push(retMaker);
+                        ret.push(' = (');
+                    }
+
                     if (!isVar) { ret.push('('); }
                     ret.push(val.value);
                     if (!isVar) { ret.push(')'); }
+
+                    if (retMaker) {
+                        ret.push(').apply(this, arguments); }');
+                    }
                 } else {
                     ret.push('function ');
                     ret.push(getAnonymousFunctionName(node, val));
                     ret.push('() { return ');
+
+                    if (retMaker) {
+                        ret.push(retMaker);
+                        ret.push(' = (');
+                    }
+
                     if (!isVar) { ret.push('('); }
                     ret.push(val.value);
                     if (!isVar) { ret.push(')'); }
+
+                    if (retMaker) {
+                        ret.push(')');
+                    }
+
                     ret.push('; }');
                 }
             } else {
+                if (retMaker) {
+                    ret.push('(');
+                    ret.push(retMaker);
+                    ret.push(' = ');
+                }
+
                 if (!isVar) { ret.push('('); }
                 ret.push(val.value);
                 if (!isVar) { ret.push(')'); }
                 if (val.isFunc) { ret.push('.apply(this, arguments)'); }
+
+                if (retMaker) {
+                    ret.push(')');
+                }
             }
 
             return ret.join('');
 
         case ConkittyTypes.STRING:
-            return JSON.stringify(evalString(val.value));
+            ret = [];
+            if (retMaker) {
+                ret.push('(');
+                ret.push(retMaker);
+                ret.push(' = ');
+            }
+
+            ret.push(JSON.stringify(evalString(val.value)));
+
+            if (retMaker) {
+                ret.push(')');
+            }
+
+            return ret.join('');
 
         /* jshint -W086 */
         case ConkittyTypes.COMMAND_NAME:
@@ -784,6 +828,12 @@ function processCall(parent, startsWithCALL, cmd, except) {
 
     callNode.getCodeBefore = function getCodeBefore() {
         var ret = [];
+
+        if (cmd.value[0].retMaker) {
+            ret.push(cmd.value[0].retMaker);
+            ret.push(' = ');
+        }
+
         ret.push('$C.tpl[');
 
         if (name.type === ConkittyTypes.TEMPLATE_NAME) {
@@ -1032,9 +1082,26 @@ function processJS(parent, cmd) {
             if (i > 0) { ret.push(', '); }
             ret.push(args[i].value);
         }
-        ret.push(') {\n');
+
+        ret.push(') {');
+
+        if (cmd.value[0].retMaker) {
+            ret.push(' ');
+            ret.push(cmd.value[0].retMaker);
+            ret.push(' = (function() {');
+        }
+
+        ret.push('\n');
+
         ret.push(cmd.value[0].js.value);
-        ret.push('\n})');
+
+        ret.push('\n');
+
+        if (cmd.value[0].retMaker) {
+            ret.push('}).call(this); ');
+        }
+
+        ret.push('})');
         return ret.join('');
     };
 
@@ -1355,7 +1422,7 @@ function processVariable(parent, cmd) {
     node.getCodeBefore = function getCodeBefore() {
         var ret = [];
         ret.push('.text(');
-        ret.push(getExpressionString(node, cmd.value[0], true));
+        ret.push(getExpressionString(node, cmd.value[0], true, cmd.value[0].retMaker));
         ret.push(')');
         return ret.join('');
     };
@@ -1381,7 +1448,7 @@ function processJavascript(parent, cmd) {
             ret.push('.act(function ' + getAnonymousFunctionName(node, cmd.value[0]) + '($C_) {\n');
             ret.push(INDENT);
             ret.push('if ((');
-            ret.push('$C_ = ' + getExpressionString(node, cmd.value[0], false));
+            ret.push('$C_ = ' + getExpressionString(node, cmd.value[0], false, cmd.value[0].retMaker));
             ret.push(') instanceof Node) { this.appendChild($C_); }\n');
             ret.push(INDENT);
             ret.push('else { $C(this).text($C_, true).end(); };\n');
@@ -1392,7 +1459,7 @@ function processJavascript(parent, cmd) {
         node.getCodeBefore = function getCodeBefore() {
             var ret = [];
             ret.push('.text(');
-            ret.push(getExpressionString(node, cmd.value[0], true));
+            ret.push(getExpressionString(node, cmd.value[0], true, cmd.value[0].retMaker));
             ret.push(')');
             return ret.join('');
         };
@@ -1416,7 +1483,7 @@ function processString(parent, cmd) {
     node.getCodeBefore = function getCodeBefore() {
         var ret = [];
         ret.push('.text(');
-        ret.push(JSON.stringify(evalString(cmd.value[0].value)));
+        ret.push(getExpressionString(node, cmd.value[0], false, cmd.value[0].retMaker));
         if (cmd.value[0].raw) { ret.push(', true'); }
         ret.push(')');
         return ret.join('');
@@ -1511,12 +1578,19 @@ function processElement(parent, cmd) {
         }
         ret.push(')');
 
-        if (elemVar) {
+        if (elemVar || cmd.value[0].retMaker) {
             ret.push('\n');
             ret.push(INDENT);
             ret.push('.act(function() { ');
-            ret.push(getExpressionString(node, elemVar, false));
-            ret.push(' = this; })');
+            if (cmd.value[0].retMaker) {
+                ret.push(node.getVarName('ret'));
+                ret.push(' = ');
+            }
+            if (elemVar) {
+                ret.push(getExpressionString(node, elemVar, false));
+                ret.push(' = ');
+            }
+            ret.push('this; })');
         }
 
         return ret.join('');
@@ -1590,10 +1664,28 @@ function processAppender(parent, cmd) {
 /* exported process */
 function process(parent, index, commands) {
     var cmd = commands[index],
-        ret;
+        ret,
+        retMaker,
+        retMakerVar;
+
+    if (cmd.value[0].type === ConkittyTypes.RET_MAKER && cmd.value.length > 1) {
+        retMaker = cmd.value.shift();
+        if (parent.root) {
+            throw new ConkittyErrors.InconsistentCommand(retMaker);
+        }
+
+        if (parent.hasRetMaker) {
+            throw new ConkittyErrors.DuplicateDecl(retMaker);
+        }
+
+        retMakerVar = parent.getVarName('ret');
+        parent.hasRetMaker = true;
+    }
 
     switch (cmd.value[0].type) {
         case ConkittyTypes.TEMPLATE_NAME:
+            cmd.value[0].retMaker = retMakerVar;
+            retMakerVar = null;
             ret = processCall(parent, false, cmd);
             break;
 
@@ -1604,6 +1696,8 @@ function process(parent, index, commands) {
                     break;
 
                 case 'CALL':
+                    cmd.value[0].retMaker = retMakerVar;
+                    retMakerVar = null;
                     ret = processCall(parent, true, cmd, commands[index + 1]);
                     break;
 
@@ -1616,6 +1710,8 @@ function process(parent, index, commands) {
                     break;
 
                 case 'JS':
+                    cmd.value[0].retMaker = retMakerVar;
+                    retMakerVar = null;
                     ret = processJS(parent, cmd);
                     break;
 
@@ -1650,18 +1746,26 @@ function process(parent, index, commands) {
             break;
 
         case ConkittyTypes.VARIABLE:
+            cmd.value[0].retMaker = retMakerVar;
+            retMakerVar = null;
             ret = processVariable(parent, cmd);
             break;
 
         case ConkittyTypes.JAVASCRIPT:
+            cmd.value[0].retMaker = retMakerVar;
+            retMakerVar = null;
             ret = processJavascript(parent, cmd);
             break;
 
         case ConkittyTypes.STRING:
+            cmd.value[0].retMaker = retMakerVar;
+            retMakerVar = null;
             ret = processString(parent, cmd);
             break;
 
         case ConkittyTypes.CSS:
+            cmd.value[0].retMaker = retMakerVar;
+            retMakerVar = null;
             ret = processElement(parent, cmd);
             break;
 
@@ -1679,6 +1783,10 @@ function process(parent, index, commands) {
 
         default:
             throw new ConkittyErrors.InconsistentCommand(cmd.value[0]);
+    }
+
+    if (retMakerVar) {
+        throw new ConkittyErrors.InconsistentCommand(retMaker);
     }
 
     return index + ret;
@@ -1759,6 +1867,11 @@ function processTemplate(cmd, names, generator) {
             ret.push(tpl.getVarName('getEnv'));
             ret.push('(this)');
 
+            if (tpl.hasRetMaker) {
+                ret.push(', ');
+                ret.push(tpl.getVarName('ret'));
+            }
+
             arg = Object.keys(tpl.vars);
             if (arg.length) {
                 ret.push(', ');
@@ -1783,6 +1896,14 @@ function processTemplate(cmd, names, generator) {
                 ret.push(end);
                 ret.push(';\n');
             }
+
+            if (tpl.hasRetMaker) {
+                ret.push(INDENT);
+                ret.push('return ');
+                ret.push(tpl.getVarName('ret'));
+                ret.push(';\n');
+            }
+
             ret.push('};\n');
 
             return ret.join('');
@@ -1804,7 +1925,8 @@ function ConkittyGenerator(code) {
             EnvClass: '$ConkittyEnvClass',
             getEnv: '$ConkittyGetEnv',
             joinClasses: '$ConkittyClasses',
-            getModClass: '$ConkittyMod'
+            getModClass: '$ConkittyMod',
+            ret: '$ConkittyTemplateRet'
         };
 
     for (var i = 0; i < code.length; i++) {

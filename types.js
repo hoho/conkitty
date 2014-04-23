@@ -24,5 +24,6 @@ module.exports = {
     INCLUDE: 'file include',
     ARGUMENT_DECL: 'argument declaration',
     ARGUMENT_VAL: 'argument value',
-    NODE_APPENDER: 'node appender'
+    NODE_APPENDER: 'node appender',
+    RET_MAKER: 'result maker'
 };

@@ -4,8 +4,12 @@ $C.define('callTemplate', function(item, index, arr, args) {
     $C.tpl[name].apply(this, args);
 });
 
-function domToArray(node) {
+function domToArray(node, self) {
     var ret = [], i, j, n, attr, a, tmp;
+
+    if (self) {
+        node = {childNodes: [node]};
+    }
 
     for (i = 0; i < node.childNodes.length; i++) {
         n = node.childNodes[i];

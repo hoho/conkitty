@@ -1,0 +1,47 @@
+ret-template-test
+    =::ret-test-inner "test1"
+    "yo"
+
+
+ret-call-test
+    =CALL ret-test-inner "test2"
+    "yo"
+
+
+ret-js-test
+    =JS
+        return "test3";
+    "yo"
+
+
+ret-var-test
+    SET $ret "test4"
+    =$ret
+    "yo"
+
+
+ret-expr-test
+    "yo"
+    =('test' + '5')
+
+
+ret-expr-test2
+    =(function() { return 'test' + '6'; })
+    "yo"
+
+
+ret-elem-test
+    "yo"
+    =div.test7
+        "test7"
+
+
+ret-elem-test2
+    "yo"
+    =div:if((true), p).test8 AS $tmp
+        "test8"
+
+
+ret-test-inner $arg
+    "ololo"
+    =(arg)

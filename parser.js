@@ -299,7 +299,16 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                 val.push(this.readAppender());
                 break;
 
+            case '=':
+                /* jshint -W086 */
+                if (!val.length) {
+                    val.push(new ConkittyCommandPart(ConkittyTypes.RET_MAKER, this));
+                    this.charAt++;
+                    break;
+                }
+
             default:
+                /* jshint +W086 */
                 if (argumentsDecl) {
                 } else if (argumentsVal) {
                     val.push(this.readArgument(false));
@@ -334,7 +343,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
         if (this.charAt < this.code[this.lineAt].length) {
             i = skipWhitespaces(this.code[this.lineAt], this.charAt);
 
-            if (this.charAt === i) {
+            if (this.charAt === i && !(val.length === 1 && val[0].type === ConkittyTypes.RET_MAKER)) {
                 throw new ConkittyErrors.UnexpectedSymbol(this);
             }
 
