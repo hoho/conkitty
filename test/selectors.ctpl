@@ -19,3 +19,18 @@ selectors-test
 
 selectors-test-inner $cond1 $cond2 $cond3
     span.something#very[good="indeed"]:if($cond1, .ccond1-true):if((cond2), #icond2-true.ccond2-true:if($cond3, tcond3-true, [acond3-false=('ye' + 'p!')]), .ccond2-false[acond2-false="ololo"])
+
+
+bem-selectors-test
+    h1
+        CALL bem-selectors-test-inner (false) (false)
+    h2
+        CALL bem-selectors-test-inner (false) (true)
+    h3
+        CALL bem-selectors-test-inner (true) (false)
+    h4
+        CALL bem-selectors-test-inner (true) (true)
+
+
+bem-selectors-test-inner $cond1 $cond2
+    span.a%b-block1.b{mod1}.c%b-block2.d{mod2 = (1 + 2)}.e{mod3="mmm"}:if($cond1, {mod4}, %b-block3(elem1)){mod5}%b-block4(elem2):if($cond2, {mod6}, {mod7})

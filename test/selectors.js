@@ -54,3 +54,27 @@ test('Selectors test', function() {
 
     container.innerHTML = '';
 });
+
+
+test('BEM selectors test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('bem-selectors-test').end();
+
+    domEqual(domToArray(container), [
+        {name: 'h1', children: [{name: 'span', attr: {
+            'class': 'a b-block1 b b-block1_mod1 c b-block2 d e b-block2_mod3_mmm b-block2_mod5 b-block4__elem2 b-block2_mod2_3 b-block3__elem1 b-block4__elem2_mod7'
+        }, children: []}]},
+        {name: 'h2', children: [{name: 'span', attr: {
+            'class': 'a b-block1 b b-block1_mod1 c b-block2 d e b-block2_mod3_mmm b-block2_mod5 b-block4__elem2 b-block2_mod2_3 b-block3__elem1 b-block4__elem2_mod6'
+        }, children: []}]},
+        {name: 'h3', children: [{name: 'span', attr: {
+            'class': 'a b-block1 b b-block1_mod1 c b-block2 d e b-block2_mod3_mmm b-block2_mod5 b-block4__elem2 b-block2_mod2_3 b-block2_mod4 b-block4__elem2_mod7'
+        }, children: []}]},
+        {name: 'h4', children: [{name: 'span', attr: {
+            'class': 'a b-block1 b b-block1_mod1 c b-block2 d e b-block2_mod3_mmm b-block2_mod5 b-block4__elem2 b-block2_mod2_3 b-block2_mod4 b-block4__elem2_mod6'
+        }, children: []}]}
+    ]);
+
+    container.innerHTML = '';
+});

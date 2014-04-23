@@ -558,12 +558,11 @@ ConkittyParser.prototype.readCSSOrTemplateName = function readCSSOrTemplateName(
 };
 
 
-ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
+ConkittyParser.prototype.readCSS = function readCSS(classesOnly, lastBEMBlock) {
     var line = this.code[this.lineAt],
         ret = new ConkittyCommandPart(ConkittyTypes.CSS, this),
         tmp,
         tmp2,
-        lastBEMBlock,
         val = ret.value = {
             attrs: {},
             classes: {},
@@ -610,7 +609,7 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly) {
                 break;
 
             case ':':
-                val.ifs.push(this.readCSSIf(classesOnly));
+                val.ifs.push(this.readCSSIf(classesOnly, lastBEMBlock));
                 break;
 
             default:
@@ -791,7 +790,7 @@ ConkittyParser.prototype.readCSSBEMMod = function readCSSBEMMod(block) {
 };
 
 
-ConkittyParser.prototype.readCSSIf = function readCSSIf(classesOnly) {
+ConkittyParser.prototype.readCSSIf = function readCSSIf(classesOnly, lastBEMBlock) {
     var ret = new ConkittyCommandPart(ConkittyTypes.CSS_IF, this);
 
     this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, /^if$/, 1);
@@ -818,13 +817,13 @@ ConkittyParser.prototype.readCSSIf = function readCSSIf(classesOnly) {
 
     this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
     if (this.code[this.lineAt][this.charAt] !== ',') {
-        ret.positive = this.readCSS(classesOnly);
+        ret.positive = this.readCSS(classesOnly, lastBEMBlock);
         this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
     }
 
     if (this.code[this.lineAt][this.charAt] === ',') {
         this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
-        ret.negative = this.readCSS(classesOnly);
+        ret.negative = this.readCSS(classesOnly, lastBEMBlock);
         this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
     }
 
