@@ -1,5 +1,4 @@
-Conkitty Template Engine
-========================
+# Conkitty Template Engine [![Build Status](https://travis-ci.org/hoho/conkitty.svg?branch=master)](https://travis-ci.org/hoho/conkitty)
 
 ### WARNING! This README is about 0.4.x versions. New 0.5.x README is coming soon.
 
