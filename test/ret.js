@@ -51,4 +51,19 @@ test('Ret test', function() {
     domEqual(domToArray(ret, true), [{name: 'p', attr: {'class': 'test8'}, children: ['test8']}]);
     deepEqual(domToArray(container), ['yo', {name: 'p', attr: {'class': 'test8'}, children: ['test8']}]);
     container.innerHTML = '';
+
+    ret = $C.tpl['ret-default-test']();
+    ok(ret && (ret.nodeType === 11), 'documentFragment expected');
+    deepEqual(domToArray(container), []);
+    deepEqual(domToArray(ret), [
+        {name: 'div', attr: {}, children: ['ahahah']},
+        {name: 'p', attr: {}, children: ['ohohoh']}
+    ]);
+    container.appendChild(ret);
+    deepEqual(domToArray(container), [
+        {name: 'div', attr: {}, children: ['ahahah']},
+        {name: 'p', attr: {}, children: ['ohohoh']}
+    ]);
+
+    container.innerHTML = '';
 });

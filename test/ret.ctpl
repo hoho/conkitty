@@ -57,3 +57,10 @@ ret-elem-test2
 ret-test-inner $arg
     "ololo"
     =(arg)
+
+
+ret-default-test
+    div
+        "ahahah"
+    p
+        "ohohoh"

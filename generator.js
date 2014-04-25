@@ -1921,6 +1921,7 @@ function processTemplate(cmd, names, generator) {
 
             ret.push(';\n');
             ret.push(INDENT);
+            if (!tpl.hasRetMaker) { ret.push('return '); }
             ret.push('$C(');
             ret.push(tpl.getVarName('env'));
             ret.push('.p)');
