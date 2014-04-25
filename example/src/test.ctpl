@@ -1,14 +1,16 @@
-template-name arg1 arg2 arg3
+template-name $arg1 $arg2 $arg3
     h1
-        (arg1)
+        $arg1
     ul
-        EACH item (arg2)
+        EACH $item $arg2
             li
                 "Item: "
-                (item)
+                $item
     dl
-        EACH key val (arg3)
+        EACH $key $val $arg3
             dt
-                (key)
+                $key
             dd
-                (val)
+                $val
+
+    ctrl::button "Yo!"

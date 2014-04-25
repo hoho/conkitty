@@ -2,23 +2,26 @@ module.exports = function(grunt) {
     'use strict';
 
     grunt.initConfig({
-        // Task to compile templates from `src` folder to `dst/templates.js`.
+        clean: {
+            tmp: ['tmp']
+        },
+
+        // Task to compile templates from `src` folder.
         conkitty: {
-            templates: {
-                files: {
-                    'dst/templates.js': ['src/*.ctpl']
+            compile: {
+                src: ['src/*.ctpl'],
+                dest: {
+                    common: 'dst/common.js',
+                    templates: 'dst/templates.js',
+                    deps: 'tmp'
                 }
             }
         },
 
-        // Concat dependencies installed with Bower to `dst/deps.js`.
         concat: {
-            resources: {
+            deps: {
                 files: {
-                    'dst/deps.js': [
-                        'bower_components/concat.js/concat.js',
-                        'bower_components/conkitty/callTemplate/conkittyCallTemplate.js'
-                    ]
+                    'dst/styles.css': ['tmp/*.css']
                 }
             }
         },
@@ -27,7 +30,7 @@ module.exports = function(grunt) {
         watch: {
             scripts: {
                 files: ['src/*.ctpl'],
-                tasks: ['conkitty'],
+                tasks: ['default'],
                 options: {spawn: false}
             }
         }
@@ -36,7 +39,8 @@ module.exports = function(grunt) {
 
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-watch');
+    grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-conkitty');
 
-    grunt.registerTask('default', ['conkitty', 'concat']);
+    grunt.registerTask('default', ['clean', 'conkitty', 'concat']);
 };

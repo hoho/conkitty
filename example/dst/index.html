@@ -2,15 +2,16 @@
 <html>
 <head>
     <title>Hello</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <!-- deps.js and templates.js are generated with Grunt. -->
-    <script src="deps.js"></script>
+    <script src="common.js"></script>
     <script src="templates.js"></script>
 
     <script>
-        $C.callTemplate(document.body, 'template-name', 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'});
-        $C.callTemplate(document.body, 'template-name', 'World', [44, 55], {k3: 'v3', k4: 'v4'});
+        $C.tpl['template-name'].call(document.body, 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'});
+        $C.tpl['template-name'].call(document.body, 'World', [44, 55], {k3: 'v3', k4: 'v4'});
     </script>
 </body>
 </html>

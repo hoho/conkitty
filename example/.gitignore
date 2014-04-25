@@ -1,4 +1,4 @@
-bower_components
 node_modules
-dst/deps.js
+dst/common.js
 dst/templates.js
+dst/styles.css

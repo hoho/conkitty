@@ -1,0 +1,5 @@
+ctrl::button $title $type["button"]
+    &"button.css"
+
+    button.ctrl-button[type=$type]
+        $title
