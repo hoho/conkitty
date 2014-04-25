@@ -89,7 +89,8 @@ module.exports = function(grunt) {
                     'test/includes/ns2_file1.js',
                     'test/includes/button.css',
                     'test/includes/textarea.css',
-                    'test/includes/c.css'
+                    'test/includes/c.css',
+                    'test/includes/file1.css'
                 ].map(function(filename) { return path.normalize(path.join(__dirname, filename)); }),
                 'Incorrect test includes'
             );

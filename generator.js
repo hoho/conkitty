@@ -1988,15 +1988,28 @@ function generateCode(node, ret, level) {
 }
 
 
-function getCalledNSTemplates(tpls, tpl, ret, includes) {
-    var calls = tpl.calls,
+function getTemplateIncludes(tpl, includes) {
+    var incs,
+        inc,
+        i;
+
+    incs = Object.keys(tpl.includes);
+    for (i = 0; i < incs.length; i++) {
+        inc = incs[i];
+        if (!(inc in includes)) {
+            includes[inc] = tpl.includes[inc];
+        }
+    }
+}
+
+
+function getCalledNSTemplates(tpls, template, ret, includes) {
+    var calls = template.calls,
         callsns,
         retns,
+        tpl,
         ns,
-        name,
-        i,
-        incs,
-        inc;
+        name;
 
     for (ns in calls) {
         callsns = calls[ns];
@@ -2005,13 +2018,7 @@ function getCalledNSTemplates(tpls, tpl, ret, includes) {
             retns = ret[ns] = {};
             tpl = retns[''] = tpls[ns][''];
             if (tpl) {
-                incs = Object.keys(tpl.includes);
-                for (i = 0; i < incs.length; i++) {
-                    inc = incs[i];
-                    if (!(inc in includes)) {
-                        includes[inc] = tpl.includes[inc];
-                    }
-                }
+                getTemplateIncludes(tpl, includes);
             }
         }
 
@@ -2019,16 +2026,12 @@ function getCalledNSTemplates(tpls, tpl, ret, includes) {
             if (!(name in retns)) {
                 tpl = retns[name] = tpls[ns][name];
                 getCalledNSTemplates(tpls, tpl, ret, includes);
-                incs = Object.keys(tpl.includes);
-                for (i = 0; i < incs.length; i++) {
-                    inc = incs[i];
-                    if (!(inc in includes)) {
-                        includes[inc] = tpl.includes[inc];
-                    }
-                }
+                getTemplateIncludes(tpl, includes);
             }
         }
     }
+
+    getTemplateIncludes(template, includes);
 }
 
 

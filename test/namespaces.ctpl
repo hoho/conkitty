@@ -1,4 +1,5 @@
 namespaces-test
+    &"includes/file1.css"
     header
         ns1::logo "Bebebe"
 
