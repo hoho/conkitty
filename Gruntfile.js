@@ -37,7 +37,8 @@ module.exports = function(grunt) {
                         'test/selectors.ctpl',
                         'test/nodes.ctpl',
                         'test/ret.ctpl',
-                        'test/namespaces.ctpl'
+                        'test/namespaces.ctpl',
+                        'test/classes.ctpl'
                     ]
                 }
             }

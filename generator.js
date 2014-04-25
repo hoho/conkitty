@@ -654,28 +654,48 @@ function processAttr(parent, isCommand, cmd) {
         if (isCommand) {
             ret.push(getExpressionString(node, cmd.value[2], true));
         } else {
-            var val = cmd.value[0].value;
+            var val = cmd.value[0].value,
+                retVal = [],
+                wrap;
+
+            switch (cmd.value[0].mode) {
+                case 'replace':
+                    wrap = true;
+                    break;
+
+                case 'add':
+                case 'remove':
+                    wrap = false;
+                    retVal.push('function() { return ');
+                    retVal.push(parent.getVarName('getChangedClass'));
+                    retVal.push('(this, ');
+                    break;
+
+                default:
+                    throw new Error('Unknown mode');
+            }
+
             if (val.type === ConkittyTypes.CSS) {
                 // Is is `class` attribute modification.
                 val = getAttrsByCSS(node, val)['class'];
-                switch (cmd.value[0].mode) {
-                    case 'replace':
-                        break;
-
-                    default:
-                        throw new Error('Mode is not implemented');
-                }
                 if (val.plain) {
-                    ret.push(JSON.stringify(val.value));
+                    retVal.push(JSON.stringify(val.value));
                 } else {
                     val.type = ConkittyTypes.JAVASCRIPT;
                     val.lineAt = cmd.value[0].lineAt;
                     val.charAt = cmd.value[0].charAt;
-                    ret.push(getExpressionString(node, val, true));
+                    retVal.push(getExpressionString(node, val, wrap));
                 }
             } else {
-                ret.push(getExpressionString(node, val, true));
+                retVal.push(getExpressionString(node, val, wrap));
             }
+
+            if (!wrap) {
+                if (cmd.value[0].mode === 'remove') { retVal.push(', true'); }
+                retVal.push('); }');
+            }
+
+            ret.push(retVal.join(''));
         }
         ret.push(')');
         return ret.join('');
@@ -1947,6 +1967,7 @@ function ConkittyGenerator(code) {
             getEnv: '$ConkittyGetEnv',
             joinClasses: '$ConkittyClasses',
             getModClass: '$ConkittyMod',
+            getChangedClass: '$ConkittyChange',
             ret: '$ConkittyTemplateRet'
         };
 
@@ -2076,10 +2097,12 @@ ConkittyGenerator.prototype.generateCode = function() {
         args.push(tpl.getVarName('joinClasses'));
         args.push(', ');
         args.push(tpl.getVarName('getModClass'));
+        args.push(', ');
+        args.push(tpl.getVarName('getChangedClass'));
         args.push(', undefined) {\n');
 
         ret.unshift(args.join(''));
-        ret.push('\n}).apply(null, $C._$args);');
+        ret.push('}).apply(null, $C._$args);');
     }
 
     return {

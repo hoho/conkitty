@@ -1,12 +1,13 @@
 
-
+// Conkitty common functions.
 (function($C) {
 
     $C.tpl = {};
     $C._tpl = {};
 
 
-    var $ConkittyEventHandlers = [];
+    var $ConkittyEventHandlers = [],
+        whitespace = /[\x20\t\r\n\f]/;
 
     $C.on = function on(callback) {
         $ConkittyEventHandlers.push(callback);
@@ -92,6 +93,32 @@
             if (val) {
                 return val === true ? name : name + '_' + val;
             }
+        },
+
+        function getChangedClass(node, classes, remove) {
+            var cur = (node.getAttribute('class') || '').split(whitespace),
+                change = (classes || '').split(whitespace),
+                i,
+                curObj = {};
+
+            for (i = 0; i < cur.length; i++) {
+                curObj[cur[i]] = true;
+            }
+
+            for (i = 0; i < change.length; i++) {
+                if (remove) {
+                    delete curObj[change[i]];
+                } else {
+                    curObj[change[i]] = true;
+                }
+            }
+
+            cur = [];
+            for (i in curObj) {
+                cur.push(i);
+            }
+
+            return cur.join(' ');
         }
     ];
 

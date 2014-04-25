@@ -1,0 +1,15 @@
+change-class-test
+    div.hello.beautiful
+        @class +.world.hello
+        @class +"really beautiful"
+
+    span.this.is.really.good
+        @class -.really.bad
+
+    em.ololo.alala
+        @class .ululu.ilili
+
+    p%b-good-block(yeah)
+        @class +%b-bad-block{no=(1 + 2)}:if((true), {piu="arf"})
+        @class +"a b c d"
+        @class -"a c"
