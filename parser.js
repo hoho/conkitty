@@ -582,7 +582,8 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly, lastBEMBlock) {
         val = ret.value = {
             attrs: {},
             classes: {},
-            ifs: []
+            ifs: [],
+            names: []
         };
 
     while (this.charAt < line.length && !whitespace.test(line[this.charAt]) && line[this.charAt] !== ',' && line[this.charAt] !== ')') {
@@ -625,7 +626,14 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly, lastBEMBlock) {
                 break;
 
             case ':':
-                val.ifs.push(this.readCSSIf(classesOnly, lastBEMBlock));
+                tmp = this.readCSSConditional(classesOnly, lastBEMBlock);
+                if (tmp.what === 'if') {
+                    val.ifs.push(tmp);
+                } else if (tmp.what === 'elem') {
+                    val.names.push(tmp);
+                } else {
+                    throw new Error('Unexpected conditional');
+                }
                 break;
 
             default:
@@ -806,10 +814,15 @@ ConkittyParser.prototype.readCSSBEMMod = function readCSSBEMMod(block) {
 };
 
 
-ConkittyParser.prototype.readCSSIf = function readCSSIf(classesOnly, lastBEMBlock) {
-    var ret = new ConkittyCommandPart(ConkittyTypes.CSS_IF, this);
+ConkittyParser.prototype.readCSSConditional = function readCSSConditional(classesOnly, lastBEMBlock) {
+    var ret = new ConkittyCommandPart(ConkittyTypes.CSS_IF, this),
+        what = this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, /^(?:if|elem)$/, 1);
 
-    this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, /^if$/, 1);
+    ret.what = what.value;
+
+    if (classesOnly && ret.what !== 'if') {
+        throw new ConkittyErrors.InconsistentCommand(what);
+    }
 
     if (this.code[this.lineAt][this.charAt] !== '(') { throw new ConkittyErrors.UnexpectedSymbol(this); }
 
@@ -829,18 +842,23 @@ ConkittyParser.prototype.readCSSIf = function readCSSIf(classesOnly, lastBEMBloc
     }
 
     this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
-    if (this.code[this.lineAt][this.charAt] !== ',') { throw new ConkittyErrors.UnexpectedSymbol(this); }
 
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
-    if (this.code[this.lineAt][this.charAt] !== ',') {
-        ret.positive = this.readCSS(classesOnly, lastBEMBlock);
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
-    }
+    if (ret.what === 'if') {
+        if (this.code[this.lineAt][this.charAt] !== ',') {
+            throw new ConkittyErrors.UnexpectedSymbol(this);
+        }
 
-    if (this.code[this.lineAt][this.charAt] === ',') {
         this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
-        ret.negative = this.readCSS(classesOnly, lastBEMBlock);
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        if (this.code[this.lineAt][this.charAt] !== ',') {
+            ret.positive = this.readCSS(classesOnly, lastBEMBlock);
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        }
+
+        if (this.code[this.lineAt][this.charAt] === ',') {
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+            ret.negative = this.readCSS(classesOnly, lastBEMBlock);
+            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        }
     }
 
     if (this.code[this.lineAt][this.charAt] === ')') {

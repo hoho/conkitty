@@ -34,3 +34,12 @@ bem-selectors-test
 
 bem-selectors-test-inner $cond1 $cond2
     span.a%b-block1.b{mod1}.c%b-block2.d{mod2 = (1 + 2)}.e{mod3="mmm"}:if($cond1, {mod4}, %b-block3(elem1)){mod5}%b-block4(elem2):if($cond2, {mod6}, {mod7})
+
+
+dynamic-element-name-test
+    :elem(('a' + 'b' + 'c'))
+    SET $tmp "blah"
+    div:if((true), :elem($tmp))
+    :if((false), span, :elem(('e' + 'f' + 'g')))
+    :if((true), .a.b:elem(('ol' + 'olo')).c, :elem(('h' + 'i' + 'j')))
+    p:elem((tmp + 2))

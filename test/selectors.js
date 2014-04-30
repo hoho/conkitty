@@ -78,3 +78,20 @@ test('BEM selectors test', function() {
 
     container.innerHTML = '';
 });
+
+
+test('Dynamic element name test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('dynamic-element-name-test').end();
+
+    domEqual(domToArray(container), [
+        {name: 'abc', children: []},
+        {name: 'blah', children: []},
+        {name: 'efg', children: []},
+        {name: 'ololo', attr: {'class': 'a b c'}, children: []},
+        {name: 'blah2', children: []}
+    ]);
+
+    container.innerHTML = '';
+});

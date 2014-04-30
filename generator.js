@@ -414,6 +414,8 @@ function getExistingAttrs(css, ret) {
         getExistingAttrs(css.ifs[i].negative, ret);
     }
 
+    if (css.names.length) { ret[''] = true; }
+
     return ret;
 }
 
@@ -535,6 +537,15 @@ function getAttrsByCSS(node, css) {
                 curRet['class'] = {plain: true, value: classes};
             }
         }
+    }
+
+    exprs = css.names.map(function(name) { return getExpressionString(node, name.cond, false); });
+    if (exprs.length) {
+        if ((j = curRet[''])) {
+            exprs.unshift(j.plain ? JSON.stringify(j.value) : j.value);
+        }
+
+        curRet[''] = {plain: false, value: exprs.reverse().join(' || ')};
     }
 
     for (i = 0; i < css.ifs.length; i++) {
