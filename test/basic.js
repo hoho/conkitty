@@ -298,15 +298,18 @@ test('Lazy PAYLOAD test', function() {
         {name: 'h1', children: [
             {name: 'p', children: ['test1', {name: 'span', children: ['1']}]},
             {name: 'h6', children: ['test1', {name: 'span', children: ['2']}]},
-            {name: 'div', children: ['test1', {name: 'span', children: ['3']}]}
+            {name: 'div', children: ['test1', {name: 'span', children: ['3']}]},
+            {name: 'footer', children: ['[object DocumentFragment]', '|', {name: 'span', children: ['4']}]}
         ]},
         {name: 'h2', children: [
             {name: 'h6', children: ['test2']},
+            {name: 'footer', children: ['|']}
         ]},
         {name: 'h3', children: [
-            {name: 'p', children: ['test3', {name: 'em', children: ['4']}]},
-            {name: 'h6', children: ['test3', {name: 'em', children: ['5']}]},
-            {name: 'div', children: ['test3', {name: 'em', children: ['6']}]}
+            {name: 'p', children: ['test3', {name: 'em', children: ['5']}]},
+            {name: 'h6', children: ['test3', {name: 'em', children: ['6']}]},
+            {name: 'div', children: ['test3', {name: 'em', children: ['7']}]},
+            {name: 'footer', children: ['[object DocumentFragment]', '|', {name: 'em', children: ['8']}]}
         ]}
     ]);
 

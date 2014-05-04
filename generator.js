@@ -370,9 +370,10 @@ function getExpressionString(node, val, wrap, retMaker) {
         case ConkittyTypes.COMMAND_NAME:
             if (val.value === 'PAYLOAD') {
                 ret = [];
-                ret.push('function() { return ');
+                if (wrap) { ret.push('function() { return '); }
                 ret.push(node.getVarName('env'));
-                ret.push('.l(); }');
+                ret.push('.l()');
+                if (wrap) { ret.push('; }'); }
                 return ret.join('');
             }
 
