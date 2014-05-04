@@ -417,7 +417,7 @@ optional.
 
 Run arbitrary JavaScript code.
 
-*$item*, *$index* and *$obj* are references to current context state.
+*$item*, *$index* and *$obj* are references to current context items.
 
 Everything that's below `JS` command with higher indentation will be executed
 as JavaScript code.
