@@ -3,6 +3,7 @@
 Conkitty templates are being compiled to
 [concat.js](https://github.com/hoho/concat.js) chains.
 
+
 ## Quick start
 
 Two quick start options are available:
@@ -14,8 +15,8 @@ Two quick start options are available:
 
 Compiled templates consist of two parts:
 
-* Common core JavaScript code needed for runtime;
-* compiled templates JavaScript code.
+* Common core code needed for runtime;
+* compiled templates code.
 
 To start using compiled templates, link common core and compiled templates
 to your page with `<script>` tags.
@@ -31,7 +32,7 @@ There is a Conkitty syntax highlighting plugin for JetBrains products
     </head>
     <body>
         <script src="/path/to/common.js"></script>
-        <script src="/path/to/compiled/templates"></script>
+        <script src="/path/to/compiled/templates.js"></script>
         <script>
             // Insert `template-name` result into document body right away.
             $C.tpl['template-name'].call(document.body, 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'});
@@ -52,7 +53,7 @@ Check out [this example](https://github.com/hoho/conkitty/tree/master/example).
 
 Block nesting is done via indentation. Top level (zero-indented lines) is for
 templates declarations. Below each template declaration are commands, tags,
-strings and JavaScript expressions.
+strings, variables and JavaScript expressions.
 
     template-name $arg1 $arg2 $arg3
         h1
@@ -90,7 +91,7 @@ strings and JavaScript expressions.
 `template-name [$arg1 [$arg2 […]]]`
 
 Where `template-name` is a name of the template, this name is used to call the
-template. When you call the template, you can pass any number of arguments into
+template. When you call the template, you can pass any number of arguments to
 it. These arguments will be accessible from JavaScript expressions of the
 template via appropriate names. Argument names should be a valid JavaScript
 variable names.
@@ -99,7 +100,7 @@ variable names.
         h1
             $arg1
         p
-            (arg2 + ' ' arg2) // JavaScript expression.
+            (arg2 + ' ' + arg2) // JavaScript expression.
 
     // $C.tpl.template1('Hello', 'World') will produce:
     //
@@ -120,7 +121,7 @@ You can specify default values for arguments.
     //  <h1>Pillow</h1>
     //  <p>"World"</p>
 
-    // $C.tpl.template1() will produce:
+    // $C.tpl.template2() will produce:
     //
     //  <h1>Hello</h1>
     //  <p>{"a":1,"b":2}</p>
@@ -179,16 +180,16 @@ Use CSS selector-like constructions to create tags.
     // Create <div class="test"></div>
     div.test
 
-    // Create <a id="ppp" class="hello world" href="http://xslc.org"></a>
-    a#ppp.hello.world[href="http://xslc.org/"]
+    // Create <a id="ppp" class="hello world" href="http://conkitty.io"></a>
+    a#ppp.hello.world[href="http://conkitty.io/"]
 
     // Create <a href="http://xslc.org/" data-rnd="0.8223862457089126">Yo</a>
     a
-        @href "http://xslc.org/"
+        @href "http://conkitty.io/"
         @data-rnd (Math.random())
         "Yo"
     // or
-    a[href="http://xslc.org/"][data-rnd=(Math.random())]
+    a[href="http://conkitty.io/"][data-rnd=(Math.random())]
         "Yo"
 
 There are `:if(expr, trueSelector, falseSelector)` and `:elem(expr)` pseudo
@@ -217,10 +218,11 @@ As you could notice, there are several ways to specify attributes:
 + `@attr val` below selectors,
 +  `ATTR` command (see this command description below).
 
+
     template $val2 $val5
         div.class1[attr1="val1"][attr2=$val2][attr3=('val' + 3)]
             @attr4 "val4"
-            @attr5 $val5,
+            @attr5 $val5
             @attr6 ('val' + 6)
             // Special case for `class` attribute, you can add, subtract and
             // use selector syntax:
@@ -230,13 +232,13 @@ As you could notice, there are several ways to specify attributes:
 
     // $C.tpl.template('val222', 'val555') will produce:
     //
-    //  <div class="class1 class3 class4 class5"
-             attr1="val1"
-             attr2="val222"
-             attr3="val3"
-             attr4="val4"
-             attr5="val555"
-             attr6="val6"></div>
+    // <div class="class1 class3 class4 class5"
+    //      attr1="val1"
+    //      attr2="val222"
+    //      attr3="val3"
+    //      attr4="val4"
+    //      attr5="val555"
+    //      attr6="val6"></div>
 
 
 ## Commands
@@ -335,7 +337,7 @@ in case of any exception during `CALL` command processing.
                 "Oops"
 
         div
-            CALL (throw new Error('Template name getter exception'))
+            CALL (function() { throw new Error('Template name getter exception'); })
             EXCEPT
                 "It is safe"
 
@@ -349,7 +351,7 @@ in case of any exception during `CALL` command processing.
 
 `CHOOSE` is a command to choose one of multiple choices.
 
-    template1 $arg1
+    template $arg1
         CHOOSE
             WHEN (arg1 === 1)
                 div
@@ -361,9 +363,9 @@ in case of any exception during `CALL` command processing.
                 p
                     (arg1 + ' aaa ' + arg1)
 
-    // $C.tpl.template1(1) will produce: <div>111</div>.
-    // $C.tpl.template1(2) will produce: <span>222</span>.
-    // $C.tpl.template1(false) will produce: <p>3 aaa 3</p>.
+    // $C.tpl.template(1) will produce: <div>111</div>.
+    // $C.tpl.template(2) will produce: <span>222</span>.
+    // $C.tpl.template(false) will produce: <p>false aaa false</p>.
 
 Any number of `WHEN` sections is possible. `OTHERWISE` is an optional section.
 
@@ -377,7 +379,7 @@ optional.
 
 *expr* is a variable or a JavaScript expression returns an array or an object.
 
-    template1
+    template
         EACH $val ([11, 22])
             p
                 (val + ' aa ' + val)
@@ -410,7 +412,7 @@ optional.
     // <em>k4: v4</em>
 
 
-### JS [$item $index $obj]
+### JS *[$item $index $obj]*
 
 Run arbitrary JavaScript code.
 
@@ -419,7 +421,7 @@ Run arbitrary JavaScript code.
 Everything that's below `JS` command with higher indentation will be executed
 as JavaScript code.
 
-    template1
+    template
         div
             JS
                 window.everythingIsOk = true
@@ -435,11 +437,11 @@ as JavaScript code.
                 EACH $i $v ([11, 22])
                     li
                         JS $item $index $arr
-                            console.log(item === v, k === index, item, arr);
+                            console.log(item === v, index === i, item, arr);
                         $v
 
 
-    // $C.tpl.template1() will produce:
+    // $C.tpl.template() will produce:
     //
     // <div>
     //     <p>Hello world</p>
@@ -451,7 +453,7 @@ as JavaScript code.
     //
     // `window.everythingIsOk` and `window.thisIsOkToo` will be set to
     // `true` and 'yes' respectively, and there will be two lines in console
-    // log: `true, true, 11, [11,22]` and `true, true, 22, [11,22]`.
+    // log: `true true 11 [11, 22]` and `true true 22 [11, 22]`.
 
 
 ### MEM *key* *[expr]*
@@ -459,14 +461,14 @@ as JavaScript code.
 You have an access to exact DOM nodes during their creation process. You can
 memorize some of these nodes for future use.
 
-    template1
+    template
         div
             MEM "my-div"
 
             p
                 MEM ('my' + '-' + 'p') ({ppp: this})
 
-    // $C.tpl.template1.call(document.body);
+    // $C.tpl.template();
     // `$C.mem` will be {'my-div': div, 'my-p': {'ppp': p}}
 
 ### SET *$name* *expr*
@@ -513,17 +515,17 @@ You can also assign a subtree to a variable.
 
 `TEST` is a simplified `CHOOSE` for the cases you have only one option to check.
 
-    template1 title
+    template $title
         TEST $title
             h1
                 $title
         p
             "Some content"
 
-    // $C.tpl.template1('Tiiiiiii') will produce:
+    // $C.tpl.template('Tiiiiiii') will produce:
     // <h1>Tiiiiiii</h1><p>Some content</p>
 
-    // $C.tpl.template1() will produce:
+    // $C.tpl.template() will produce:
     // <p>Some content</p>
 
 
@@ -538,14 +540,14 @@ You can subscribe to `TRIGGER` command calls from your application:
 
 After that:
 
-    template1
+    template
         div
             TRIGGER "some" ({arg: true})
             "Hello"
 
-    // Calling $C.tpl.template1.call(document.body) will add `<div>Hello</div>`
-    // to `document.body` and print `"some", {arg: true}, div` in your console
-    // log.
+    // Calling $C.tpl.template.call(document.body) will add `<div>Hello</div>`
+    // to `document.body` and print `some {arg: true} <div>Hello</div>` in your
+    // console log.
 
 
 ### WITH *$name* *expr*
@@ -554,7 +556,7 @@ After that:
 
 *expr* is a JavaScript expression.
 
-    template1
+    template
         div
             SET $v ({a: {b: {c: 'd', e: false}}})
 
@@ -586,10 +588,12 @@ After that:
 
     // This template will produce:
     //
-    // <div>d</div>
-    // <div>FUCK</div>
-    // <div>false</div>
-    // <div>FUCK</div>
+    // <div>
+    //     <div>d</div>
+    //     <div>FUCK</div>
+    //     <div>false</div>
+    //     <div>FUCK</div>
+    // </div>
 
 ## Unescaped strings
 
@@ -676,7 +680,7 @@ you are probably doing something wrong.*
 
 Generated code for a template like:
 
-    b-checkbox props
+    b-checkbox $props
         div.checkbox
             label
                 input[type="checkbox"][name=(props.name)][id=(props.id)][value=(props.value)]
@@ -686,24 +690,17 @@ Generated code for a template like:
 
 will look like:
 
-    $C.tpl['b-checkbox'] = function($C_, props) {
-        $C_ = $C_ || {};
-        return $C($C_.parent)
-            .div({"class":"checkbox"})
-                .elem('label')
-                    .elem('input', {"type":"checkbox"})
-                        .test(function $C_b_checkbox_5_22() { return (props.name); })
-                            .attr('name', function $C_b_checkbox_6_27() { return (props.name); })
-                        .end()
-                        .test(function $C_b_checkbox_7_22() { return (props.id); })
-                            .attr('id', function $C_b_checkbox_8_25() { return (props.id); })
-                        .end()
-                        .test(function $C_b_checkbox_9_22() { return (props.value); })
-                            .attr('value', function $C_b_checkbox_10_28() { return (props.value); })
-                    .end(2)
-                    .test(function $C_b_checkbox_11_18() { return (props.label); })
-                        .text(function $C_b_checkbox_12_17() { return (props.label); })
-        .end(4)
+    $C.tpl["b-checkbox"] = function(props) {
+        var $ConkittyEnv = $ConkittyGetEnv(this);
+        return $C($ConkittyEnv.p)
+            .div({"class": "checkbox"})
+                .elem("label")
+                    .elem("input", function $C_b_checkbox_4_13(){return{type:"checkbox",name:props.name,id:props.id,value:props.value}})
+                    .end()
+                    .test(function $C_b_checkbox_5_18() { return (props.label); })
+                        .elem("em")
+                            .text(function $C_b_checkbox_7_21() { return (props.label); })
+        .end(5);
     };
 
 You might notice anonymous functions named like `$C_b_checkbox_7_22`. These
