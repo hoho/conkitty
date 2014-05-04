@@ -218,6 +218,7 @@ As you could notice, there are several ways to specify attributes:
 + `@attr val` below selectors,
 +  `ATTR` command (see this command description below).
 
+<!-- separate me baby -->
 
     template $val2 $val5
         div.class1[attr1="val1"][attr2=$val2][attr3=('val' + 3)]
