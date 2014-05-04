@@ -1,7 +1,5 @@
 # Conkitty Template Engine [![Build Status](https://travis-ci.org/hoho/conkitty.svg?branch=master)](https://travis-ci.org/hoho/conkitty)
 
-### WARNING! This README is about 0.4.x versions. New 0.5.x README is coming soon.
-
 Conkitty templates are being compiled to
 [concat.js](https://github.com/hoho/concat.js) chains.
 
@@ -9,21 +7,18 @@ Conkitty templates are being compiled to
 
 Two quick start options are available:
 
-* `npm install -g conkitty` and `conkitty file.ctpl` will print compiled
-  `file.ctpl` file.
+* `npm install -g conkitty` and `conkitty -c common.js -t tpl.js file.ctpl`
+  will compile `file.ctpl` to `common.js` and `tpl.js` files.
 * Use [grunt-conkitty](https://github.com/hoho/grunt-conkitty)
   to build Conkitty templates with [Grunt](http://gruntjs.com/).
 
-To start using compiled templates:
+Compiled templates consist of two parts:
 
-* Link [concat.js](https://github.com/hoho/concat.js) to your page *(about 1.3 Kb gzipped)*;
-* link compiled templates to your page;
-* link [callTemplate](https://github.com/hoho/conkitty/blob/master/callTemplate/conkittyCallTemplate.js)
-  function to your page *(less than 200 bytes and optional, you can use
-  `$C.tpl['template-name']` functions directly)*.
+* Common core JavaScript code needed for runtime;
+* compiled templates JavaScript code.
 
-You can install all of these from [Bower](http://bower.io) or [npm](http://npmjs.org/)
-repositories.
+To start using compiled templates, link common core and compiled templates
+to your page with `<script>` tags.
 
 There is a Conkitty syntax highlighting plugin for JetBrains products
 (IntelliJ IDEA, WebStorm, PhpStorm and so on). It is available from
@@ -35,43 +30,46 @@ There is a Conkitty syntax highlighting plugin for JetBrains products
         <title>Hello</title>
     </head>
     <body>
-        <script src="/path/to/concat.js"></script>
+        <script src="/path/to/common.js"></script>
         <script src="/path/to/compiled/templates"></script>
-        <script src="/path/to/callTemplate"></script>
         <script>
             // Insert `template-name` result into document body right away.
-            $C.callTemplate(document.body, 'template-name', 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'});
+            $C.tpl['template-name'].call(document.body, 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'});
+
+            // The same, but assign generated DOM to a variable.
+            var rendered = $C.tpl['template-name']('Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'});
+            document.body.appendChild(rendered);
+            // `rendered` is a document fragment, so, it's not a valid reference
+            // after you call appendChild for it.
         </script>
     </body>
 </html>
 ```
 
-Check out [this example](https://github.com/hoho/conkitty/tree/master/example)
-to see how dependencies and compiled templates could be stuck together using
-[grunt-conkitty](https://github.com/hoho/grunt-conkitty).
+Check out [this example](https://github.com/hoho/conkitty/tree/master/example).
 
 # Syntax (description is in painful progress)
 
-Block nesting is done by indentation. Top level (zero-indented lines) is for
-template declaration. Below template declaration are commands, tags, strings
-and JavaScript expressions.
+Block nesting is done via indentation. Top level (zero-indented lines) is for
+templates declarations. Below each template declaration are commands, tags,
+strings and JavaScript expressions.
 
-    template-name arg1 arg2 arg3
+    template-name $arg1 $arg2 $arg3
         h1
-            (arg1)
+            $arg1
         ul
-            EACH item (arg2)
+            EACH $item $arg2
                 li
                     "Item: "
-                    (item)
+                    $item
         dl
-            EACH key val (arg3)
+            EACH $key $val $arg3
                 dt
-                    (key)
+                    $key
                 dd
-                    (val)
+                    $val
 
-    // $C.callTemplate('template-name', 'Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'}) will produce:
+    // $C.tpl['template-name']('Hello', [1, 2, 3], {k1: 'v1', k2: 'v2'}) will produce:
     //
     // <h1>Hello</h1>
     // <ul>
@@ -89,13 +87,44 @@ and JavaScript expressions.
 
 ## Template declaration
 
-`template-name [arg1 [arg2 […]]]`
+`template-name [$arg1 [$arg2 […]]]`
 
-Where `template-name` is a name of the template, this name is used to call this
+Where `template-name` is a name of the template, this name is used to call the
 template. When you call the template, you can pass any number of arguments into
 it. These arguments will be accessible from JavaScript expressions of the
 template via appropriate names. Argument names should be a valid JavaScript
 variable names.
+
+    template1 $arg1 $arg2
+        h1
+            $arg1
+        p
+            (arg2 + ' ' arg2) // JavaScript expression.
+
+    // $C.tpl.template1('Hello', 'World') will produce:
+    //
+    //  <h1>Hello</h1>
+    //  <p>World World</p>
+
+
+You can specify default values for arguments.
+
+    template2 $arg1["Hello"] $arg2[({a: 1, b: 2})]
+        h1
+            $arg1
+        p
+            (JSON.stringify(arg2))
+
+    // $C.tpl.template2('Pillow', 'World') will produce:
+    //
+    //  <h1>Pillow</h1>
+    //  <p>"World"</p>
+
+    // $C.tpl.template1() will produce:
+    //
+    //  <h1>Hello</h1>
+    //  <p>{"a":1,"b":2}</p>
+
 
 ## Strings
 
@@ -114,6 +143,7 @@ in the same line. String will be properly escaped in the result.
 
     "Hello
        world"
+
 
 ## JavaScript expressions
 
@@ -144,6 +174,8 @@ You can pass a function expression, this function will be called.
 
 ## Tags
 
+Use CSS selector-like constructions to create tags.
+
     // Create <div class="test"></div>
     div.test
 
@@ -155,33 +187,65 @@ You can pass a function expression, this function will be called.
         @href "http://xslc.org/"
         @data-rnd (Math.random())
         "Yo"
+    // or
+    a[href="http://xslc.org/"][data-rnd=(Math.random())]
+        "Yo"
+
+There are `:if(expr, trueSelector, falseSelector)` and `:elem(expr)` pseudo
+selectors.
+
+    template $arg1 $arg2
+        strong:if($arg1, .arg1-is-true#piu, [data-something="yes"])
+            "Hello"
+        #identifier:elem($arg2)
+            "World"
+
+    // $C.tpl.template(true, 'em') will produce:
+    //
+    //  <strong class="arg1-is-true" id="piu">Hello</strong>
+    //  <em id="identifier">World</em>
+
+    // $C.tpl.template(false, 'span') will produce:
+    //
+    //  <strong data-something="yes">Hello</strong>
+    //  <span id="identifier">World</span>
+
+As you could notice, there are several ways to specify attributes:
+
++ `[attr=val]` parts of selectors,
+  expressions,
++ `@attr val` below selectors,
++  `ATTR` command (see this command description below).
+
+    template $val2 $val5
+        div.class1[attr1="val1"][attr2=$val2][attr3=('val' + 3)]
+            @attr4 "val4"
+            @attr5 $val5,
+            @attr6 ('val' + 6)
+            // Special case for `class` attribute, you can add, subtract and
+            // use selector syntax:
+            @class +.class2.class3  // Add using selector syntax.
+            @class -.class2         // Subtract.
+            @class +"class4 class5" // Add.
+
+    // $C.tpl.template('val222', 'val555') will produce:
+    //
+    //  <div class="class1 class3 class4 class5"
+             attr1="val1"
+             attr2="val222"
+             attr3="val3"
+             attr4="val4"
+             attr5="val555"
+             attr6="val6"></div>
+
 
 ## Commands
-
-### ACT *expr*
-
-Run arbitrary JavaScript code.
-
-*expr* is a valid JavaScript code enclosed in parenthesis. If *expr* is a
-function, this function will be called.
-
-    template1
-        div
-            ACT (window.everythingIsOk = true)
-            p
-                "Hello world"
-                ACT (function() { window.functionIsOkToo = 'yes'; })
-
-    // $C.callTemplate('template1') will produce: <div><p>Hello world</p></div>,
-    // `window.everythingIsOk` and `window.functionIsOkToo` will be set to
-    // true and 'yes' respectively.
-
 
 ### ATTR *name* *value*
 
 This command should be used to add an attribute with a dynamic name.
 
-*name* and *value* are strings or JavaScript expressions.
+*name* and *value* are strings, variables or JavaScript expressions.
 
     // Create <div id="yep"></div> or <div class="yep"></div>
     div
@@ -189,33 +253,64 @@ This command should be used to add an attribute with a dynamic name.
 
 ### CALL *template-name [arg1 [arg2 […]]]*
 
-You can call one template from another. argN are strings or JavaScript expressions.
+You can call one template from another. argN are arguments for a template.
 
     // Calling template1 will create <div><h1>Hello world!</h1></div>
     template1
         div
             CALL template2 "Hello" (' wo' + 'rld')
 
-    template2 arg1 arg2
+    template2 $arg1 $arg2
         h1
-            (arg1)
-            (arg2)
+            $arg1
+            $arg2
             "!"
 
-You can pass a subtree when you call a template.
+You can pass arguments by names.
+
+    // Calling template1 will create:
+    //     <div>
+    //         <h1>111</h1>
+    //         <h2>22</h2>
+    //         <h3>3</h3>
+    //         <h4>ffff</h4>
+    //         <h5>5</h5>
+    //         <h6>six</h6>
+    //     </div>
+
+    template1
+        div
+            CALL template2 "111" "22" a6[('si' + 'x')] a4["ffff"]
+
+    // Say, we have a template with a bunch of arguments with default values.
+    template2 $a1["1"] $a2["2"] $a3["3"] $a4["4"] $a5["5"] $a6["6"]
+        h1
+            $a1
+        h2
+            $a2
+        h3
+            $a3
+        h4
+            $a4
+        h5
+            $a5
+        h6
+            $a6
+
+Additionally, you can pass a subtree when you call a template.
 
     // Calling template1 will create <div><h1>Hello world<span>!</span></h1></div>
     template1
         div
             CALL template2 "Hello world"
-                // This is PAYLOAD for template2, it will be calculated lazily,
+                // This is PAYLOAD for template2, it will be calculated lazily
                 // when (and if) you use PAYLOAD command inside template2.
                 span
                     "!"
 
-    template2 arg1
+    template2 $arg1
         h1
-            (arg1)
+            $arg1
             PAYLOAD
 
 It is possible to get template name as JavaScript expression.
@@ -224,82 +319,84 @@ It is possible to get template name as JavaScript expression.
         div
             CALL ('template' + 2) "Hello" "world"
 
-    template2 arg1 arg2
-        (arg1)
+    template2 $arg1 $arg2
+        $arg1
         " "
-        (arg2)
+        $arg2
 
-You can compliment `CALL` command with `ELSE` section, which will be executed
+You can compliment `CALL` command with `EXCEPT` section, which will be executed
 in case of any exception during `CALL` command processing.
 
     template1
         div
             CALL template2
                 // Payload could be here too.
-            ELSE
+            EXCEPT
                 "Oops"
 
         div
             CALL (throw new Error('Template name getter exception'))
-            ELSE
+            EXCEPT
                 "It is safe"
 
     template2
         span
-            ACT (throw new Error('Exception, baby'))
+            JS
+                throw new Error('Exception, baby')
+
 
 ### CHOOSE
 
 `CHOOSE` is a command to choose one of multiple choices.
 
-    template1 arg1
+    template1 $arg1
         CHOOSE
             WHEN (arg1 === 1)
                 div
                     "111"
-            WHEN (arg1 === 2)
+            WHEN $arg1
                 span
                     "222"
             OTHERWISE
                 p
                     (arg1 + ' aaa ' + arg1)
 
-    // $C.callTemplate('template1', 1) will produce: <div>111</div>.
-    // $C.callTemplate('template1', 2) will produce: <span>222</span>.
-    // $C.callTemplate('template1', 3) will produce: <p>3 aaa 3</p>.
+    // $C.tpl.template1(1) will produce: <div>111</div>.
+    // $C.tpl.template1(2) will produce: <span>222</span>.
+    // $C.tpl.template1(false) will produce: <p>3 aaa 3</p>.
 
 Any number of `WHEN` sections is possible. `OTHERWISE` is an optional section.
 
-### EACH *[key] value* *expr*
+### EACH *[$key] $value* *expr*
 
 Iterate over an array or an object.
 
-*key* and *value* are identifiers to access the data from JavaScript
-expressions. They should be a valid JavaScript variable names. *key* is
+*$key* and *$value* are references to items you're being iterating through.
+They should be a `$` sign plus a valid JavaScript variable name. *$key* is
 optional.
 
-*expr* is a JavaScript expression returns an array or an object.
+*expr* is a variable or a JavaScript expression returns an array or an object.
 
     template1
-        EACH val ([11, 22])
+        EACH $val ([11, 22])
             p
                 (val + ' aa ' + val)
 
-        EACH index val ([33, 44])
+        EACH $index $val ([33, 44])
             span
-                (index)
+                $index
                 ": "
-                (val)
+                $val
 
-        EACH vvv ({k1: 'v1', k2: 'v2'})
+        EACH $vvv ({k1: 'v1', k2: 'v2'})
             div
-                (vvv)
+                $vvv
 
-        EACH k v ({k3: 'v3', k4: 'v4'})
+        EACH $k $v ({k3: 'v3', k4: 'v4'})
             em
-                (k)
+                $k
                 ": "
-                (v)
+                $v
 
     // This template will produce:
     //
@@ -311,6 +408,51 @@ optional.
     // <div>v2</div>
     // <em>k3: v3</em>
     // <em>k4: v4</em>
+
+
+### JS [$item $index $obj]
+
+Run arbitrary JavaScript code.
+
+*$item*, *$index* and *$obj* are references to current context state.
+
+Everything that's below `JS` command with higher indentation will be executed
+as JavaScript code.
+
+    template1
+        div
+            JS
+                window.everythingIsOk = true
+            p
+                "Hello world"
+                JS
+                    var y = 'y',
+                        e = 'e',
+                        s = 's';
+                    window.thisIsOkToo = y + e + s;
+
+            ul
+                EACH $i $v ([11, 22])
+                    li
+                        JS $item $index $arr
+                            console.log(item === v, k === index, item, arr);
+                        $v
+
+
+    // $C.tpl.template1() will produce:
+    //
+    // <div>
+    //     <p>Hello world</p>
+    //     <ul>
+    //         <li>11</li>
+    //         <li>22</li>
+    //     </ul>
+    // </div>
+    //
+    // `window.everythingIsOk` and `window.thisIsOkToo` will be set to
+    // `true` and 'yes' respectively, and there will be two lines in console
+    // log: `true, true, 11, [11,22]` and `true, true, 22, [11,22]`.
+
 
 ### MEM *key* *[expr]*
 
@@ -324,12 +466,12 @@ memorize some of these nodes for future use.
             p
                 MEM ('my' + '-' + 'p') ({ppp: this})
 
-    // $C.callTemplate(document.body, 'template1');
+    // $C.tpl.template1.call(document.body);
     // `$C.mem` will be {'my-div': div, 'my-p': {'ppp': p}}
 
-### SET *name* *expr*
+### SET *$name* *expr*
 
-*name* is a valid JavaScript variable name.
+*$name* is a `$` sign plus a valid JavaScript variable name.
 
 *expr* is a JavaScript expression for a variable value.
 
@@ -337,12 +479,13 @@ Sometimes you need to define a variable.
 
     template1
         div
-            SET myvar ({some: 'data', inside: '.'})
+            SET $myvar ({some: 'data', inside: '.'})
 
-            (myvar.some + myvar.inside)
+            EACH $val $myvar
+                $val
 
             // You can reuse variable names.
-            SET myvar ({another: 'value'})
+            SET $myvar ({another: 'value'})
 
             (myvar.another)
 
@@ -352,7 +495,7 @@ Sometimes you need to define a variable.
 You can also assign a subtree to a variable.
 
     template2
-        SET myvar2
+        SET $myvar2
             em
                 "hello"
             strong
@@ -365,42 +508,32 @@ You can also assign a subtree to a variable.
     // This template will produce:
     // <div><em>hello</em><strong>world</strong></div>
 
+
 ### TEST *expr*
 
 `TEST` is a simplified `CHOOSE` for the cases you have only one option to check.
 
     template1 title
-        TEST (title)
+        TEST $title
             h1
-                (title)
+                $title
         p
             "Some content"
 
-    // $C.callTemplate(document.body, 'template1', 'Tiiiiiii') will produce:
+    // $C.tpl.template1('Tiiiiiii') will produce:
     // <h1>Tiiiiiii</h1><p>Some content</p>
 
-    // $C.callTemplate(document.body, 'template1') will produce:
+    // $C.tpl.template1() will produce:
     // <p>Some content</p>
+
 
 ### TRIGGER *[arg1 [arg2 […]]]*
 
-This command calls concat.js trigger function which should be user-defined.
+You can subscribe to `TRIGGER` command calls from your application:
 
-To define trigger function, do:
-
-    $C.define('trigger', function(item, index, arr, args) {
-        //  In case you're inside EACH command:
-        //     `item` is EACH command value.
-        //     `index` is EACH command index or key.
-        //     `arr` is EACH command array or object.
-        //
-        // `item`, `index` and `arr` are undefined in case you're not inside EACH.
-        //
-        // `args` is an array of arguments of TRIGGER command.
-        //
-        // `this` is pointing to current DOM node.
-
-        // Your code.
+    $C.on(function(arg1, arg2) {
+        // `this` will be currently created DOM element.
+        console.log(arg1, arg2, this);
     });
 
 After that:
@@ -408,45 +541,46 @@ After that:
     template1
         div
             TRIGGER "some" ({arg: true})
+            "Hello"
 
-    // `args` argument in trigger callback will be ['some', {arg: true}].
+    // Calling $C.tpl.template1.call(document.body) will add `<div>Hello</div>`
+    // to `document.body` and print `"some", {arg: true}, div` in your console
+    // log.
 
-If you use TRIGGER command without defining trigger function, your template
-will throw an error in the runtime.
 
-### WITH *name* *expr*
+### WITH *$name* *expr*
 
-*name* is a valid JavaScript variable name.
+*$name* is a `$` sign plus a valid JavaScript variable name.
 
 *expr* is a JavaScript expression.
 
     template1
         div
-            SET v ({a: {b: {c: 'd', e: false}}})
+            SET $v ({a: {b: {c: 'd', e: false}}})
 
             div
-                WITH ok (v.a.b.c)
-                    (ok)
+                WITH $ok (v.a.b.c)
+                    $ok
                 ELSE
                     "FUCK"
 
             div
                 // Go to ELSE section in case of exception.
-                WITH ok (v.e.f.g)
-                    (ok)
+                WITH $ok (v.e.f.g)
+                    $ok
                 ELSE
                     "FUCK"
 
             div
-                WITH ok (v.a.b.e)
-                    (ok)
+                WITH $ok (v.a.b.e)
+                    $ok
                 ELSE
                     "FUCK"
 
             div
                 // Go to ELSE section in case of undefined value.
-                WITH ok (v.a.b.no)
-                    (ok)
+                WITH $ok (v.a.b.no)
+                    $ok
                 ELSE
                     "FUCK"
 
@@ -501,10 +635,10 @@ you are probably doing something wrong.*
             // Pass this template's PAYLOAD as an argument to next template.
             CALL template3 PAYLOAD
 
-    template3 arg
+    template3 $arg
         "This is not "
 
-        (arg)
+        $arg
 
         ", this is "
 
@@ -522,6 +656,22 @@ you are probably doing something wrong.*
     //     <strong>yes, it is</strong>
     // </div>
 
+
+## Namespaced templates
+
+
+## Remembering created nodes and template call results
+
+
+## Returning more from templates
+
+
+## Node appender
+
+
+## External files dependency declaration
+
+
 ## Generated code notes
 
 Generated code for a template like:
@@ -529,15 +679,10 @@ Generated code for a template like:
     b-checkbox props
         div.checkbox
             label
-                input[type="checkbox"]
-                    TEST (props.name)
-                        @name (props.name)
-                    TEST (props.id)
-                        @id (props.id)
-                    TEST (props.value)
-                        @value (props.value)
+                input[type="checkbox"][name=(props.name)][id=(props.id)][value=(props.value)]
                 TEST (props.label)
-                    (props.label)
+                    em
+                        (props.label)
 
 will look like:
 
