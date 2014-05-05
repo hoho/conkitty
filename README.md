@@ -13,16 +13,16 @@ template engine, it doesn't produce HTML-strings, but generates DOM instead.
 - [JavaScript expressions](#javascript-expressions)
 - [Tags](#tags)
 - [Commands](#commands)
-    - [ATTR *name* *value*](#ATTR)
-    - [CALL *template-name [arg1 [arg2 […]]]*](#CALL)
-    - [CHOOSE](#CHOOSE)
-    - [EACH *[$key] $value* *expr*](#EACH)
-    - [JS *[$item $index $obj]*](#JS)
-    - [MEM *key* *[expr]*](#MEM)
-    - [SET *$name* *expr*](#SET)
-    - [TEST *expr*](#TEST)
-    - [TRIGGER *[arg1 [arg2 […]]]*](#TRIGGER)
-    - [WITH *$name* *expr*](#WITH)
+    - [ATTR *name* *value*](#attr-name-value)
+    - [CALL *template-name [arg1 [arg2 […]]]*](#call-template-name-arg1-arg2-)
+    - [CHOOSE](#choose)
+    - [EACH *[$key] $value* *expr*](#each-key-value-expr)
+    - [JS *[$item $index $obj]*](#js-item-index-obj)
+    - [MEM *key* *[expr]*](#mem-key-expr)
+    - [SET *$name* *expr*](#set-name-expr)
+    - [TEST *expr*](#test-expr)
+    - [TRIGGER *[arg1 [arg2 […]]]*](#trigger-arg1-arg2-)
+    - [WITH *$name* *expr*](#with-name-expr)
 - [Unescaped strings](#unescaped-strings)
 - [Unescaped JavaScript expressions](#unescaped-javascript-expressions)
 - [Namespaced templates](#namespaced-templates)
@@ -30,7 +30,7 @@ template engine, it doesn't produce HTML-strings, but generates DOM instead.
 - [Returning more from templates](#returning-more-from-templates)
 - [Node appender](#node-appender)
 - [External files dependency declaration](#external-files-dependency-declaration)
-- [Generated code notes](#generated-code-notes])
+- [Generated code notes](#generated-code-notes)
 
 
 ## Quick start
@@ -242,7 +242,7 @@ selectors.
     //  <strong data-something="yes">Hello</strong>
     //  <span id="identifier">World</span>
 
-As you could notice, there are several ways to specify attributes:
+There are several ways to specify attributes:
 
 + `[attr=val]` parts of selectors,
 + `@attr val` below selectors,
@@ -288,7 +288,6 @@ This command should be used to add an attribute with a dynamic name.
 
 You can call one template from another. argN are arguments for a template.
 
-    // Calling template1 will create <div><h1>Hello world!</h1></div>
     template1
         div
             CALL template2 "Hello" (' wo' + 'rld')
@@ -298,6 +297,12 @@ You can call one template from another. argN are arguments for a template.
             $arg1
             $arg2
             "!"
+
+    // $C.tpl.template1() will produce:
+    //
+    // <div>
+    //     <h1>Hello world!</h1>
+    // </div>
 
 You can pass arguments by names.
 
@@ -320,20 +325,20 @@ You can pass arguments by names.
         h6
             $a6
 
-    // Calling template1 will create:
-    //     <div>
-    //         <h1>111</h1>
-    //         <h2>22</h2>
-    //         <h3>3</h3>
-    //         <h4>ffff</h4>
-    //         <h5>5</h5>
-    //         <h6>six</h6>
-    //     </div>
+    // $C.tpl.template1() will produce:
+    //
+    // <div>
+    //     <h1>111</h1>
+    //     <h2>22</h2>
+    //     <h3>3</h3>
+    //     <h4>ffff</h4>
+    //     <h5>5</h5>
+    //     <h6>six</h6>
+    // </div>
 
 
 Additionally, you can pass a subtree when you call a template.
 
-    // Calling template1 will create <div><h1>Hello world<span>!</span></h1></div>
     template1
         div
             CALL template2 "Hello world"
@@ -346,6 +351,12 @@ Additionally, you can pass a subtree when you call a template.
         h1
             $arg1
             PAYLOAD
+
+    // $C.tpl.template1() will produce:
+    //
+    // <div>
+    //     <h1>Hello world<span>!</span></h1>
+    // </div>
 
 It is possible to get template name as JavaScript expression.
 
@@ -432,7 +443,7 @@ optional.
                 ": "
                 $v
 
-    // This template will produce:
+    // $C.tpl.template() will produce:
     //
     // <p>11 aa 11</p>
     // <p>22 aa 22</p>
@@ -523,7 +534,8 @@ Sometimes you need to define a variable.
 
             (myvar.another)
 
-    // This template will produce:
+    // $C.tpl.template1() will produce:
+    //
     // <div>data.value</div>
 
 You can also assign a subtree to a variable.
@@ -539,8 +551,12 @@ You can also assign a subtree to a variable.
             // Use unescaped JavaScript expression (see below) to insert the result.
             (((myvar2)))
 
-    // This template will produce:
-    // <div><em>hello</em><strong>world</strong></div>
+    // $C.tpl.template2() will produce:
+    //
+    // <div>
+    //     <em>hello</em>
+    //     <strong>world</strong>
+    // </div>
 
 
 ### TEST *expr*
@@ -555,9 +571,12 @@ You can also assign a subtree to a variable.
             "Some content"
 
     // $C.tpl.template('Tiiiiiii') will produce:
-    // <h1>Tiiiiiii</h1><p>Some content</p>
+    //
+    // <h1>Tiiiiiii</h1>
+    // <p>Some content</p>
 
     // $C.tpl.template() will produce:
+    //
     // <p>Some content</p>
 
 
@@ -618,7 +637,7 @@ After that:
                 ELSE
                     "FUCK"
 
-    // This template will produce:
+    // $C.tpl.template() will produce:
     //
     // <div>
     //     <div>d</div>
@@ -682,7 +701,7 @@ you are probably doing something wrong.*
 
         " indeed."
 
-    // This template will produce:
+    // $C.tpl.template1() will produce:
     //
     // <div>
     //     <p>
@@ -722,6 +741,7 @@ directly using `$C.tpl[name]` functions.
             "No way"
 
     // $C.tpl.template() will produce:
+    //
     // <div>
     //     <span>Hello World</span>
     //     <span>Hello Pillow</span>
@@ -749,6 +769,7 @@ can assign nodes to variables with `AS $varName` constructions.
             world.innerHTML = ' beautiful world';
 
     // $C.tpl.template() will produce:
+    //
     // <div>
     //     <span class="hello">Hello</span>
     //     <em class="world"> beautiful world</em>
@@ -780,6 +801,7 @@ Use `=` operator in a combination with `JS` command to return value and
             return {btn: btnNode, title: titleNode}
 
     // $C.tpl.template() will produce:
+    //
     // <div>
     //     <button type="button">
     //         <span>My sweet button!!!</span>
