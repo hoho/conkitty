@@ -214,7 +214,7 @@ Use CSS selector-like constructions to create tags.
     // Create <a id="ppp" class="hello world" href="http://conkitty.io"></a>
     a#ppp.hello.world[href="http://conkitty.io/"]
 
-    // Create <a href="http://xslc.org/" data-rnd="0.8223862457089126">Yo</a>
+    // Create <a href="http://conkitty.io" data-rnd="0.8223862457089126">Yo</a>
     a
         @href "http://conkitty.io/"
         @data-rnd (Math.random())
