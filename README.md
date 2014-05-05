@@ -1,7 +1,36 @@
 # Conkitty Template Engine [![Build Status](https://travis-ci.org/hoho/conkitty.svg?branch=master)](https://travis-ci.org/hoho/conkitty)
 
 Conkitty templates are being compiled to
-[concat.js](https://github.com/hoho/concat.js) chains.
+[concat.js](https://github.com/hoho/concat.js) chains. It is not a regular
+template engine, it doesn't produce HTML-strings, but generates DOM instead.
+
+*Documentation is in painful progress, but it is better than nothing.*
+
+- [Quick start](#quick-start)
+- [Syntax](#syntax)
+- [Template declaration](#template-declaration)
+- [Strings](#strings)
+- [JavaScript expressions](#javascript-expressions)
+- [Tags](#tags)
+- [Commands](#commands)
+    - [ATTR *name* *value*](#ATTR)
+    - [CALL *template-name [arg1 [arg2 […]]]*](#CALL)
+    - [CHOOSE](#CHOOSE)
+    - [EACH *[$key] $value* *expr*](#EACH)
+    - [JS *[$item $index $obj]*](#JS)
+    - [MEM *key* *[expr]*](#MEM)
+    - [SET *$name* *expr*](#SET)
+    - [TEST *expr*](#TEST)
+    - [TRIGGER *[arg1 [arg2 […]]]*](#TRIGGER)
+    - [WITH *$name* *expr*](#WITH)
+- [Unescaped strings](#unescaped-strings)
+- [Unescaped JavaScript expressions](#unescaped-javascript-expressions)
+- [Namespaced templates](#namespaced-templates)
+- [Remembering created nodes](#remembering-created-nodes)
+- [Returning more from templates](#returning-more-from-templates)
+- [Node appender](#node-appender)
+- [External files dependency declaration](#external-files-dependency-declaration)
+- [Generated code notes](#generated-code-notes])
 
 
 ## Quick start
@@ -49,7 +78,7 @@ There is a Conkitty syntax highlighting plugin for JetBrains products
 
 Check out [this example](https://github.com/hoho/conkitty/tree/master/example).
 
-# Syntax (description is in painful progress)
+# Syntax
 
 Block nesting is done via indentation. Top level (zero-indented lines) is for
 templates declarations. Below each template declaration are commands, tags,
@@ -664,17 +693,228 @@ you are probably doing something wrong.*
 
 ## Namespaced templates
 
+When you build a set of files, all the templates go to compiled result.
+But you can declare namespaced templates, they will go to the result only in
+case they are used from regular templates.
 
-## Remembering created nodes and template call results
+Namespaced templates can be called from regular templates and can't be called
+directly using `$C.tpl[name]` functions.
+
+    // Regular template, will go to the result anyway.
+    template
+        div
+            CALL ns1::template1 "World"
+
+            // You can skip `CALL` keyword to call namespaced template:
+            ns1::template1 "Pillow"
+
+    // Namespaced template, will go to the result because it's used from regular template above.
+    ns1::template1 $arg
+        span
+            "Hello "
+            $arg
+
+    // Another namespaced template, will not appear in the result since it's not used.
+    another-ns::template1
+        strong
+            "No way"
+
+    // $C.tpl.template() will produce:
+    // <div>
+    //     <span>Hello World</span>
+    //     <span>Hello Pillow</span>
+    // </div>
+
+It is possible to skip `CALL` keyword, when you call namespaced templates.
+
+
+## Remembering created nodes
+
+Conkitty is a DOM generator, not a string generator. As a benefit, you have an
+access to exact DOM nodes during their creation process. You can push these
+nodes back to your application using `TRIGGER` and `MEM` commands. But you also
+can assign nodes to variables with `AS $varName` constructions.
+
+    template
+        div
+            span.hello AS $mySpan
+            em.world AS $world
+
+        // Now you have `<span>` in `$mySpan` and `<em>` in `$world`.
+        // You can pass them to other templates or do something sophisticated with them.
+        JS
+            mySpan.innerHTML = 'Hello';
+            world.innerHTML = ' beautiful world';
+
+    // $C.tpl.template() will produce:
+    // <div>
+    //     <span class="hello">Hello</span>
+    //     <em class="world"> beautiful world</em>
+    // </div>
 
 
 ## Returning more from templates
 
+You can return complex structures from templates, this is useful when you
+create reusable components (for example, you can return component's API).
+
+Use `=` operator in a combination with `JS` command to return value and
+`AS $varName` construction to get returned value.
+
+    template
+        div
+            // $btn will have `{btn: <button>, title: <span>}`
+            ctrl::button "My sweet button" AS $btn
+
+            JS
+                btn.title.innerHTML += '!!!';
+
+    ctrl::button $title $type["button"]
+        button[type=$type] AS $btnNode
+            span AS $titleNode
+                $title
+
+        =JS
+            return {btn: btnNode, title: titleNode}
+
+    // $C.tpl.template() will produce:
+    // <div>
+    //     <button type="button">
+    //         <span>My sweet button!!!</span>
+    //     </button>
+    // </div>
+
+Only one `=` operator per template is allowed.
+
+You can return values from regular templates too and have them as the result
+of template call.
+
+    template1
+        div
+            "Hello World"
+
+    template2
+        div AS $d
+            "Hello World"
+        =JS
+            return {elem: d, ololo: 'something else'}
+
+Feel the difference in calls below.
+
+```js
+    var ret;
+
+    ret = $C.tpl.template1();
+    // `ret` is a document fragment with `<div>Hello World</div>` inside.
+
+    ret = $C.tpl.template1.call(document.body);
+    // `ret` is undefined and `<div>Hello World</div>` is added to `<body>`.
+
+    ret = $C.tpl.template2();
+    // `ret` is `{elem: <div>, ololo: 'something else'}`.
+
+    ret = $C.tpl.template2.call(document.body);
+    // `ret` is `{elem: <div>, ololo: 'something else'}` and
+    // `<div>Hello World</div>` is added to `<body>`.
+```
+
 
 ## Node appender
 
+If you have DOM node in a variable (or as an expression result), you can use
+Conkitty syntax to modify attributes and add children to this node. Use `^`
+operator for this.
+
+    template1
+        div.hello AS $myDiv
+            CALL template2 $myDiv
+
+        div.world AS $myDiv2
+        CALL template2 $myDiv2
+
+    template2 $div
+        strong
+            "Yo"
+
+        // Manipulations with $div node.
+        TEST $div
+            ^$div
+                @class +.class1.class2
+                span
+                    "Hello"
+
+        em
+            "Yep"
+
+    // $C.tpl.template1() will produce (notice node order):
+    //
+    // <div class="hello class1 class2">
+    //     <span>Hello</span>
+    //     <strong>Yo</strong>
+    //     <em>Yep</em>
+    // </div>
+    // <div class="hello class1 class2">
+    //     <span>Hello</span>
+    // </div>
+    // <strong>Yo</strong>
+    // <em>Yep</em>
+
 
 ## External files dependency declaration
+
+It often happens that you need some additional dependencies for your
+templates (such as stylesheets, JavaScript files or images).
+
+It is possible to declare these dependencies and have their properly ordered
+list along with compiled templates. Use `&` operator for this.
+
+Say, you have `tpl.ctpl` file like this.
+
+    template
+        &"file1.css"
+        &"file1.js"
+        div
+            ctrl::button "My button"
+
+    // You can declare namespace-wide dependencies (they will go to the result
+    // in case any template of this namespace is used in regular templates).
+    ctrl::
+        &"ctrl.css"
+        &"ctrl.js"
+
+    ctrl::button $title $type["button"]
+        &"button.css"
+        button[type=$type]
+            $title
+
+    // Will not appear in the result since not used.
+    ctrl::input $name
+        &"input.css"
+        input[type="text"][name=$name]
+
+    // Will not appear in the result since not used.
+    aaa::
+        &"aaa.css"
+
+    // Will not appear in the result since not used.
+    aaa::template
+        &"aaa.js"
+
+`conkitty` command line tool has `--deps` option, it means filename to put
+dependencies list to. [grunt-conkitty](https://github.com/hoho/grunt-conkitty)
+has `deps` option too, for Grunt plugin it means directory to copy all the
+dependencies to.
+
+Let's use command line tool like
+`conkitty --common common.js --templates tpl.js --deps deps.txt tpl.ctpl`
+
+`deps.txt` will be:
+
+    /absolute/path/to/ctrl.css
+    /absolute/path/to/ctrl.js
+    /absolute/path/to/button.css
+    /absolute/path/to/file1.css
+    /absolute/path/to/file1.js
 
 
 ## Generated code notes
@@ -704,7 +944,7 @@ will look like:
         .end(5);
     };
 
-You might notice anonymous functions named like `$C_b_checkbox_7_22`. These
+You might notice anonymous functions named like `$C_b_checkbox_7_21`. These
 names are for easier debugging — you'll see template name, line number and
 character position in your call stack. JavaScript minifiers like UglifyJS
 remove these names during minification, so, compiled templates minify really
