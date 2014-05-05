@@ -705,7 +705,7 @@ directly using `$C.tpl[name]` functions.
         div
             CALL ns1::template1 "World"
 
-            // You can skip `CALL` keyword to call namespaced template:
+            // You can skip `CALL` keyword to when calling namespaced template:
             ns1::template1 "Pillow"
 
     // Namespaced template, will go to the result because it's used from regular template above.
@@ -802,20 +802,20 @@ of template call.
 Feel the difference in calls below.
 
 ```js
-    var ret;
+var ret;
 
-    ret = $C.tpl.template1();
-    // `ret` is a document fragment with `<div>Hello World</div>` inside.
+ret = $C.tpl.template1();
+// `ret` is a document fragment with `<div>Hello World</div>` inside.
 
-    ret = $C.tpl.template1.call(document.body);
-    // `ret` is undefined and `<div>Hello World</div>` is added to `<body>`.
+ret = $C.tpl.template1.call(document.body);
+// `ret` is undefined and `<div>Hello World</div>` is added to `<body>`.
 
-    ret = $C.tpl.template2();
-    // `ret` is `{elem: <div>, ololo: 'something else'}`.
+ret = $C.tpl.template2();
+// `ret` is `{elem: <div>, ololo: 'something else'}`.
 
-    ret = $C.tpl.template2.call(document.body);
-    // `ret` is `{elem: <div>, ololo: 'something else'}` and
-    // `<div>Hello World</div>` is added to `<body>`.
+ret = $C.tpl.template2.call(document.body);
+// `ret` is `{elem: <div>, ololo: 'something else'}` and
+// `<div>Hello World</div>` is added to `<body>`.
 ```
 
 
