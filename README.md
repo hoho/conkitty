@@ -53,7 +53,7 @@ to your page with `<script>` tags.
 There is a Conkitty syntax highlighting plugin for JetBrains products
 (IntelliJ IDEA, WebStorm, PhpStorm and so on). It is available from
 [official plugin repository](http://plugins.jetbrains.com/plugin/7348)
-*(**Warning**, it will be a few days before I publish plugin for current 0.5.x
+*(WARNING, it will be a few days before I publish plugin for current 0.5.x
 version, current one is obsolete)*.
 
 ```html
