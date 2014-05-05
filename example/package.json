@@ -4,7 +4,7 @@
 
     "devDependencies": {
         "grunt": "~0.4.4",
-        "grunt-conkitty": "~0.5.4",
+        "grunt-conkitty": "~0.5.5",
         "grunt-contrib-watch": "~0.5.3"
     }
 }
