@@ -4,8 +4,8 @@ namespaces-test
         ns1::logo "Bebebe"
 
     section
-        ns2::button title["Hello"]
-        ns2::textarea value["World"]
+        ns2::button title="Hello"
+        ns2::textarea value="World"
 
     footer
         ns3::copyright
@@ -46,7 +46,7 @@ ns1::login
         "Login"
 
 
-ns2::button $title["Bye"]
+ns2::button $title="Bye"
     &"includes/button.css"
     button
         $title

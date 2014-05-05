@@ -8,6 +8,7 @@
 var ConkittyErrors = require(__dirname + '/errors.js'),
     ConkittyTypes = require(__dirname + '/types.js'),
     utils = require(__dirname + '/utils.js'),
+    fs = require('fs'),
     path = require('path'),
 
     whitespace = /[\x20\t\r\n\f]/,
@@ -18,7 +19,9 @@ var ConkittyErrors = require(__dirname + '/errors.js'),
     cssNameCheckExpr = /^[a-zA-Z][a-zA-Z0-9_-]*$/,
     tagCheckExpr = /^[a-z][a-zA-Z0-9_-]*$/,
     bemStopExpr = /[^a-zA-Z0-9-]/,
-    bemCheckExpr = /^[a-zA-Z][a-zA-Z0-9-]*$/;
+    bemCheckExpr = /^[a-zA-Z][a-zA-Z0-9-]*$/,
+
+    commandExpr = /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|JS|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/;
 
 
 function clearComments(code) {
@@ -113,8 +116,10 @@ function getIndent(line) {
 }
 
 
-function ConkittyParser(code, base) {
-    this.base = base;
+function ConkittyParser(filename, code, base) {
+    this.filename = filename;
+    if (code === undefined) { code = fs.readFileSync(filename, {encoding: 'utf8'}); }
+    this.base = base || path.dirname(filename);
     this.src = code.split(/\n\r|\r\n|\r|\n/);
     this.code = code.split(/\n\r|\r\n|\r|\n/);
     clearComments(this.code);
@@ -415,18 +420,26 @@ ConkittyParser.prototype.readTemplateName = function readTemplateName() {
 
 
 ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
-    var ret = this._readName(
-        isDecl ? ConkittyTypes.ARGUMENT_DECL : ConkittyTypes.ARGUMENT_VAL,
-        variableStopExpr,
-        variableCheckExpr,
-        isDecl ? 1 : 0
-    );
+    var pos,
+        ret = this._readName(
+            isDecl ? ConkittyTypes.ARGUMENT_DECL : ConkittyTypes.ARGUMENT_VAL,
+            variableStopExpr,
+            variableCheckExpr,
+            isDecl ? 1 : 0
+        );
 
     ret.name = ret.value;
     delete ret.value;
 
-    if (this.code[this.lineAt][this.charAt] === '[') {
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+    pos = skipWhitespaces(this.code[this.lineAt], this.charAt);
+
+    if (this.code[this.lineAt][pos] === '=') {
+        if (commandExpr.test(ret.name)) {
+            this.charAt = pos;
+            throw new ConkittyErrors.UnexpectedSymbol(this);
+        }
+
+        this.charAt = skipWhitespaces(this.code[this.lineAt], pos + 1);
 
         switch (this.code[this.lineAt][this.charAt]) {
             case '(':
@@ -450,15 +463,16 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
                 /* jshint +W086 */
         }
 
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
-
-        if (this.code[this.lineAt][this.charAt] !== ']') {
+        if (!whitespace.test(this.code[this.lineAt][this.charAt]) &&
+            this.charAt !== this.code[this.lineAt].length)
+        {
             throw new ConkittyErrors.UnexpectedSymbol(this);
         }
-
-        this.charAt++;
-
-    } else if (!isDecl) {
+    }
+    else if (!isDecl &&
+             (whitespace.test(this.code[this.lineAt][this.charAt]) ||
+              this.charAt === this.code[this.lineAt].length))
+    {
         if (ret.name === 'PAYLOAD') {
             ret = new ConkittyCommandPart(ConkittyTypes.COMMAND_NAME, this, ret.lineAt, ret.charAt);
             ret.value = 'PAYLOAD';
@@ -475,7 +489,7 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
 
 
 ConkittyParser.prototype.readCommandName = function readCommandName() {
-    var ret = this._readName(ConkittyTypes.COMMAND_NAME, /[^A-Z]/, /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|JS|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/);
+    var ret = this._readName(ConkittyTypes.COMMAND_NAME, /[^A-Z]/, commandExpr);
     if (ret.value === 'JS') {
         var line = this.code[this.lineAt],
             args = [];

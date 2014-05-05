@@ -141,7 +141,7 @@ variable names.
 
 You can specify default values for arguments.
 
-    template2 $arg1["Hello"] $arg2[({a: 1, b: 2})]
+    template2 $arg1="Hello" $arg2=({a: 1, b: 2})
         h1
             $arg1
         p
@@ -301,22 +301,12 @@ You can call one template from another. argN are arguments for a template.
 
 You can pass arguments by names.
 
-    // Calling template1 will create:
-    //     <div>
-    //         <h1>111</h1>
-    //         <h2>22</h2>
-    //         <h3>3</h3>
-    //         <h4>ffff</h4>
-    //         <h5>5</h5>
-    //         <h6>six</h6>
-    //     </div>
-
     template1
         div
-            CALL template2 "111" "22" a6[('si' + 'x')] a4["ffff"]
+            CALL template2 "111" "22" a6=('si' + 'x') a4="ffff"
 
     // Say, we have a template with a bunch of arguments with default values.
-    template2 $a1["1"] $a2["2"] $a3["3"] $a4["4"] $a5["5"] $a6["6"]
+    template2 $a1="1" $a2="2" $a3="3" $a4="4" $a5="5" $a6="6"
         h1
             $a1
         h2
@@ -329,6 +319,17 @@ You can pass arguments by names.
             $a5
         h6
             $a6
+
+    // Calling template1 will create:
+    //     <div>
+    //         <h1>111</h1>
+    //         <h2>22</h2>
+    //         <h3>3</h3>
+    //         <h4>ffff</h4>
+    //         <h5>5</h5>
+    //         <h6>six</h6>
+    //     </div>
+
 
 Additionally, you can pass a subtree when you call a template.
 
@@ -770,7 +771,7 @@ Use `=` operator in a combination with `JS` command to return value and
             JS
                 btn.title.innerHTML += '!!!';
 
-    ctrl::button $title $type["button"]
+    ctrl::button $title $type="button"
         button[type=$type] AS $btnNode
             span AS $titleNode
                 $title
@@ -883,7 +884,7 @@ Say, you have `tpl.ctpl` file like this.
         &"ctrl.css"
         &"ctrl.js"
 
-    ctrl::button $title $type["button"]
+    ctrl::button $title $type="button"
         &"button.css"
         button[type=$type]
             $title

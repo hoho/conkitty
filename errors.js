@@ -8,7 +8,7 @@
 function getErrorMessage(msg, code, lineAt, charAt) {
     lineAt = lineAt === undefined ? code.lineAt : lineAt;
     charAt = charAt === undefined ? code.charAt : charAt;
-    return msg +
+    return (code.filename ? code.filename + ': ' : '(no filename): ') + msg +
         ' (line: ' + (lineAt + 1) +
         ', col: ' + (charAt + 1) + '):\n' +
         code.src[lineAt] + '\n' + (new Array(charAt + 1).join(' ')) + '^';

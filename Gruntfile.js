@@ -73,7 +73,7 @@ module.exports = function(grunt) {
             var conkitty = new Conkitty();
 
             f.src.map(function(filename) {
-                conkitty.push(grunt.file.read(filename), path.resolve(path.dirname(filename)));
+                conkitty.push(path.resolve(filename));
             });
 
             conkitty.generate();

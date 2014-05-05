@@ -38,7 +38,7 @@ try {
 
         for (i = 0; i < program.args.length; i++) {
             filename = path.resolve(program.args[i]);
-            conkitty.push(fs.readFileSync(filename, {encoding: 'utf8'}), path.dirname(filename));
+            conkitty.push(filename);
         }
 
         conkitty.generate();

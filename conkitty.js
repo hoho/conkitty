@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.5.4, https://github.com/hoho/conkitty
+ * conkitty v0.5.5, https://github.com/hoho/conkitty
  * Copyright 2013-2014 Marat Abdullin
  * Released under the MIT license
  */
@@ -18,10 +18,9 @@ function Conkitty() {
 }
 
 
-Conkitty.prototype.push = function push(code, base) {
-    if (!code) { return; }
-    code = new ConkittyParser(code, base);
-    this.code = this.code.concat(code.readBlock(0));
+Conkitty.prototype.push = function push(filename, code, base) {
+    code = new ConkittyParser(filename, code, base);
+    this.code = this.code.concat(code.readBlock(0) || []);
 };
 
 
