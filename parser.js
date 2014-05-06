@@ -477,6 +477,9 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
 
     if (ret.type !== ConkittyTypes.COMMAND_NAME) {
         ret.name = '$' + ret.name;
+        if (ret.name === '$C') {
+            throw new ConkittyErrors.IllegalName(ret, '$C is reserved');
+        }
     }
 
     return ret;
@@ -883,6 +886,9 @@ ConkittyParser.prototype.readCSSConditional = function readCSSConditional(classe
 ConkittyParser.prototype.readVariable = function readVariable() {
     var ret = this._readName(ConkittyTypes.VARIABLE, variableStopExpr, variableCheckExpr, 1);
     ret.value = '$' + ret.value;
+    if (ret.value === '$C') {
+        throw new ConkittyErrors.IllegalName(ret, '$C is reserved');
+    }
     return ret;
 };
 
