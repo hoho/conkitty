@@ -18,7 +18,7 @@ selectors-test
 
 
 selectors-test-inner $cond1 $cond2 $cond3
-    span.something#very[good="indeed"]:if($cond1, .ccond1-true):if((cond2), #icond2-true.ccond2-true:if($cond3, tcond3-true, [acond3-false=('ye' + 'p!')]), .ccond2-false[acond2-false="ololo"])
+    span.something#very[good="indeed"]:if($cond1, .ccond1-true):if(($cond2), #icond2-true.ccond2-true:if($cond3, tcond3-true, [acond3-false=('ye' + 'p!')]), .ccond2-false[acond2-false="ololo"])
 
 
 bem-selectors-test
@@ -42,4 +42,4 @@ dynamic-element-name-test
     div:if((true), :elem($tmp))
     :if((false), span, :elem(('e' + 'f' + 'g')))
     :if((true), .a.b:elem(('ol' + 'olo')).c, :elem(('h' + 'i' + 'j')))
-    p:elem((tmp + 2))
+    p:elem(($tmp + 2))

@@ -6,8 +6,8 @@ installed.
 
 * `git clone https://github.com/hoho/conkitty.git conkitty`
 * `cd conkitty/example`
-* `npm install`;
-* `grunt`;
+* `npm install`
+* `grunt`
 * open `dst/index.html` in your browser.
 
 You can also run `grunt watch` to automatically recompile templates on change.

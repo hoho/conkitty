@@ -56,7 +56,7 @@ ret-elem-test2
 
 ret-test-inner $arg
     "ololo"
-    =(arg)
+    =($arg)
 
 
 ret-default-test

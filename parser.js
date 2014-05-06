@@ -484,6 +484,10 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
         }
     }
 
+    if (ret.type !== ConkittyTypes.COMMAND_NAME) {
+        ret.name = '$' + ret.name;
+    }
+
     return ret;
 };
 
@@ -886,7 +890,9 @@ ConkittyParser.prototype.readCSSConditional = function readCSSConditional(classe
 
 
 ConkittyParser.prototype.readVariable = function readVariable() {
-    return this._readName(ConkittyTypes.VARIABLE, variableStopExpr, variableCheckExpr, 1);
+    var ret = this._readName(ConkittyTypes.VARIABLE, variableStopExpr, variableCheckExpr, 1);
+    ret.value = '$' + ret.value;
+    return ret;
 };
 
 

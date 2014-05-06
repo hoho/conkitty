@@ -2,7 +2,7 @@
 
 Conkitty templates are being compiled to
 [concat.js](https://github.com/hoho/concat.js) chains. It is not a regular
-template engine, it doesn't produce HTML-strings, but generates DOM instead.
+template engine, it doesn't produce strings of HTML, but generates DOM instead.
 
 *Documentation is in painful progress, but it is better than nothing.*
 
@@ -12,6 +12,7 @@ template engine, it doesn't produce HTML-strings, but generates DOM instead.
 - [Strings](#strings)
 - [JavaScript expressions](#javascript-expressions)
 - [Tags](#tags)
+- [Variables](#variables)
 - [Commands](#commands)
     - [ATTR *name* *value*](#attr-name-value)
     - [CALL *template-name [arg1 [arg2 […]]]*](#call-template-name-arg1-arg2-)
@@ -54,8 +55,8 @@ to your page with `<script>` tags.
 There is a Conkitty syntax highlighting plugin for JetBrains products
 (IntelliJ IDEA, WebStorm, PhpStorm and so on). It is available from
 [official plugin repository](http://plugins.jetbrains.com/plugin/7348)
-*(WARNING, it will be a few days before I publish plugin for current 0.5.x
-version, current one is obsolete)*.
+*(WARNING, it will be a few days before I publish plugin for 0.5.x version,
+current one is obsolete)*.
 
 ```html
 <html>
@@ -125,14 +126,15 @@ strings, variables and JavaScript expressions.
 Where `template-name` is a name of the template, this name is used to call the
 template. When you call the template, you can pass any number of arguments to
 it. These arguments will be accessible from JavaScript expressions of the
-template via appropriate names. Argument names should be a valid JavaScript
-variable names.
+template via appropriate names. Argument names should be a `$` sign plus a
+valid JavaScript variable names.
 
     template1 $arg1 $arg2
         h1
             $arg1
         p
-            (arg2 + ' ' + arg2) // JavaScript expression.
+            ($arg2 + ' ' + $arg2) // JavaScript expression, arguments are
+                                  // accessible here too.
 
     // $C.tpl.template1('Hello', 'World') will produce:
     //
@@ -146,7 +148,7 @@ You can specify default values for arguments.
         h1
             $arg1
         p
-            (JSON.stringify(arg2))
+            (JSON.stringify($arg2))
 
     // $C.tpl.template2('Pillow', 'World') will produce:
     //
@@ -259,7 +261,7 @@ There are several ways to specify attributes:
             // Special case for `class` attribute, you can add, subtract and
             // use selector syntax:
             @class +.class2.class3  // Add using selector syntax.
-            @class -.class2         // Subtract.
+            @class -.class2         // Subtract using selector syntax.
             @class +"class4 class5" // Add.
 
     // $C.tpl.template('val222', 'val555') will produce:
@@ -271,6 +273,15 @@ There are several ways to specify attributes:
     //      attr4="val4"
     //      attr5="val555"
     //      attr6="val6"></div>
+
+
+## Variables
+
+A number of variables could be accessible inside a template. Template
+arguments, `SET`, `EACH` and `WITH` commands, `AS $var` constructions create
+variables inside a template. Variable names should be a `$` sign followed by
+a valid JavaScript variable name, all template variables are accessible in
+template JavaScript expressions via their names.
 
 
 ## Commands
@@ -291,6 +302,7 @@ This command should be used to add an attribute with a dynamic name.
 ### CALL *template-name [arg1 [arg2 […]]]*
 
 You can call one template from another. argN are arguments for a template.
+Arguments should be strings, variables or JavaScript expressions.
 
     template1
         div
@@ -312,6 +324,7 @@ You can pass arguments by names.
 
     template1
         div
+            // Notice that `$` signs in argument names should not present here.
             CALL template2 "111" "22" a6=('si' + 'x') a4="ffff"
 
     // Say, we have a template with a bunch of arguments with default values.
@@ -362,7 +375,7 @@ Additionally, you can pass a subtree when you call a template.
     //     <h1>Hello world<span>!</span></h1>
     // </div>
 
-It is possible to get template name as JavaScript expression.
+It is possible to get template name dynamically, as JavaScript expression.
 
     template1
         div
@@ -400,7 +413,7 @@ in case of any exception during `CALL` command processing.
 
     template $arg1
         CHOOSE
-            WHEN (arg1 === 1)
+            WHEN ($arg1 === 1)
                 div
                     "111"
             WHEN $arg1
@@ -408,13 +421,13 @@ in case of any exception during `CALL` command processing.
                     "222"
             OTHERWISE
                 p
-                    (arg1 + ' aaa ' + arg1)
+                    ($arg1 + ' aaa ' + $arg1)
 
     // $C.tpl.template(1) will produce: <div>111</div>.
     // $C.tpl.template(2) will produce: <span>222</span>.
     // $C.tpl.template(false) will produce: <p>false aaa false</p>.
 
-Any number of `WHEN` sections is possible. `OTHERWISE` is an optional section.
+Any number of `WHEN` sections is possible. `OTHERWISE` section is optional.
 
 ### EACH *[$key] $value* *expr*
 
@@ -429,7 +442,7 @@ optional.
     template
         EACH $val ([11, 22])
             p
-                (val + ' aa ' + val)
+                ($val + ' aa ' + $val)
 
         EACH $index $val ([33, 44])
             span
@@ -484,7 +497,7 @@ as JavaScript code.
                 EACH $i $v ([11, 22])
                     li
                         JS $item $index $arr
-                            console.log(item === v, index === i, item, arr);
+                            console.log($item === $v, $index === $i, $item, $arr);
                         $v
 
 
@@ -516,7 +529,7 @@ memorize some of these nodes for future use.
                 MEM ('my' + '-' + 'p') ({ppp: this})
 
     // $C.tpl.template();
-    // `$C.mem` will be {'my-div': div, 'my-p': {'ppp': p}}
+    // `$C.mem` will be {'my-div': <div>, 'my-p': {'ppp': <p>}}
 
 ### SET *$name* *expr*
 
@@ -536,7 +549,7 @@ Sometimes you need to define a variable.
             // You can reuse variable names.
             SET $myvar ({another: 'value'})
 
-            (myvar.another)
+            ($myvar.another)
 
     // $C.tpl.template1() will produce:
     //
@@ -553,7 +566,7 @@ You can also assign a subtree to a variable.
 
         div
             // Use unescaped JavaScript expression (see below) to insert the result.
-            (((myvar2)))
+            ((($myvar2)))
 
     // $C.tpl.template2() will produce:
     //
@@ -616,39 +629,40 @@ After that:
             SET $v ({a: {b: {c: 'd', e: false}}})
 
             div
-                WITH $ok (v.a.b.c)
+                WITH $ok ($v.a.b.c)
                     $ok
                 ELSE
-                    "FUCK"
+                    "HECK"
 
             div
                 // Go to ELSE section in case of exception.
-                WITH $ok (v.e.f.g)
+                WITH $ok ($v.e.f.g)
                     $ok
                 ELSE
-                    "FUCK"
+                    "HECK"
 
             div
-                WITH $ok (v.a.b.e)
+                WITH $ok ($v.a.b.e)
                     $ok
                 ELSE
-                    "FUCK"
+                    "HECK"
 
             div
                 // Go to ELSE section in case of undefined value.
-                WITH $ok (v.a.b.no)
+                WITH $ok ($v.a.b.no)
                     $ok
                 ELSE
-                    "FUCK"
+                    "HECK"
 
     // $C.tpl.template() will produce:
     //
     // <div>
     //     <div>d</div>
-    //     <div>FUCK</div>
+    //     <div>HECK</div>
     //     <div>false</div>
-    //     <div>FUCK</div>
+    //     <div>HECK</div>
     // </div>
+
 
 ## Unescaped strings
 
@@ -665,6 +679,7 @@ markup inside triple quotes should be valid.
 **Bad**
 
     """</div>"""
+
 
 ## Unescaped JavaScript expressions
 
@@ -701,7 +716,7 @@ you are probably doing something wrong.*
 
         ", this is "
 
-        (((arg)))
+        ((($arg)))
 
         " indeed."
 
@@ -730,7 +745,7 @@ directly using `$C.tpl[name]` functions.
         div
             CALL ns1::template1 "World"
 
-            // You can skip `CALL` keyword to when calling namespaced template:
+            // You can skip `CALL` keyword when you call namespaced template:
             ns1::template1 "Pillow"
 
     // Namespaced template, will go to the result because it's used from regular template above.
@@ -769,8 +784,8 @@ can assign nodes to variables with `AS $varName` constructions.
         // Now you have `<span>` in `$mySpan` and `<em>` in `$world`.
         // You can pass them to other templates or do something sophisticated with them.
         JS
-            mySpan.innerHTML = 'Hello';
-            world.innerHTML = ' beautiful world';
+            $mySpan.innerHTML = 'Hello';
+            $world.innerHTML = ' beautiful world';
 
     // $C.tpl.template() will produce:
     //
@@ -794,7 +809,7 @@ Use `=` operator in a combination with `JS` command to return value and
             ctrl::button "My sweet button" AS $btn
 
             JS
-                btn.title.innerHTML += '!!!';
+                $btn.title.innerHTML += '!!!';
 
     ctrl::button $title $type="button"
         button[type=$type] AS $btnNode
@@ -802,7 +817,7 @@ Use `=` operator in a combination with `JS` command to return value and
                 $title
 
         =JS
-            return {btn: btnNode, title: titleNode}
+            return {btn: $btnNode, title: $titleNode}
 
     // $C.tpl.template() will produce:
     //
@@ -825,7 +840,7 @@ of template function call.
         div AS $d
             "Hello World"
         =JS
-            return {elem: d, ololo: 'something else'}
+            return {elem: $d, ololo: 'something else'}
 
 Feel the difference in calls below.
 
@@ -952,23 +967,23 @@ Generated code for a template like:
     b-checkbox $props
         div.checkbox
             label
-                input[type="checkbox"][name=(props.name)][id=(props.id)][value=(props.value)]
-                TEST (props.label)
+                input[type="checkbox"][name=($props.name)][id=($props.id)][value=($props.value)]
+                TEST ($props.label)
                     em
-                        (props.label)
+                        ($props.label)
 
 will look like:
 
-    $C.tpl["b-checkbox"] = function(props) {
+    $C.tpl["b-checkbox"] = function($props) {
         var $ConkittyEnv = $ConkittyGetEnv(this);
         return $C($ConkittyEnv.p)
             .div({"class": "checkbox"})
                 .elem("label")
-                    .elem("input", function $C_b_checkbox_4_13(){return{type:"checkbox",name:props.name,id:props.id,value:props.value}})
+                    .elem("input", function $C_b_checkbox_4_13(){return{type:"checkbox",name:$props.name,id:$props.id,value:$props.value}})
                     .end()
-                    .test(function $C_b_checkbox_5_18() { return (props.label); })
+                    .test(function $C_b_checkbox_5_18() { return ($props.label); })
                         .elem("em")
-                            .text(function $C_b_checkbox_7_21() { return (props.label); })
+                            .text(function $C_b_checkbox_7_21() { return ($props.label); })
         .end(5);
     };
 

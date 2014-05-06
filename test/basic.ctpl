@@ -14,28 +14,28 @@ tpl1 $arg1 $arg2
     div
         ATTR ('a' + 1) "bebe"
 
-        (arg2 + arg2)
+        ($arg2 + $arg2)
 
-        CALL tpl-2 (arg1 + 'yo')
+        CALL tpl-2 ($arg1 + 'yo')
             em
                 "cool"
             CALL tpl3
                 "hihihi"
         CALL tpl-2 "test"
 
-        SET $somevar ({a: {b: arg1}})
+        SET $somevar ({a: {b: $arg1}})
         SET $somevar2
             p
                 "000"
 
-        WITH $somevar3 (somevar.a.b.c)
+        WITH $somevar3 ($somevar.a.b.c)
             "no"
         ELSE
             "yes"
 
-        WITH $somevar4 (somevar.a.b)
-            (((somevar2)))
-            (somevar4)
+        WITH $somevar4 ($somevar.a.b)
+            ((($somevar2)))
+            ($somevar4)
             "!!!"
 
 
@@ -44,7 +44,7 @@ tpl1 $arg1 $arg2
    test */
 tpl-2 $a
     h1
-        (a)
+        ($a)
     TEST PAYLOAD
         "aaa"
     CHOOSE
@@ -59,9 +59,9 @@ tpl-2 $a
 
 tpl3 $b
     CHOOSE
-        WHEN (b)
+        WHEN ($b)
             "bbbbb"
-            (b)
+            ($b)
             "bbbbb"
         OTHERWISE
             "BBBBB"
@@ -70,26 +70,26 @@ tpl3 $b
 
 eachtest $arg
     ul
-        EACH $cur (arg)
+        EACH $cur ($arg)
             li
                 $cur
                 "|"
-                EACH $cur (cur)
+                EACH $cur ($cur)
                     b
                         $cur
                 "|"
 
 
 eachtest2 $arg
-    EACH (arg)
+    EACH ($arg)
         "eeee"
     ul
-        EACH $value (arg)
+        EACH $value ($arg)
             li
                 "|"
                 EACH $key $val $value
                     b
-                        (key + ' = ' + val)
+                        ($key + ' = ' + $val)
                 "|"
 
 
@@ -110,7 +110,7 @@ dynamic-call
 
 dynamic-call-call $arg
     PAYLOAD
-    (arg + arg + arg)
+    ($arg + $arg + $arg)
 
 
 mem-test
@@ -131,7 +131,7 @@ act-test
     div
         EACH ({piu: 'boom'})
             JS $item $index $obj
-                document.actTest2 = 'Hahaha' + item + index + (obj && obj.piu);
+                document.actTest2 = 'Hahaha' + $item + $index + ($obj && $obj.piu);
 
 
 trigger-test
@@ -145,7 +145,7 @@ trigger-test
 
 
 with-test $e
-    WITH $details (e.ololo.piupiu)
+    WITH $details ($e.ololo.piupiu)
         $details
 
 
@@ -172,14 +172,14 @@ lazy-payload-inner $prefix
     TEST PAYLOAD
         TEST PAYLOAD
             p
-                (prefix)
+                ($prefix)
                 PAYLOAD
     h6
-        (prefix)
+        ($prefix)
         PAYLOAD
     TEST PAYLOAD
         div
-            (prefix)
+            ($prefix)
             PAYLOAD
 
     CALL lazy-payload-inner-inner PAYLOAD
@@ -189,7 +189,7 @@ lazy-payload-inner-inner $arg
     footer
         $arg
         "|"
-        (((arg)))
+        ((($arg)))
 
 
 safe-call-test
@@ -214,7 +214,7 @@ safe-call-test
 
 safe-call-test-inner $error
     CHOOSE
-        WHEN (error)
+        WHEN ($error)
             JS
                 throw new Error('No pasaran')
         OTHERWISE
@@ -243,4 +243,4 @@ default-args-test-inner $arg1 $arg2="hello" $arg3 $arg4=({a: 'b'})
     strong
         $arg3
     u
-        (JSON.stringify(arg4))
+        (JSON.stringify($arg4))
