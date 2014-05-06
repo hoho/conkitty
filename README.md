@@ -31,6 +31,7 @@ template engine, it doesn't produce HTML-strings, but generates DOM instead.
 - [Node appender](#node-appender)
 - [External files dependency declaration](#external-files-dependency-declaration)
 - [Generated code notes](#generated-code-notes)
+- [Source maps](#source-maps)
 
 
 ## Quick start
@@ -280,7 +281,10 @@ This command should be used to add an attribute with a dynamic name.
 
 *name* and *value* are strings, variables or JavaScript expressions.
 
-    // Create <div id="yep"></div> or <div class="yep"></div>
+    // Create
+    // <div id="yep"></div>
+    // or
+    // <div class="yep"></div>
     div
         ATTR (Math.random() < 0.5 ? 'id' : 'class') "yep"
 
@@ -811,7 +815,7 @@ Use `=` operator in a combination with `JS` command to return value and
 Only one `=` operator per template is allowed.
 
 You can return values from regular templates too and have them as the result
-of template call.
+of template function call.
 
     template1
         div
@@ -892,7 +896,7 @@ templates (such as stylesheets, JavaScript files or images).
 It is possible to declare these dependencies and have their properly ordered
 list along with compiled templates. Use `&` operator for this.
 
-Say, you have `tpl.ctpl` file like this.
+Say, you have `tpl.ctpl` file like this:
 
     template
         &"file1.css"
@@ -973,3 +977,7 @@ names are for easier debugging — you'll see template name, line number and
 character position in your call stack. JavaScript minifiers like UglifyJS
 remove these names during minification, so, compiled templates minify really
 well.
+
+## Source maps
+
+Source maps are coming pretty soon.
