@@ -19,27 +19,27 @@ test('Ret test', function() {
 
     ret = $C.tpl['ret-var-test'].call(container);
     deepEqual(ret, 'test4');
-    deepEqual(domToArray(container), ['test4', 'yo']);
+    deepEqual(domToArray(container), ['yo']);
     container.innerHTML = '';
 
     ret = $C.tpl['ret-var-test2'].call(container);
     deepEqual(ret, 'test9');
-    deepEqual(domToArray(container), ['ololo', 'test9', 'yo', 'test9']);
+    deepEqual(domToArray(container), ['ololo', 'test9', 'yo']);
     container.innerHTML = '';
 
     ret = $C.tpl['ret-var-test3'].call(container);
     deepEqual(ret, 'test10');
-    deepEqual(domToArray(container), ['yo', 'ololo', 'test10', 'test10']);
+    deepEqual(domToArray(container), ['yo', 'ololo', 'test10']);
     container.innerHTML = '';
 
     ret = $C.tpl['ret-expr-test'].call(container);
     deepEqual(ret, 'test5');
-    deepEqual(domToArray(container), ['yo', 'test5']);
+    deepEqual(domToArray(container), ['yo']);
     container.innerHTML = '';
 
     ret = $C.tpl['ret-expr-test2'].call(container);
     deepEqual(ret, 'test6');
-    deepEqual(domToArray(container), ['test6', 'yo']);
+    deepEqual(domToArray(container), ['yo']);
     container.innerHTML = '';
 
     ret = $C.tpl['ret-elem-test'].call(container);
@@ -52,6 +52,11 @@ test('Ret test', function() {
     deepEqual(domToArray(container), ['yo', {name: 'p', attr: {'class': 'test8'}, children: ['test8']}]);
     container.innerHTML = '';
 
+    ret = $C.tpl['ret-str-test'].call(container);
+    deepEqual(ret, 'ololo');
+    deepEqual(domToArray(container), ['yo']);
+    container.innerHTML = '';
+
     ret = $C.tpl['ret-default-test']();
     ok(ret && (ret.nodeType === 11), 'documentFragment expected');
     deepEqual(domToArray(container), []);
@@ -59,7 +64,9 @@ test('Ret test', function() {
         {name: 'div', attr: {}, children: ['ahahah']},
         {name: 'p', attr: {}, children: ['ohohoh']}
     ]);
-    container.appendChild(ret);
+
+    ret = $C.tpl['ret-default-test'].call(container);
+    deepEqual(ret, undefined);
     deepEqual(domToArray(container), [
         {name: 'div', attr: {}, children: ['ahahah']},
         {name: 'p', attr: {}, children: ['ohohoh']}

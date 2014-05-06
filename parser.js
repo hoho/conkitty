@@ -21,7 +21,7 @@ var ConkittyErrors = require(__dirname + '/errors.js'),
     bemStopExpr = /[^a-zA-Z0-9-]/,
     bemCheckExpr = /^[a-zA-Z][a-zA-Z0-9-]*$/,
 
-    commandExpr = /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|JS|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/;
+    commandExpr = /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|EXPOSE|JS|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/;
 
 
 function clearComments(code) {
@@ -305,16 +305,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                 val.push(this.readAppender());
                 break;
 
-            case '=':
-                /* jshint -W086 */
-                if (!val.length) {
-                    val.push(new ConkittyCommandPart(ConkittyTypes.RET_MAKER, this));
-                    this.charAt++;
-                    break;
-                }
-
             default:
-                /* jshint +W086 */
                 if (argumentsDecl) {
                 } else if (argumentsVal) {
                     val.push(this.readArgument(false));
@@ -352,7 +343,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
         if (this.charAt < this.code[this.lineAt].length) {
             i = skipWhitespaces(this.code[this.lineAt], this.charAt);
 
-            if (this.charAt === i && !(val.length === 1 && val[0].type === ConkittyTypes.RET_MAKER)) {
+            if (this.charAt === i) {
                 throw new ConkittyErrors.UnexpectedSymbol(this);
             }
 

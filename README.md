@@ -800,8 +800,9 @@ can assign nodes to variables with `AS $varName` constructions.
 You can return complex structures from templates, this is useful when you
 create reusable components (for example, you can return component's API).
 
-Use `=` operator in a combination with `JS` command to return value and
-`AS $varName` construction to get returned value.
+Use `EXPOSE` command in combination with string, variable, expression or
+`JS` command to return value and `AS $varName` construction to get returned
+value.
 
     template
         div
@@ -816,8 +817,17 @@ Use `=` operator in a combination with `JS` command to return value and
             span AS $titleNode
                 $title
 
-        =JS
-            return {btn: $btnNode, title: $titleNode}
+        EXPOSE ({btn: $btnNode, title: $titleNode})
+
+        // Or the same with `JS` command:
+        //
+        // EXPOSE JS
+        //     return {btn: $btnNode, title: $titleNode}
+        //
+        // Or the same with variable:
+        //
+        // SET $ret ({btn: $btnNode, title: $titleNode})
+        // EXPOSE $ret
 
     // $C.tpl.template() will produce:
     //
@@ -827,7 +837,7 @@ Use `=` operator in a combination with `JS` command to return value and
     //     </button>
     // </div>
 
-Only one `=` operator per template is allowed.
+Only one `EXPOSE` command per template is allowed.
 
 You can return values from regular templates too and have them as the result
 of template function call.
@@ -839,8 +849,7 @@ of template function call.
     template2
         div AS $d
             "Hello World"
-        =JS
-            return {elem: $d, ololo: 'something else'}
+        EXPOSE ({elem: $d, ololo: 'something else'})
 
 Feel the difference in calls below.
 
