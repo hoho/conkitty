@@ -283,6 +283,13 @@ variables inside a template. Variable names should be a `$` sign followed by
 a valid JavaScript variable name, all template variables are accessible in
 template JavaScript expressions via their names.
 
+    template $arg1 $arg2
+        SET $var1 $arg1
+        SET $var2 ('Concatenated ' + $arg2 + $arg2)
+        $arg1
+        ($var1 + ' piu ' + $arg2)
+        $var2
+
 
 ## Commands
 
