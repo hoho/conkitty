@@ -37,17 +37,23 @@ template engine, it doesn't produce strings of HTML, but generates DOM instead.
 
 ## Quick start
 
-Two quick start options are available:
+Three quick start options are available:
 
 * `npm install -g conkitty` and `conkitty -c common.js -t tpl.js file.ctpl`
   will compile `file.ctpl` to `common.js` and `tpl.js` files.
 * Use [grunt-conkitty](https://github.com/hoho/grunt-conkitty)
-  to build Conkitty templates with [Grunt](http://gruntjs.com/).
+  to build Conkitty templates with [Grunt](http://gruntjs.com/), check out
+  [this example](https://github.com/hoho/conkitty/tree/master/example).
+* Use [gulp-conkitty](https://github.com/hoho/gulp-conkitty)
+  to build Conkitty templates with [Gulp](http://gulpjs.com/), check out
+  [this example](https://github.com/hoho/conkitty/tree/master/example2) (it has
+  example dependencies).
 
-Compiled templates consist of two parts:
+Compiled templates consist of two and a half parts:
 
-* Common core code needed for runtime;
-* compiled templates code.
+* Common core code needed for runtime,
+* compiled templates code,
+* external dependencies (in case they are declared in templates).
 
 To start using compiled templates, link common core and compiled templates
 to your page with `<script>` tags.
@@ -78,7 +84,6 @@ There is a Conkitty syntax highlighting plugin for JetBrains products
 </html>
 ```
 
-Check out [this example](https://github.com/hoho/conkitty/tree/master/example).
 
 # Syntax
 
