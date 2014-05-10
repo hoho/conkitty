@@ -1,0 +1,9 @@
+blocks::button $title $type="button"
+    &"button.css"
+    &"button.js"
+
+    button.blocks-button[type=$type] AS $btn
+        $title
+
+    // Blocks.Button is declared in button.js.
+    EXPOSE (new Blocks.Button($btn))

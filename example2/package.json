@@ -1,0 +1,12 @@
+{
+    "name": "conkitty-example",
+    "private": true,
+
+    "devDependencies": {
+        "gulp": "~3.6.2",
+        "gulp-rename": "~1.2.0",
+        "gulp-conkitty": "~0.5.0",
+        "gulp-filter": "~0.4.1",
+        "gulp-concat": "~2.2.0"
+    }
+}

@@ -1,0 +1,16 @@
+page
+    h1
+        "This is Conkitty demo"
+
+    p
+        "It "
+        em
+            "is"
+        " really "
+        strong
+            "nice"
+        "."
+
+    footer
+        "Here goes some "
+        blocks::button title="BUTTON"
