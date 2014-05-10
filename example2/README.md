@@ -4,7 +4,7 @@ Conkitty Example 2
 Assume you have [npm](http://npmjs.org/) and [Gulp](http://gulpjs.com/)
 installed.
 
-This examples shows usage of declared in templates internal dependencies.
+This example shows usage of declared in templates internal dependencies.
 
 * `git clone https://github.com/hoho/conkitty.git conkitty`
 * `cd conkitty/example2`
