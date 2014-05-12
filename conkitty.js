@@ -52,4 +52,9 @@ Conkitty.prototype.getIncludes = function getIncludes() {
     return Object.keys(this.generated.includes);
 };
 
+
+Conkitty.prototype.getSourceMap = function getSourceMap() {
+    return this.generated.map;
+};
+
 module.exports = Conkitty;

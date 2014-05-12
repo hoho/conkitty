@@ -11,6 +11,7 @@ var ConkittyTypes = require(__dirname + '/types.js'),
     parseJS = utils.parseJS,
     adjustJS = utils.adjustJS,
     fs = require('fs'),
+    SourceMapGenerator = require('source-map').SourceMapGenerator,
 
     INDENT = '    ',
 
@@ -126,6 +127,67 @@ function conkittyGetValuePatternPart(cmd, count, noPayload) {
         noPayload ? undefined : ConkittyTypes.COMMAND_NAME, noPayload ? undefined : 'PAYLOAD'
     );
 }
+
+
+function ConkittyCodeBuilder() {
+    this.code = [];
+    this.line = '';
+    this.sourceMap = new SourceMapGenerator();
+}
+
+
+ConkittyCodeBuilder.prototype.write = function(code, part) {
+    if (this.line.length === 0 && this.indent) {
+        this.line = this.indent;
+    }
+
+    if (part) {
+        this.sourceMap.addMapping({
+            generated: {
+                line: this.code.length + 1,
+                column: this.line.length + 1
+            },
+            source: part.src.filename,
+            original: {
+                line: part.lineAt + 1,
+                column: part.charAt + 1
+            }
+        });
+    }
+
+    this.line += code;
+};
+
+
+ConkittyCodeBuilder.prototype.writeln = function(code, part) {
+    this.write(code, part);
+    if (this.line.trim()) {
+        this.code.push(this.line);
+    }
+    this.line = '';
+};
+
+
+ConkittyCodeBuilder.prototype.getCurrentIndent = function() {
+    return this.indent;
+};
+
+
+ConkittyCodeBuilder.prototype.setCurrentIndent = function(indent) {
+    this.indent = indent;
+};
+
+
+ConkittyCodeBuilder.prototype.getCode = function() {
+    var ret = this.code.slice(0);
+    if (this.line.trim()) { ret.push(this.line); }
+    return ret.join('\n');
+};
+
+
+ConkittyCodeBuilder.prototype.getSourceMap = function() {
+    return this.sourceMap.toString();
+};
 
 
 function ConkittyGeneratorNode(parent, hasEnd) {
@@ -614,20 +676,21 @@ function processAttr(parent, isCommand, cmd) {
     }
     if (!error) { throw new ConkittyErrors.InconsistentCommand(cmd.value[0]); }
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.attr(');
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.attr(');
+
         if (isCommand) {
-            ret.push(getExpressionString(node, cmd.value[1], true));
+            builder.write(getExpressionString(node, cmd.value[1], true), cmd.value[1]);
         } else {
-            ret.push(JSON.stringify(cmd.value[0].name));
+            builder.write(JSON.stringify(cmd.value[0].name), cmd.value[0]);
         }
-        ret.push(', ');
+
+        builder.write(', ');
+
         if (isCommand) {
-            ret.push(getExpressionString(node, cmd.value[2], true));
+            builder.write(getExpressionString(node, cmd.value[2], true), cmd.value[2]);
         } else {
             var val = cmd.value[0].value,
-                retVal = [],
                 wrap;
 
             switch (cmd.value[0].mode) {
@@ -638,9 +701,9 @@ function processAttr(parent, isCommand, cmd) {
                 case 'add':
                 case 'remove':
                     wrap = false;
-                    retVal.push('function() { return ');
-                    retVal.push(parent.getVarName('getChangedClass'));
-                    retVal.push('(this, ');
+                    builder.write('function() { return ');
+                    builder.write(parent.getVarName('getChangedClass'));
+                    builder.write('(this, ');
                     break;
 
                 default:
@@ -651,35 +714,33 @@ function processAttr(parent, isCommand, cmd) {
                 // Is is `class` attribute modification.
                 val = getAttrsByCSS(node, val)['class'];
                 if (val.plain) {
-                    retVal.push(JSON.stringify(val.value));
+                    builder.write(JSON.stringify(val.value), cmd.value[0]);
                 } else {
                     val.type = ConkittyTypes.JAVASCRIPT;
                     val.lineAt = cmd.value[0].lineAt;
                     val.charAt = cmd.value[0].charAt;
-                    retVal.push(getExpressionString(node, val, wrap));
+                    val.src = cmd.value[0].src;
+                    builder.write(getExpressionString(node, val, wrap), val);
                 }
             } else {
-                retVal.push(getExpressionString(node, val, wrap));
+                builder.write(getExpressionString(node, val, wrap), val);
             }
 
             if (!wrap) {
-                if (cmd.value[0].mode === 'remove') { retVal.push(', true'); }
-                retVal.push('); }');
+                if (cmd.value[0].mode === 'remove') { builder.write(', true'); }
+                builder.write('); }');
             }
-
-            ret.push(retVal.join(''));
         }
-        ret.push(')');
-        return ret.join('');
+
+        builder.writeln(')');
     };
 
     return 1;
 }
 
 
-function getCallArguments(part, node, args, withAS) {
-    var ret = [],
-        i,
+function writeCallArguments(builder, part, node, args, withAS) {
+    var i,
         j,
         argNames = part ? Object.keys(node.getTemplateArgDecls(part)) : [],
         kwArgs = [],
@@ -688,8 +749,8 @@ function getCallArguments(part, node, args, withAS) {
     for (i = 0; i < maxi; i++) {
         if (args[i].type === ConkittyTypes.ARGUMENT_VAL) { break; }
         argNames.shift();
-        ret.push(', ');
-        ret.push(getExpressionString(node, args[i], false));
+        builder.write(', ');
+        builder.write(getExpressionString(node, args[i], false), args[i]);
     }
 
     for (i; i < maxi; i++) {
@@ -704,15 +765,13 @@ function getCallArguments(part, node, args, withAS) {
     }
 
     for (i = 0; i < kwArgs.length; i++) {
-        ret.push(', ');
+        builder.write(', ');
         if (kwArgs[i] === undefined) {
-            ret.push('undefined');
+            builder.write('undefined');
         } else {
-            ret.push(getExpressionString(node, kwArgs[i], false));
+            builder.write(getExpressionString(node, kwArgs[i], false), kwArgs[i]);
         }
     }
-
-    return ret.join('');
 }
 
 
@@ -819,115 +878,111 @@ function processCall(parent, startsWithCALL, cmd, except) {
     }
 
 
-    node.getCodeBefore = function getCodeBefore() {
-        return '.act(function() {';
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.writeln('.act(function() {');
     };
 
-    node.getCodeAfter = function getCodeAfter() {
-        return '})';
+    node.getCodeAfter = function getCodeAfter(builder) {
+        builder.writeln('})');
     };
 
     if (asVar) {
         callNode.addVariable(asVar);
     }
 
-    callNode.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-
+    callNode.getCodeBefore = function getCodeBefore(builder) {
         if (asVar) {
-            ret.push(asVar.value);
-            ret.push(' = ');
+            builder.write(asVar.value, asVar);
+            builder.write(' = ');
         }
 
-        ret.push('$C.');
-        if (name.namespace) { ret.push('_'); }
-        ret.push('tpl[');
+        builder.write('$C.');
+        if (name.namespace) { builder.write('_'); }
+        builder.write('tpl[');
 
         if (name.type === ConkittyTypes.TEMPLATE_NAME) {
-            ret.push(JSON.stringify((name.namespace ? name.namespace + '::' : '') + name.value));
+            builder.write(JSON.stringify((name.namespace ? name.namespace + '::' : '') + name.value), name);
         } else {
-            ret.push(getExpressionString(node, name, false));
+            builder.write(getExpressionString(node, name, false), name);
         }
 
-        args = getCallArguments(
-            name.type === ConkittyTypes.TEMPLATE_NAME ? name : null,
-            callNode,
-            cmd.value.slice(startsWithCALL ? 2 : 1),
-            asVar
-        );
-
-        ret.push('].call(new ');
-        ret.push(node.getVarName('EnvClass'));
-        ret.push('(');
+        builder.write('].call(new ');
+        builder.write(node.getVarName('EnvClass'));
+        builder.write('(');
         if (payloadNode) {
-            ret.push('\n');
-            ret.push(INDENT);
+            builder.writeln('');
+            builder.write(INDENT);
         }
-        ret.push('this');
+        builder.write('this');
         if (payloadNode) {
-            ret.push(',');
+            builder.write(',');
         } else {
-            ret.push(')');
-            if (args) { ret.push(args); }
-            ret.push(');');
+            builder.write(')');
+            writeCallArguments(
+                builder,
+                name.type === ConkittyTypes.TEMPLATE_NAME ? name : null,
+                callNode,
+                cmd.value.slice(startsWithCALL ? 2 : 1),
+                asVar
+            );
+            builder.write(');');
         }
-        return ret.join('');
+
+        builder.writeln('');
     };
 
     if (payloadNode) {
-        callNode.getCodeAfter = function getCodeAfter() {
-            var ret = [];
-            ret.push(')');
-            if (args) { ret.push(args); }
-            ret.push(');');
-            return ret.join('');
+        callNode.getCodeAfter = function getCodeAfter(builder) {
+            builder.write(')');
+            writeCallArguments(
+                builder,
+                name.type === ConkittyTypes.TEMPLATE_NAME ? name : null,
+                callNode,
+                cmd.value.slice(startsWithCALL ? 2 : 1),
+                asVar
+            );
+            builder.writeln(');');
         };
 
         payloadNode.extraIndent = 1;
 
-        payloadNode.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-            ret.push('function() {\n');
-            ret.push(INDENT);
-            ret.push('return $C()');
-            return ret.join('');
+        payloadNode.getCodeBefore = function getCodeBefore(builder) {
+            builder.writeln('function() {');
+            builder.write(INDENT);
+            builder.writeln('return $C()');
         };
 
-        payloadNode.getCodeAfter = function getCodeAfter() {
-            var ret = [];
-            ret.push(INDENT);
-            ret.push(getEnds(payloadNode, true));
-            ret.push(';\n}');
-            return ret.join('');
+        payloadNode.getCodeAfter = function getCodeAfter(builder) {
+            builder.write(INDENT);
+            builder.write(getEnds(payloadNode, true));
+            builder.writeln('; }');
         };
 
         processSubcommands(payloadNode, cmd);
     }
 
     if (tryNode) {
-        tryNode.getCodeBefore = function getCodeBefore() {
-            return 'try {';
+        tryNode.getCodeBefore = function getCodeBefore(builder) {
+            builder.writeln('try {');
         };
 
-        tryNode.getCodeAfter = function getCodeAfter() {
-            return '} catch($C_e) {';
+        tryNode.getCodeAfter = function getCodeAfter(builder) {
+            builder.writeln('} catch($C_e) {');
         };
 
-        catchNode.getCodeAfter = function getCodeAfter() {
-            return '}';
+        catchNode.getCodeAfter = function getCodeAfter(builder) {
+            builder.writeln('}');
         };
     }
 
     if (exceptNode) {
-        exceptNode.getCodeBefore = function getCodeBefore() {
-            return '$C(this)';
+        exceptNode.getCodeBefore = function getCodeBefore(builder) {
+            builder.writeln('$C(this)');
         };
 
-        exceptNode.getCodeAfter = function getCodeAfter() {
-            var ret = [];
-            ret.push(getEnds(exceptNode, true));
-            ret.push(';');
-            return ret.join('');
+        exceptNode.getCodeAfter = function getCodeAfter(builder) {
+            builder.write(getEnds(exceptNode, true));
+            builder.writeln(';');
         };
 
         processSubcommands(exceptNode, except);
@@ -948,8 +1003,8 @@ function processChoose(parent, cmd) {
     if (cmd.children.length) {
         choose = new ConkittyGeneratorCommand(parent, true);
         parent.appendChild(choose);
-        choose.getCodeBefore = function getCodeBefore() { return '.choose()'; };
-        choose.getCodeAfter = function getCodeAfter() { return getEnds(choose); };
+        choose.getCodeBefore = function getCodeBefore(builder) { builder.writeln('.choose()', cmd.value[0]); };
+        choose.getCodeAfter = function getCodeAfter(builder) { builder.writeln(getEnds(choose)); };
 
         for (i = 0; i < cmd.children.length; i++) {
             (function(subcmd) {
@@ -966,20 +1021,18 @@ function processChoose(parent, cmd) {
                     if (!error && cmd.children[i + 1]) { error = cmd.children[i + 1].value[0]; }
                     if (error) { throw new ConkittyErrors.InconsistentCommand(error); }
                     // It is OTHERWISE.
-                    node.getCodeBefore = function getCodeBefore() { return '.otherwise()'; };
-                    node.getCodeAfter = function getCodeAfter() { return getEnds(node); };
+                    node.getCodeBefore = function getCodeBefore(builder) { builder.writeln('.otherwise()', subcmd.value[0]); };
+                    node.getCodeAfter = function getCodeAfter(builder) { builder.writeln(getEnds(node)); };
                 } else {
                     // It is WHEN.
-                    node.getCodeBefore = function getCodeBefore() {
-                        var ret = [];
-                        ret.push('.when(');
-                        ret.push(getExpressionString(node, subcmd.value[1], true));
-                        ret.push(')');
-                        return ret.join('');
+                    node.getCodeBefore = function getCodeBefore(builder) {
+                        builder.write('.when(', subcmd.value[0]);
+                        builder.write(getExpressionString(node, subcmd.value[1], true), subcmd.value[1]);
+                        builder.writeln(')');
                     };
 
-                    node.getCodeAfter = function getCodeAfter() {
-                        return getEnds(node);
+                    node.getCodeAfter = function getCodeAfter(builder) {
+                        builder.writeln(getEnds(node));
                     };
                 }
 
@@ -1040,32 +1093,31 @@ function processEach(parent, cmd) {
     if (key) { node.addVariable(key); }
     if (val) { node.addVariable(val); }
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.each(');
-        ret.push(getExpressionString(node, arr, true));
-        ret.push(')');
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.each(', cmd.value[0]);
+        builder.write(getExpressionString(node, arr, true), arr);
+        builder.write(')');
         if (key || val) {
-            ret.push('\n');
-            ret.push(INDENT);
-            ret.push('.act(function($C_');
-            if (key) { ret.push(', $C__'); }
-            ret.push(') { ');
+            builder.writeln('');
+            builder.write(INDENT);
+            builder.write('.act(function($C_');
+            if (key) { builder.write(', $C__'); }
+            builder.write(') { ');
             if (val) {
-                ret.push(val.value);
-                ret.push(' = $C_; ');
+                builder.write(val.value, val);
+                builder.write(' = $C_; ');
             }
             if (key) {
-                ret.push(key.value);
-                ret.push(' = $C__; ');
+                builder.write(key.value, key);
+                builder.write(' = $C__; ');
             }
-            ret.push('})');
+            builder.write('})');
         }
-        return ret.join('');
+        builder.writeln('');
     };
 
-    node.getCodeAfter = function getCodeAfter() {
-        return getEnds(node);
+    node.getCodeAfter = function getCodeAfter(builder) {
+        builder.writeln(getEnds(node));
     };
 
     processSubcommands(node, cmd);
@@ -1080,37 +1132,33 @@ function processJS(parent, cmd) {
     node = new ConkittyGeneratorCommand(parent, false);
     parent.appendChild(node);
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [],
-            args = cmd.value[0].args,
+    node.getCodeBefore = function getCodeBefore(builder) {
+        var args = cmd.value[0].args,
             i;
 
-        ret.push('.act(function(');
+        builder.write('.act(function(', cmd.value[0]);
         for (i = 0; i < args.length; i++) {
-            if (i > 0) { ret.push(', '); }
-            ret.push(args[i].value);
+            if (i > 0) { builder.write(', '); }
+            builder.write(args[i].value, args[i]);
         }
 
-        ret.push(') {');
+        builder.write(') {');
 
         if (cmd.value[0].retMaker) {
-            ret.push(' ');
-            ret.push(cmd.value[0].retMaker);
-            ret.push(' = (function() {');
+            builder.write(' ');
+            builder.write(cmd.value[0].retMaker);
+            builder.write(' = (function() {');
         }
 
-        ret.push('\n');
-
-        ret.push(cmd.value[0].js.value);
-
-        ret.push('\n');
+        builder.writeln('');
+        builder.write(cmd.value[0].js.value, cmd.value[0].js);
+        builder.writeln('');
 
         if (cmd.value[0].retMaker) {
-            ret.push('}).call(this); ');
+            builder.write('}).call(this); ');
         }
 
-        ret.push('})');
-        return ret.join('');
+        builder.writeln('})');
     };
 
     return 1;
@@ -1156,14 +1204,12 @@ function processExpose(parent, cmd) {
     node = new ConkittyGeneratorCommand(parent, false);
     parent.appendChild(node);
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.act(function() { ');
-        ret.push(retVarName);
-        ret.push(' = ');
-        ret.push(getExpressionString(node, cmd.value[1], false));
-        ret.push('; })');
-        return ret.join('');
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.act(function() { ', cmd.value[0]);
+        builder.write(retVarName);
+        builder.write(' = ');
+        builder.write(getExpressionString(node, cmd.value[1], false), cmd.value[1]);
+        builder.writeln('; })');
     };
 
     return 1;
@@ -1196,16 +1242,14 @@ function processMem(parent, cmd) {
     node = new ConkittyGeneratorCommand(parent, false);
     parent.appendChild(node);
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.mem(');
-        ret.push(getExpressionString(node, cmd.value[1], true));
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.mem(', cmd.value[0]);
+        builder.write(getExpressionString(node, cmd.value[1], true), cmd.value[1]);
         if (expr) {
-            ret.push(', ');
-            ret.push(getExpressionString(node, expr, true));
+            builder.write(', ');
+            builder.write(getExpressionString(node, expr, true), expr);
         }
-        ret.push(')');
-        return ret.join('');
+        builder.writeln(')');
     };
 
     return 1;
@@ -1227,12 +1271,10 @@ function processPayload(parent, cmd) {
     node = new ConkittyGeneratorCommand(parent, false);
     parent.appendChild(node);
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.act(function() { ');
-        ret.push(node.getVarName('env'));
-        ret.push('.l(this); })');
-        return ret.join('');
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.act(function() { ', cmd.value[0]);
+        builder.write(node.getVarName('env'));
+        builder.writeln('.l(this); })');
     };
 
     return 1;
@@ -1265,44 +1307,38 @@ function processSet(parent, cmd) {
     node.addVariable(cmd.value[1]);
 
     if (error1) {
-        node.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-            ret.push('.act(function ');
-            ret.push(getAnonymousFunctionName(node, cmd.value[0]));
-            ret.push('() { ');
-            ret.push(name);
-            ret.push(' = ');
-            ret.push(getExpressionString(node, cmd.value[2], false));
-            ret.push('; })');
-            return ret.join('');
+        node.getCodeBefore = function getCodeBefore(builder) {
+            builder.write('.act(function ', cmd.value[0]);
+            builder.write(getAnonymousFunctionName(node, cmd.value[0]));
+            builder.write('() { ');
+            builder.write(name, cmd.value[1]);
+            builder.write(' = ');
+            builder.write(getExpressionString(node, cmd.value[2], false), cmd.value[2]);
+            builder.writeln('; })');
         };
     } else if (cmd.children.length) {
         node.extraIndent = 1;
-        node.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-            ret.push('.act(function ');
-            ret.push(getAnonymousFunctionName(node, cmd.value[0]));
-            ret.push('() {\n');
-            ret.push(INDENT);
-            ret.push(name);
-            ret.push(' = $C()');
-            return ret.join('');
+        node.getCodeBefore = function getCodeBefore(builder) {
+            builder.write('.act(function ', cmd.value[0]);
+            builder.write(getAnonymousFunctionName(node, cmd.value[0]));
+            builder.writeln('() {');
+            builder.write(INDENT);
+            builder.write(name, cmd.value[1]);
+            builder.writeln(' = $C()');
         };
 
-        node.getCodeAfter = function getCodeAfter() {
-            var ret = [];
-            ret.push(INDENT);
-            ret.push(getEnds(node));
-            ret.push(';\n');
-            ret.push(INDENT);
-            ret.push(name);
-            ret.push(' = ');
-            ret.push(name);
-            ret.push('.firstChild ? ');
-            ret.push(name);
-            ret.push(' : undefined;\n');
-            ret.push('})');
-            return ret.join('');
+        node.getCodeAfter = function getCodeAfter(builder) {
+            builder.write(INDENT);
+            builder.write(getEnds(node));
+            builder.writeln(';');
+            builder.write(INDENT);
+            builder.write(name);
+            builder.write(' = ');
+            builder.write(name);
+            builder.write('.firstChild ? ');
+            builder.write(name);
+            builder.writeln(' : undefined;');
+            builder.writeln('})');
         };
     }
 
@@ -1326,16 +1362,14 @@ function processTest(parent, cmd) {
         node = new ConkittyGeneratorCommand(parent, true);
         parent.appendChild(node);
 
-        node.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-            ret.push('.test(');
-            ret.push(getExpressionString(node, cmd.value[1], true));
-            ret.push(')');
-            return ret.join('');
+        node.getCodeBefore = function getCodeBefore(builder) {
+            builder.write('.test(', cmd.value[0]);
+            builder.write(getExpressionString(node, cmd.value[1], true), cmd.value[1]);
+            builder.writeln(')');
         };
 
-        node.getCodeAfter = function getCodeAfter() {
-            return getEnds(node);
+        node.getCodeAfter = function getCodeAfter(builder) {
+            builder.writeln(getEnds(node));
         };
     }
 
@@ -1361,16 +1395,13 @@ function processTrigger(parent, cmd) {
     node = new ConkittyGeneratorCommand(parent, false);
     parent.appendChild(node);
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [],
-            i;
-        ret.push('.trigger(');
-        for (i = 1; i < cmd.value.length; i++) {
-            if (i > 1) { ret.push(', '); }
-            ret.push(getExpressionString(node, cmd.value[i], true));
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.trigger(', cmd.value[0]);
+        for (var i = 1; i < cmd.value.length; i++) {
+            if (i > 1) { builder.write(', '); }
+            builder.write(getExpressionString(node, cmd.value[i], true), cmd.value[i]);
         }
-        ret.push(')');
-        return ret.join('');
+        builder.writeln(')');
     };
 
     return 1;
@@ -1403,16 +1434,14 @@ function processWith(parent, cmd, otherwise) {
     name = cmd.value[1].value;
     node.addVariable(cmd.value[1]);
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.act(function() { try { ');
-        ret.push(name);
-        ret.push(' = ');
-        ret.push(getExpressionString(node, cmd.value[2], false));
-        ret.push('; } catch($C_e) { ');
-        ret.push(name);
-        ret.push(' = undefined; }})');
-        return ret.join('');
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.act(function() { try { ', cmd.value[0]);
+        builder.write(name, cmd.value[1]);
+        builder.write(' = ');
+        builder.write(getExpressionString(node, cmd.value[2], false), cmd.value[2]);
+        builder.write('; } catch($C_e) { ');
+        builder.write(name);
+        builder.writeln(' = undefined; }})');
     };
 
     hasElse = otherwise && otherwise.children.length;
@@ -1424,23 +1453,19 @@ function processWith(parent, cmd, otherwise) {
 
         parent.appendChild(okNode);
 
-        okNode.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-            ret.push('.choose()\n');
-            ret.push(INDENT);
-            ret.push('.when(function() { return ');
-            ret.push(name);
-            ret.push(' !== undefined && ');
-            ret.push(name);
-            ret.push(' !== null; })');
-            return ret.join('');
+        okNode.getCodeBefore = function getCodeBefore(builder) {
+            builder.writeln('.choose()', cmd.value[0]);
+            builder.write(INDENT);
+            builder.write('.when(function() { return ');
+            builder.write(name);
+            builder.write(' !== undefined && ');
+            builder.write(name);
+            builder.writeln(' !== null; })');
         };
 
-        okNode.getCodeAfter = function getCodeAfter() {
-            var ret = [];
-            if (hasElse) { ret.push(INDENT); }
-            ret.push(getEnds(okNode));
-            return ret.join('');
+        okNode.getCodeAfter = function getCodeAfter(builder) {
+            if (hasElse) { builder.write(INDENT); }
+            builder.writeln(getEnds(okNode));
         };
 
         processSubcommands(okNode, cmd);
@@ -1453,14 +1478,14 @@ function processWith(parent, cmd, otherwise) {
 
         parent.appendChild(elseNode);
 
-        elseNode.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-            ret.push(INDENT);
-            ret.push('.otherwise()');
-            return ret.join('');
+        elseNode.getCodeBefore = function getCodeBefore(builder) {
+            builder.write(INDENT);
+            builder.writeln('.otherwise()', otherwise.value[0]);
         };
 
-        elseNode.getCodeAfter = function getCodeAfter() { return getEnds(elseNode); };
+        elseNode.getCodeAfter = function getCodeAfter(builder) {
+            builder.writeln(getEnds(elseNode));
+        };
 
         processSubcommands(elseNode, otherwise);
     }
@@ -1480,12 +1505,10 @@ function processVariable(parent, cmd) {
     node = new ConkittyGeneratorValue(parent);
     parent.appendChild(node);
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.text(');
-        ret.push(getExpressionString(node, cmd.value[0], true));
-        ret.push(')');
-        return ret.join('');
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.text(');
+        builder.write(getExpressionString(node, cmd.value[0], true), cmd.value[0]);
+        builder.writeln(')');
     };
 
     return 1;
@@ -1504,25 +1527,21 @@ function processJavascript(parent, cmd) {
     parent.appendChild(node);
 
     if (cmd.value[0].raw) {
-        node.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-            ret.push('.act(function ' + getAnonymousFunctionName(node, cmd.value[0]) + '($C_) {\n');
-            ret.push(INDENT);
-            ret.push('if ((');
-            ret.push('$C_ = ' + getExpressionString(node, cmd.value[0], false));
-            ret.push(') instanceof Node) { this.appendChild($C_); }\n');
-            ret.push(INDENT);
-            ret.push('else { $C(this).text($C_, true).end(); };\n');
-            ret.push('})');
-            return ret.join('');
+        node.getCodeBefore = function getCodeBefore(builder) {
+            builder.writeln('.act(function ' + getAnonymousFunctionName(node, cmd.value[0]) + '($C_) {');
+            builder.write(INDENT);
+            builder.write('if ((');
+            builder.write('$C_ = ' + getExpressionString(node, cmd.value[0], false), cmd.value[0]);
+            builder.writeln(') instanceof Node) { this.appendChild($C_); }');
+            builder.write(INDENT);
+            builder.writeln('else { $C(this).text($C_, true).end(); }');
+            builder.writeln('})');
         };
     } else {
-        node.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-            ret.push('.text(');
-            ret.push(getExpressionString(node, cmd.value[0], true));
-            ret.push(')');
-            return ret.join('');
+        node.getCodeBefore = function getCodeBefore(builder) {
+            builder.write('.text(');
+            builder.write(getExpressionString(node, cmd.value[0], true), cmd.value[0]);
+            builder.writeln(')');
         };
     }
 
@@ -1541,13 +1560,11 @@ function processString(parent, cmd) {
     node = new ConkittyGeneratorValue(parent);
     parent.appendChild(node);
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.text(');
-        ret.push(getExpressionString(node, cmd.value[0], false));
-        if (cmd.value[0].raw) { ret.push(', true'); }
-        ret.push(')');
-        return ret.join('');
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.write('.text(');
+        builder.write(getExpressionString(node, cmd.value[0], false), cmd.value[0]);
+        if (cmd.value[0].raw) { builder.write(', true'); }
+        builder.writeln(')');
     };
 
     return 1;
@@ -1575,7 +1592,7 @@ function processElement(parent, cmd) {
 
     if (elemVar) { node.addVariable(elemVar); }
 
-    node.getCodeBefore = function getCodeBefore() {
+    node.getCodeBefore = function getCodeBefore(builder) {
         var tag,
             tmp,
             i,
@@ -1631,30 +1648,29 @@ function processElement(parent, cmd) {
             tag = '.elem(' + tag;
         }
 
-        var ret = [];
-        ret.push(tag);
+        builder.write(tag, cmd.value[0]);
         if (attrs) {
-            if (!tagFunc) { ret.push(', '); }
-            ret.push(attrs);
+            if (!tagFunc) { builder.write(', '); }
+            builder.write(attrs);
         }
-        ret.push(')');
+        builder.write(')');
 
         if (elemVar) {
-            ret.push('\n');
-            ret.push(INDENT);
-            ret.push('.act(function() { ');
+            builder.writeln('');
+            builder.write(INDENT);
+            builder.write('.act(function() { ');
             if (elemVar) {
-                ret.push(getExpressionString(node, elemVar, false));
-                ret.push(' = ');
+                builder.write(getExpressionString(node, elemVar, false), elemVar);
+                builder.write(' = ');
             }
-            ret.push('this; })');
+            builder.write('this; })');
         }
 
-        return ret.join('');
+        builder.writeln('');
     };
 
-    node.getCodeAfter = function getCodeAfter() {
-        return getEnds(node);
+    node.getCodeAfter = function getCodeAfter(builder) {
+        builder.writeln(getEnds(node));
     };
 
     processSubcommands(node, cmd);
@@ -1694,22 +1710,19 @@ function processAppender(parent, cmd) {
 
     node.extraIndent = 1;
 
-    node.getCodeBefore = function getCodeBefore() {
-        var ret = [];
-        ret.push('.act(function() {\n');
-        ret.push(INDENT);
-        ret.push('$C(');
-        ret.push(getExpressionString(node, cmd.value[0].value, false));
-        ret.push(', false, true)');
-        return ret.join('');
+    node.getCodeBefore = function getCodeBefore(builder) {
+        builder.writeln('.act(function() {', cmd.value[0]);
+        builder.write(INDENT);
+        builder.write('$C(');
+        builder.write(getExpressionString(node, cmd.value[0].value, false), cmd.value[0].value);
+        builder.writeln(', false, true)');
     };
 
-    node.getCodeAfter = function getCodeAfter() {
-        var ret = [];
-        ret.push(INDENT);
-        ret.push(getEnds(node, true));
-        ret.push(';\n})');
-        return ret.join('');
+    node.getCodeAfter = function getCodeAfter(builder) {
+        builder.write(INDENT);
+        builder.write(getEnds(node, true));
+        builder.writeln(';');
+        builder.writeln('})');
     };
 
     processSubcommands(node, cmd);
@@ -1858,83 +1871,78 @@ function processTemplate(cmd, names, generator) {
             tpl.args[arg.name] = arg.value ? getExpressionString(tpl, arg.value, false) : '';
         }
 
-        tpl.getCodeBefore = function getCodeBefore() {
-            var ret = [];
-
-            ret.push('$C.');
-            if (tpl.namespace) { ret.push('_'); }
-            ret.push('tpl["');
+        tpl.getCodeBefore = function getCodeBefore(builder) {
+            builder.write('$C.', cmd.value[0]);
             if (tpl.namespace) {
-                ret.push(tpl.namespace);
-                ret.push('::');
+                builder.write('_');
             }
-            ret.push(tpl.name);
-            ret.push('"] = function(');
-            ret.push(Object.keys(tpl.args).join(', '));
-            ret.push(') {');
-            ret.push('\n');
+            builder.write('tpl["');
+            if (tpl.namespace) {
+                builder.write(tpl.namespace);
+                builder.write('::');
+            }
+            builder.write(tpl.name);
+            builder.write('"] = function(');
+            builder.write(Object.keys(tpl.args).join(', '));
+            builder.write(') {');
+            builder.writeln('');
 
             for (var arg in tpl.args) {
                 if (tpl.args[arg]) {
-                    ret.push(INDENT);
-                    ret.push('(');
-                    ret.push(arg);
-                    ret.push(' === undefined) && (');
-                    ret.push(arg);
-                    ret.push(' = ');
-                    ret.push(tpl.args[arg]);
-                    ret.push(');\n');
+                    builder.write(INDENT);
+                    builder.write('(');
+                    builder.write(arg);
+                    builder.write(' === undefined) && (');
+                    builder.write(arg);
+                    builder.write(' = ');
+                    builder.write(tpl.args[arg]);
+                    builder.writeln(');');
                 }
             }
 
-            ret.push(INDENT);
-            ret.push('var ');
-            ret.push(tpl.getVarName('env'));
-            ret.push(' = ');
-            ret.push(tpl.getVarName('getEnv'));
-            ret.push('(this)');
+            builder.write(INDENT);
+            builder.write('var ');
+            builder.write(tpl.getVarName('env'));
+            builder.write(' = ');
+            builder.write(tpl.getVarName('getEnv'));
+            builder.write('(this)');
 
             if (tpl.hasRetMaker) {
-                ret.push(', ');
-                ret.push(tpl.getVarName('ret'));
+                builder.write(', ');
+                builder.write(tpl.getVarName('ret'));
             }
 
             arg = Object.keys(tpl.vars);
             if (arg.length) {
-                ret.push(', ');
-                ret.push(arg.join(', '));
+                builder.write(', ');
+                builder.write(arg.join(', '));
             }
 
-            ret.push(';\n');
-            ret.push(INDENT);
-            if (!tpl.hasRetMaker) { ret.push('return '); }
-            ret.push('$C(');
-            ret.push(tpl.getVarName('env'));
-            ret.push('.p)');
-
-            return ret.join('');
+            builder.writeln(';');
+            builder.write(INDENT);
+            if (!tpl.hasRetMaker) { builder.write('return '); }
+            builder.write('$C(');
+            builder.write(tpl.getVarName('env'));
+            builder.writeln('.p)');
         };
 
-        tpl.getCodeAfter = function getCodeAfter() {
-            var ret = [],
-                end = getEnds(tpl);
+        tpl.getCodeAfter = function getCodeAfter(builder) {
+            var end = getEnds(tpl);
 
             if (end) {
-                ret.push(INDENT);
-                ret.push(end);
-                ret.push(';\n');
+                builder.write(INDENT);
+                builder.write(end);
+                builder.writeln(';');
             }
 
             if (tpl.hasRetMaker) {
-                ret.push(INDENT);
-                ret.push('return ');
-                ret.push(tpl.getVarName('ret'));
-                ret.push(';\n');
+                builder.write(INDENT);
+                builder.write('return ');
+                builder.write(tpl.getVarName('ret'));
+                builder.writeln(';');
             }
 
-            ret.push('};\n');
-
-            return ret.join('');
+            builder.writeln('};\n');
         };
     }
 
@@ -1976,23 +1984,23 @@ function ConkittyGenerator(code) {
 }
 
 
-function generateCode(node, ret, level) {
+function generateCode(node, codeBuilder, level) {
     var indent = (new Array(level || 1)).join(INDENT),
-        line;
+        oldIndent = codeBuilder.getCurrentIndent();
 
     level = level === undefined ? 3 : level + 1;
 
-    if (node.getCodeBefore && ((line = node.getCodeBefore()))) {
-        ret.push(indent + line.split('\n').join('\n' + indent));
-    }
+    codeBuilder.setCurrentIndent(indent);
+
+    node.getCodeBefore && node.getCodeBefore(codeBuilder);
 
     for (var i = 0; i < node.children.length; i++) {
-        generateCode(node.children[i], ret, level + (node.extraIndent || 0));
+        generateCode(node.children[i], codeBuilder, level + (node.extraIndent || 0));
     }
 
-    if (node.getCodeAfter && ((line = node.getCodeAfter()))) {
-        ret.push(indent + line.split('\n').join('\n' + indent));
-    }
+    node.getCodeAfter && node.getCodeAfter(codeBuilder);
+
+    codeBuilder.setCurrentIndent(oldIndent);
 }
 
 
@@ -2044,7 +2052,8 @@ function getCalledNSTemplates(tpls, template, ret, includes) {
 
 
 ConkittyGenerator.prototype.generateCode = function() {
-    var ret = [],
+    var ret,
+        codeBuilder = new ConkittyCodeBuilder(),
         i,
         tpl,
         calls = {'': {}},
@@ -2052,8 +2061,7 @@ ConkittyGenerator.prototype.generateCode = function() {
         tpls,
         ns,
         name,
-        common = [],
-        args;
+        common;
 
     for (i in this.templates['']) {
         tpl = this.templates[''][i];
@@ -2061,41 +2069,42 @@ ConkittyGenerator.prototype.generateCode = function() {
         getCalledNSTemplates(this.templates, tpl, calls, includes);
     }
 
+    codeBuilder.write('(function($C, ');
+    codeBuilder.write(tpl.getVarName('EnvClass'));
+    codeBuilder.write(', ');
+    codeBuilder.write(tpl.getVarName('getEnv'));
+    codeBuilder.write(', ');
+    codeBuilder.write(tpl.getVarName('joinClasses'));
+    codeBuilder.write(', ');
+    codeBuilder.write(tpl.getVarName('getModClass'));
+    codeBuilder.write(', ');
+    codeBuilder.write(tpl.getVarName('getChangedClass'));
+    codeBuilder.writeln(', undefined) {');
+
     for (ns in calls) {
         tpls = calls[ns];
 
         for (name in tpls) {
             if (name !== '') {
-                generateCode(tpls[name], ret);
+                generateCode(tpls[name], codeBuilder);
             }
         }
     }
 
     if (tpl) {
+        common = [];
         common.push(fs.readFileSync(__dirname + '/node_modules/concat.js/concat.js', {encoding: 'utf8'}));
         common.push(fs.readFileSync(__dirname + '/_env.js', {encoding: 'utf8'}));
 
-        args = [];
-        args.push('(function($C, ');
-        args.push(tpl.getVarName('EnvClass'));
-        args.push(', ');
-        args.push(tpl.getVarName('getEnv'));
-        args.push(', ');
-        args.push(tpl.getVarName('joinClasses'));
-        args.push(', ');
-        args.push(tpl.getVarName('getModClass'));
-        args.push(', ');
-        args.push(tpl.getVarName('getChangedClass'));
-        args.push(', undefined) {\n');
-
-        ret.unshift(args.join(''));
-        ret.push('}).apply(null, $C._$args);');
+        codeBuilder.writeln('}).apply(null, $C._$args);');
+        ret = codeBuilder.getCode();
     }
 
     return {
         includes: includes,
         common: common.join('\n'),
-        code: ret.join('\n')
+        code: ret,
+        map: codeBuilder.getSourceMap()
     };
 };
 
