@@ -76,7 +76,7 @@ module.exports = function(grunt) {
                 conkitty.push(path.resolve(filename));
             });
 
-            conkitty.generate();
+            conkitty.generate('test.ctpl.map');
 
             assert.deepEqual(
                 conkitty.getIncludes(),
@@ -96,13 +96,17 @@ module.exports = function(grunt) {
                 'Incorrect test includes'
             );
 
-            var common = f.dest.replace(/ctpl\.js$/, 'common.js');
+            var common = f.dest.replace(/ctpl\.js$/, 'common.js'),
+                sourceMap = 'tmp/test.ctpl.map';
 
             grunt.file.write(common, conkitty.getCommonCode());
             grunt.log.writeln('File "' + common + '" created.');
 
             grunt.file.write(f.dest, conkitty.getTemplatesCode());
             grunt.log.writeln('File "' + f.dest + '" created.');
+
+            grunt.file.write(sourceMap, conkitty.getSourceMap());
+            grunt.log.writeln('File "' + sourceMap + '" created.');
         });
     });
 

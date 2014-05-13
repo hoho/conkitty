@@ -1014,4 +1014,16 @@ well.
 
 ## Source maps
 
-Source maps are coming pretty soon.
+Since version `0.5.7`, Conkitty is capable of creating source maps for compiled
+templates.
+
+Check out [gulp-conkitty](https://github.com/hoho/gulp-conkitty) and
+[grunt-conkitty](https://github.com/hoho/grunt-conkitty) to see how to
+create source maps.
+
+Or use `--sourcemap` argument of command line utility:
+
+    conkitty --common common.js --templates tpl.js --sourcemap=tpl.map tpl.ctpl
+
+When you compile templates with source map, `//@ sourceMappingURL=your.source.map`
+comment is being added on top of your compiled templates code.

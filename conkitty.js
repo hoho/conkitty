@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.5.6, https://github.com/hoho/conkitty
+ * conkitty v0.5.7, https://github.com/hoho/conkitty
  * Copyright 2013-2014 Marat Abdullin
  * Released under the MIT license
  */
@@ -24,8 +24,8 @@ Conkitty.prototype.push = function push(filename, code, base) {
 };
 
 
-Conkitty.prototype.generate = function generate() {
-    this.generated = (new ConkittyGenerator(this.code)).generateCode();
+Conkitty.prototype.generate = function generate(sourceMapFile) {
+    this.generated = (new ConkittyGenerator(this.code)).generateCode(sourceMapFile);
 
     var includes = this.generated.includes,
         i;

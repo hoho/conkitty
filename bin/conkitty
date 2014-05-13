@@ -12,7 +12,8 @@ try {
 
         tplFilename,
         commonFilename,
-        depsFilename;
+        depsFilename,
+        sourcemapFilename;
 
 
     program
@@ -21,11 +22,13 @@ try {
         .option('-c, --common [filename]', 'File for common code')
         .option('-t, --templates [filename]', 'File for compiled templates code')
         .option('-d, --deps [filename]', 'File for dependencies declared inside templates')
+        .option('-s, --sourcemap [filename]', 'File for source map for compiled templates')
         .parse(process.argv);
 
     tplFilename = program.templates;
     commonFilename = program.common;
     depsFilename = program.deps;
+    sourcemapFilename = program.sourcemap;
 
     if (!program.args.length) {
         console.log('No template files specified.');
@@ -37,11 +40,16 @@ try {
             filename;
 
         for (i = 0; i < program.args.length; i++) {
-            filename = path.resolve(program.args[i]);
+            filename = path.normalize(path.relative(path.resolve('.'), path.resolve(program.args[i])));
             conkitty.push(filename);
         }
 
-        conkitty.generate();
+        conkitty.generate(
+            tplFilename && sourcemapFilename ?
+                path.normalize(path.relative(path.dirname(path.resolve(tplFilename)), path.resolve(sourcemapFilename)))
+                :
+                undefined
+        );
 
         if (commonFilename) {
             fs.writeFileSync(commonFilename, conkitty.getCommonCode());
@@ -56,6 +64,11 @@ try {
         if (depsFilename) {
             fs.writeFileSync(depsFilename, conkitty.getIncludes().join('\n'));
             console.log('File "' + depsFilename + '" created.');
+        }
+
+        if (tplFilename && sourcemapFilename) {
+            fs.writeFileSync(sourcemapFilename, conkitty.getSourceMap());
+            console.log('File "' + sourcemapFilename + '" created.');
         }
     }
 } catch(e) {
