@@ -2085,17 +2085,20 @@ ConkittyGenerator.prototype.generateCode = function(sourceMapFile) {
         codeBuilder.write('//@ sourceMappingURL=');
         codeBuilder.writeln(sourceMapFile);
     }
-    codeBuilder.write('(function($C, ');
-    codeBuilder.write(tpl.getVarName('EnvClass'));
-    codeBuilder.write(', ');
-    codeBuilder.write(tpl.getVarName('getEnv'));
-    codeBuilder.write(', ');
-    codeBuilder.write(tpl.getVarName('joinClasses'));
-    codeBuilder.write(', ');
-    codeBuilder.write(tpl.getVarName('getModClass'));
-    codeBuilder.write(', ');
-    codeBuilder.write(tpl.getVarName('getChangedClass'));
-    codeBuilder.writeln(', undefined) {\n', undefined, true);
+
+    if (tpl) {
+        codeBuilder.write('(function($C, ');
+        codeBuilder.write(tpl.getVarName('EnvClass'));
+        codeBuilder.write(', ');
+        codeBuilder.write(tpl.getVarName('getEnv'));
+        codeBuilder.write(', ');
+        codeBuilder.write(tpl.getVarName('joinClasses'));
+        codeBuilder.write(', ');
+        codeBuilder.write(tpl.getVarName('getModClass'));
+        codeBuilder.write(', ');
+        codeBuilder.write(tpl.getVarName('getChangedClass'));
+        codeBuilder.writeln(', undefined) {\n', undefined, true);
+    }
 
     for (ns in calls) {
         tpls = calls[ns];
@@ -2118,7 +2121,7 @@ ConkittyGenerator.prototype.generateCode = function(sourceMapFile) {
 
     return {
         includes: includes,
-        common: common.join('\n'),
+        common: common && common.join('\n'),
         code: ret,
         map: codeBuilder.getSourceMap()
     };
