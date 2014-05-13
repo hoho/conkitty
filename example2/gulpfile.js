@@ -31,7 +31,7 @@ gulp.task('conkitty', ['clean'], function() {
         .pipe(concat('deps.js')) // Concat all js files except for tpl.js to bundle deps.js.
         .pipe(jsFilter.restore())
 
-        .pipe(gulp.dest('./dst')); // Copy deps.css, deps.js and tpl.js to dst.
+        .pipe(gulp.dest('./dst')); // Copy deps.css, deps.js, tpl.js and tpl.map to dst.
 });
 
 
