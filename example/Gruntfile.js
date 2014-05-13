@@ -8,15 +8,28 @@ module.exports = function(grunt) {
                 src: ['src/*.ctpl'],
                 dest: {
                     common: 'dst/common.js',
-                    templates: 'dst/templates.js'
+                    templates: 'dst/templates.js',
+                    sourcemap: 'dst/templates.map'
                 }
             }
+        },
+
+        // Copy index.html
+        copy: {
+            'index.html': {
+                src: 'src/index.html',
+                dest: 'dst/index.html'
+            }
+        },
+
+        clean: {
+            dst: ['dst']
         },
 
         // Recompile templates in case something's changed.
         watch: {
             scripts: {
-                files: ['src/*.ctpl'],
+                files: ['src/*.*'],
                 tasks: ['default'],
                 options: {spawn: false}
             }
@@ -25,7 +38,9 @@ module.exports = function(grunt) {
 
 
     grunt.loadNpmTasks('grunt-conkitty');
+    grunt.loadNpmTasks('grunt-contrib-copy');
+    grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-contrib-watch');
 
-    grunt.registerTask('default', ['conkitty']);
+    grunt.registerTask('default', ['clean', 'conkitty', 'copy']);
 };

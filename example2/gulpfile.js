@@ -16,6 +16,7 @@ gulp.task('conkitty', ['clean'], function() {
         .pipe(conkitty({
             common: 'common.js', // Filename for templates commons.
             templates: 'tpl.js', // Filename for compiled templates.
+            sourcemap: 'tpl.map', // Filename for source map.
             deps: true // Append external templates dependencies to the result.
         }))
 

@@ -4,7 +4,9 @@
 
     "devDependencies": {
         "grunt": "~0.4.4",
-        "grunt-conkitty": "~0.5.6",
+        "grunt-conkitty": "~0.5.8",
+        "grunt-contrib-copy": "~0.5.0",
+        "grunt-contrib-clean": "~0.5.0",
         "grunt-contrib-watch": "~0.5.3"
     }
 }
