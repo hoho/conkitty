@@ -1,14 +1,15 @@
 /*!
- * conkitty v0.5.9, https://github.com/hoho/conkitty
+ * conkitty v0.5.10, https://github.com/hoho/conkitty
  * Copyright 2013-2014 Marat Abdullin
  * Released under the MIT license
  */
 'use strict';
 
 
-var ConkittyParser = require(__dirname + '/parser.js').ConkittyParser,
-    ConkittyGenerator = require(__dirname + '/generator.js').ConkittyGenerator,
-    ConkittyErrors = require(__dirname + '/errors.js'),
+var path = require('path'),
+    ConkittyParser = require(path.join(__dirname, 'parser.js')).ConkittyParser,
+    ConkittyGenerator = require(path.join(__dirname, 'generator.js')).ConkittyGenerator,
+    ConkittyErrors = require(path.join(__dirname, 'errors.js')),
     fs = require('fs');
 
 

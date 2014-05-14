@@ -5,11 +5,13 @@
  */
 'use strict';
 
-var ConkittyErrors = require(__dirname + '/errors.js'),
-    ConkittyTypes = require(__dirname + '/types.js'),
-    utils = require(__dirname + '/utils.js'),
+var path = require('path'),
+
+    ConkittyErrors = require(path.join(__dirname, 'errors.js')),
+    ConkittyTypes = require(path.join(__dirname, 'types.js')),
+    utils = require(path.join(__dirname, 'utils.js')),
+
     fs = require('fs'),
-    path = require('path'),
 
     whitespace = /[\x20\t\r\n\f]/,
 

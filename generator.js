@@ -5,9 +5,11 @@
  */
 'use strict';
 
-var ConkittyTypes = require(__dirname + '/types.js'),
-    ConkittyErrors = require(__dirname + '/errors.js'),
-    utils = require(__dirname + '/utils.js'),
+var path = require('path');
+
+var ConkittyTypes = require(path.join(__dirname, 'types.js')),
+    ConkittyErrors = require(path.join(__dirname, 'errors.js')),
+    utils = require(path.join(__dirname, 'utils.js')),
     parseJS = utils.parseJS,
     adjustJS = utils.adjustJS,
     fs = require('fs'),
@@ -2112,8 +2114,8 @@ ConkittyGenerator.prototype.generateCode = function(sourceMapFile) {
 
     if (tpl) {
         common = [];
-        common.push(fs.readFileSync(__dirname + '/node_modules/concat.js/concat.js', {encoding: 'utf8'}));
-        common.push(fs.readFileSync(__dirname + '/_env.js', {encoding: 'utf8'}));
+        common.push(fs.readFileSync(require.resolve('concat.js'), {encoding: 'utf8'}));
+        common.push(fs.readFileSync(path.join(__dirname, '_env.js'), {encoding: 'utf8'}));
 
         codeBuilder.writeln('}).apply(null, $C._$args);');
         ret = codeBuilder.getCode();

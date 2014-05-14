@@ -1,6 +1,6 @@
 {
     "name": "conkitty",
-    "version": "0.5.9",
+    "version": "0.5.10",
     "description": "Template Engine",
     "main": "conkitty",
     "directories": {
@@ -28,7 +28,7 @@
         "conkitty": "bin/conkitty"
     },
     "dependencies": {
-        "concat.js": "~0.9.4",
+        "concat.js": "~0.9.5",
         "uglify-js": "~1.3.5",
         "commander": "~2.2.0",
         "source-map": "~0.1.33"
