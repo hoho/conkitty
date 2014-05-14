@@ -1,12 +1,13 @@
 
 // Conkitty common functions.
-(function($C) {
+(function($C, window) {
 
     $C.tpl = {};
     $C._tpl = {};
 
 
-    var $ConkittyEventHandlers = [],
+    var Node = window.Node,
+        $ConkittyEventHandlers = [],
         whitespace = /[\x20\t\r\n\f]/;
 
     $C.on = function on(callback) {
@@ -119,7 +120,11 @@
             }
 
             return cur.join(' ');
-        }
+        },
+
+        window,
+
+        Node
     ];
 
-})($C);
+})($C, window);

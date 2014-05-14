@@ -2097,7 +2097,7 @@ ConkittyGenerator.prototype.generateCode = function(sourceMapFile) {
         codeBuilder.write(tpl.getVarName('getModClass'));
         codeBuilder.write(', ');
         codeBuilder.write(tpl.getVarName('getChangedClass'));
-        codeBuilder.writeln(', undefined) {\n', undefined, true);
+        codeBuilder.writeln(', window, Node, undefined) {\n', undefined, true);
     }
 
     for (ns in calls) {
