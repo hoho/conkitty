@@ -1046,7 +1046,7 @@ function render(parent, arr) {
         ret += '<li>' + arr[i] + '</li>';
     }
 
-    ret += '</ul>;
+    ret += '</ul>';
 
     parent.innerHTML = ret;
 }
