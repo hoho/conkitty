@@ -33,6 +33,7 @@ template engine, it doesn't produce strings of HTML, but generates DOM instead.
 - [External files dependency declaration](#external-files-dependency-declaration)
 - [Generated code notes](#generated-code-notes)
 - [Source maps](#source-maps)
+- [Performance notes](#performance-notes)
 
 
 ## Quick start
@@ -528,7 +529,7 @@ as JavaScript code.
 
 ### MEM *key* *[expr]*
 
-You have an access to exact DOM nodes during their creation process. You can
+You have access to exact DOM nodes during their creation process. You can
 memorize some of these nodes for future use.
 
     template
@@ -1027,3 +1028,55 @@ Or use `--sourcemap` argument of command line utility:
 
 When you compile templates with source map, `//@ sourceMappingURL=your.source.map`
 comment is being added on top of your compiled templates code.
+
+
+## Performance notes
+
+It is hard to do adequate performance tests. I did simple ones like (simplified
+example):
+
+```js
+function render(parent, arr) {
+    var ret,
+        i;
+
+    ret = '<ul>';
+
+    for (i = 0; i < arr.length; i++) {
+        ret += '<li>' + arr[i] + '</li>';
+    }
+
+    ret += '</ul>;
+
+    parent.innerHTML = ret;
+}
+
+render(document.body, [1, 2, 3, 4, 5])
+```
+
+versus template:
+
+    render $arr
+        ul
+            EACH $item $arr
+                li
+                    $item
+
+and template call:
+
+```js
+$C.tpl.render.call(document.body, [1, 2, 3, 4, 5])
+```
+
+And first ones were about 50% faster. But there are at least three things to
+keep in mind:
+
++ After you've built DOM from HTML string, you need to spend some time
+  traversing this DOM to find all key nodes your application needs. With
+  Conkitty you don't need DOM traversals — you have access to exact DOM nodes
+  during template execution.
++ Pages are mostly reasonably-sized. This means that even bigger performance
+  difference will not have noticeable impact to application speed.
++ Many optimizations could be done in future (like merging adjacent text node
+  generators into single expression). But because of first two things I clarify
+  these optimizations as premature.
