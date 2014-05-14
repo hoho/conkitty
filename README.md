@@ -968,7 +968,7 @@ has `deps` option too, for Grunt plugin it means directory to copy all the
 dependencies to.
 
 Let's use command line tool like
-`conkitty --common common.js --templates tpl.js --deps deps.txt tpl.ctpl`
+`conkitty --common=common.js --templates=tpl.js --deps=deps.txt tpl.ctpl`
 
 `deps.txt` will be:
 
@@ -1023,7 +1023,7 @@ create source maps.
 
 Or use `--sourcemap` argument of command line utility:
 
-    conkitty --common common.js --templates tpl.js --sourcemap=tpl.map tpl.ctpl
+    conkitty --common=common.js --templates=tpl.js --sourcemap=tpl.map tpl.ctpl
 
 When you compile templates with source map, `//@ sourceMappingURL=your.source.map`
 comment is being added on top of your compiled templates code.
