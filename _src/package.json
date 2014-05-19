@@ -1,0 +1,24 @@
+{
+    "name": "conkitty-doc",
+    "version": "0.0.1",
+    "description": "Conkitty Documentation",
+    "scripts": {
+        "test": "gulp"
+    },
+    "keywords": [
+        "Conkitty",
+        "documentation"
+    ],
+    "author": "Marat Abdullin <dakota@brokenpipe.ru>",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/hoho/conkitty/issues"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "gulp": "~3.6.2",
+        "gulp-eslint": "~0.1.6",
+        "gulp-uglify": "~0.2.1",
+        "node-conkitty": "~0.0.2"
+    }
+}

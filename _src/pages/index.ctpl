@@ -1,0 +1,17 @@
+Conkitty
+    html
+        head
+            meta[charset="utf-8"]
+            link[rel="stylesheet"][type="text/css"][href="_.css"][media="screen"]
+            title
+                "Conkitty"
+
+        body
+            header
+                h1
+                    "Conkitty Template Engine"
+                    a[href="https://github.com/hoho/conkitty"]
+                        "View on GitHub"
+
+            p
+                "Here be dragons."
