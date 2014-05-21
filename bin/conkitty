@@ -51,26 +51,26 @@ try {
 
         if (!tplFilename && !commonFilename && !depsFilename) {
             console.log(conkitty.getTemplatesCode());
-        }
+        } else {
+            if (commonFilename) {
+                fs.writeFileSync(commonFilename, conkitty.getCommonCode());
+                console.log('File "' + commonFilename + '" created.');
+            }
 
-        if (commonFilename) {
-            fs.writeFileSync(commonFilename, conkitty.getCommonCode());
-            console.log('File "' + commonFilename + '" created.');
-        }
+            if (tplFilename) {
+                fs.writeFileSync(tplFilename, conkitty.getTemplatesCode());
+                console.log('File "' + tplFilename + '" created.');
+            }
 
-        if (tplFilename) {
-            fs.writeFileSync(tplFilename, conkitty.getTemplatesCode());
-            console.log('File "' + tplFilename + '" created.');
-        }
+            if (depsFilename) {
+                fs.writeFileSync(depsFilename, conkitty.getIncludes().join('\n'));
+                console.log('File "' + depsFilename + '" created.');
+            }
 
-        if (depsFilename) {
-            fs.writeFileSync(depsFilename, conkitty.getIncludes().join('\n'));
-            console.log('File "' + depsFilename + '" created.');
-        }
-
-        if (tplFilename && sourcemapFilename) {
-            fs.writeFileSync(sourcemapFilename, conkitty.getSourceMap());
-            console.log('File "' + sourcemapFilename + '" created.');
+            if (tplFilename && sourcemapFilename) {
+                fs.writeFileSync(sourcemapFilename, conkitty.getSourceMap());
+                console.log('File "' + sourcemapFilename + '" created.');
+            }
         }
     }
 } catch(e) {
