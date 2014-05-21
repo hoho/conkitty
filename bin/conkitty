@@ -32,8 +32,6 @@ try {
 
     if (!program.args.length) {
         console.log('No template files specified.');
-    } else if (!tplFilename && !commonFilename && !depsFilename) {
-        console.log('No output options specified.');
     } else {
         var conkitty = new Conkitty(),
             i,
@@ -50,6 +48,10 @@ try {
                 :
                 undefined
         );
+
+        if (!tplFilename && !commonFilename && !depsFilename) {
+            console.log(conkitty.getTemplatesCode());
+        }
 
         if (commonFilename) {
             fs.writeFileSync(commonFilename, conkitty.getCommonCode());

@@ -1,4 +1,2 @@
 node_modules
-dst/common.js
-dst/templates.js
-dst/styles.css
+dst
