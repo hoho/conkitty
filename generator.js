@@ -2045,7 +2045,7 @@ function getCalledNSTemplates(tpls, template, ret, includes) {
 
         if (!((retns = ret[ns]))) {
             retns = ret[ns] = {};
-            tpl = retns[''] = tpls[ns][''];
+            tpl = retns[''] = tpls[ns] && tpls[ns][''];
             if (tpl) {
                 getTemplateIncludes(tpl, includes);
             }
@@ -2053,9 +2053,11 @@ function getCalledNSTemplates(tpls, template, ret, includes) {
 
         for (name in callsns) {
             if (!(name in retns)) {
-                tpl = retns[name] = tpls[ns][name];
-                getCalledNSTemplates(tpls, tpl, ret, includes);
-                getTemplateIncludes(tpl, includes);
+                tpl = retns[name] = tpls[ns] && tpls[ns][name];
+                if (tpl) {
+                    getCalledNSTemplates(tpls, tpl, ret, includes);
+                    getTemplateIncludes(tpl, includes);
+                }
             }
         }
     }
