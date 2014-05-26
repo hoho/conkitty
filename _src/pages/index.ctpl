@@ -1,17 +1,20 @@
 Conkitty
+    &"common.css"
+
     html
         head
             meta[charset="utf-8"]
-            link[rel="stylesheet"][type="text/css"][href="_.css"][media="screen"]
+            link[rel="stylesheet"][type="text/css"][href="|/|.css"][media="screen"]
             title
                 "Conkitty"
 
         body
-            header
-                h1
-                    "Conkitty Template Engine"
-                    a[href="https://github.com/hoho/conkitty"]
-                        "View on GitHub"
-
-            p
+            b::header
+            p[style="text-align: center; margin: 50px;"]
                 "Here be dragons."
+                br
+                br
+                "But "
+                a[href="https://github.com/hoho/conkitty"]
+                    "GitHub readme is available"
+                "."

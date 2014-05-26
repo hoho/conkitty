@@ -3,9 +3,16 @@
 var gulp = require('gulp');
 
 var eslint = require('gulp-eslint');
+var add = require('gulp-add');
+var filter = require('gulp-filter');
+var concat = require('gulp-concat');
+var rename = require('gulp-rename');
+var cssmin = require('gulp-cssmin');
 var uglify = require('gulp-uglify');
+var nop = require('gulp-nop');
 
 var conkitty = require('node-conkitty');
+var fs = require('fs');
 
 
 gulp.task('eslint', function() {
@@ -26,9 +33,28 @@ gulp.task('eslint', function() {
 
 
 gulp.task('conkitty', function() {
-    var deps = conkitty.compile('pages/index.ctpl');
-    console.log(deps, conkitty.applyTemplate('Conkitty'));
+    var deps = conkitty.compile(['pages/index.ctpl', 'blocks/b-header/b-header.ctpl']),
+        cssFilter = filter('**/*.css'),
+        jsFilter = filter('**/*.js');
+
+    return gulp.src(deps)
+        .pipe(cssFilter)
+        .pipe(concat('|.css'))
+        .pipe(cssFilter.restore())
+
+        .pipe(jsFilter)
+        .pipe(concat('|.js'))
+        .pipe(jsFilter.restore())
+
+        .pipe(rename(function(path) { path.dirname += '/|'; }))
+        .pipe(add('index.html', '<!doctype html>' + conkitty.applyTemplate('Conkitty')))
+        .pipe(gulp.dest('../'));
 });
 
 
-gulp.task('default', ['eslint', 'conkitty']);
+gulp.task('watch', function() {
+    gulp.watch(['pages/**/*', 'blocks/**/*'], ['conkitty']);
+});
+
+
+gulp.task('default', ['eslint', 'conkitty', 'watch']);

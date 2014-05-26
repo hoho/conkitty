@@ -1,0 +1,8 @@
+b::header
+    &"b-header.css"
+
+    header%b-header
+        h1
+            "Conkitty Template Engine"
+            a[href="https://github.com/hoho/conkitty"]
+                "View on GitHub"

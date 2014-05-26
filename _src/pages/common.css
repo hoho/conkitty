@@ -1,0 +1,28 @@
+html,
+body
+{
+    font-family: Helvetica, arial, freesans, clean, sans-serif;
+
+    font-weight: 200;
+
+    margin: 0;
+
+    padding: 0;
+}
+
+a
+{
+    color: #3d5a8a;
+
+    text-decoration: none;
+}
+
+a:hover
+{
+    text-decoration: underline;
+}
+
+a:active
+{
+    color: #a00;
+}
