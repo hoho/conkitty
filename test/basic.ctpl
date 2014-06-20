@@ -93,6 +93,27 @@ eachtest2 $arg
                 "|"
 
 
+eachtest3 $arg1 $arg2
+    EACH ($arg1)
+        "eeee"
+    ELSE
+        "no eeee"
+
+    ul
+        EACH $value ($arg2)
+            li
+                "|"
+                EACH $key $val $value
+                    b
+                        ($key + ' = ' + $val)
+                ELSE
+                    "no b"
+                "|"
+        ELSE
+            li
+                "no items"
+
+
 // More comment
 unescaped
     div

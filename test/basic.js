@@ -180,6 +180,48 @@ test('Each test 2', function() {
     container.innerHTML = '';
 });
 
+
+test('Each test 3', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('eachtest3', [], []).end();
+
+    domEqual(domToArray(container), [
+        'no eeee',
+        {name: 'ul', children: [
+            {name: 'li', children: ['no items']}
+        ]}
+    ]);
+
+    container.innerHTML = '';
+
+    $C(container).callTemplate('eachtest3', [1, 2], [{}, {a: 'aa', b: 'bb'}, [33, 44], []]).end();
+
+    domEqual(domToArray(container), [
+        'eeee',
+        'eeee',
+        {name: 'ul', children: [
+            {name: 'li', children: ['|', 'no b', '|']},
+            {name: 'li', children: [
+                '|',
+                {name: 'b', children: ['a = aa']},
+                {name: 'b', children: ['b = bb']},
+                '|'
+            ]},
+            {name: 'li', children: [
+                '|',
+                {name: 'b', children: ['0 = 33']},
+                {name: 'b', children: ['1 = 44']},
+                '|'
+            ]},
+            {name: 'li', children: ['|', 'no b', '|']}
+        ]}
+    ]);
+
+    container.innerHTML = '';
+});
+
+
 test('Unescaped test', function() {
     var container = document.getElementById('container');
 

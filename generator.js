@@ -209,6 +209,7 @@ function ConkittyGeneratorNode(parent, hasEnd) {
     this.children = [];
     this.next = this.prev = null;
     this.ends = hasEnd ? 1 : 0;
+    this.internalVariableNumber = 1;
 }
 
 
@@ -218,6 +219,14 @@ ConkittyGeneratorNode.prototype.addVariable = function addVariable(part) {
         throw new ConkittyErrors.IllegalName(part, 'duplicates argument name');
     }
     root.vars[part.value] = true;
+};
+
+
+ConkittyGeneratorNode.prototype.addInternalVariable = function addInternalVariable(name) {
+    var root = (this.root || this);
+    name = name + root.internalVariableNumber++;
+    root.vars[name] = true;
+    return name;
 };
 
 
@@ -1058,12 +1067,14 @@ function processChoose(parent, cmd) {
 }
 
 
-function processEach(parent, cmd) {
+function processEach(parent, cmd, noitems) {
     var node,
         error,
         key,
         val,
-        arr;
+        arr,
+        elseNode,
+        hasItemsVar;
 
     error = conkittyMatch(cmd.value, [
         new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'EACH'),
@@ -1100,22 +1111,46 @@ function processEach(parent, cmd) {
         arr = cmd.value[1];
     }
 
+    if (noitems && conkittyMatch(noitems.value, [new ConkittyPatternPart(cmd.value, 1, ConkittyTypes.COMMAND_NAME, 'ELSE')])) {
+        noitems = null;
+    }
+
     node = new ConkittyGeneratorCommand(parent, true);
     parent.appendChild(node);
 
     if (key) { node.addVariable(key); }
     if (val) { node.addVariable(val); }
 
+    if (noitems) {
+        elseNode = new ConkittyGeneratorCommand(parent, true);
+        hasItemsVar = elseNode.addInternalVariable('__each');
+        parent.appendChild(elseNode);
+    }
+
     node.getCodeBefore = function getCodeBefore(builder) {
+        if (hasItemsVar) {
+            builder.write('.act(function() { ');
+            builder.write(hasItemsVar);
+            builder.writeln(' = true; })');
+        }
+
         builder.write('.each(', cmd.value[0]);
         builder.write(getExpressionString(node, arr, true), arr);
         builder.write(')');
-        if (key || val) {
+
+        if (key || val || hasItemsVar) {
             builder.writeln('');
             builder.write(INDENT);
-            builder.write('.act(function($C_');
+            builder.write('.act(function(');
+            if (val) { builder.write('$C_'); }
             if (key) { builder.write(', $C__'); }
             builder.write(') { ');
+
+            if (hasItemsVar) {
+                builder.write(hasItemsVar);
+                builder.write(' = false; ');
+            }
+
             if (val) {
                 builder.write(val.value, val);
                 builder.write(' = $C_; ');
@@ -1135,7 +1170,21 @@ function processEach(parent, cmd) {
 
     processSubcommands(node, cmd);
 
-    return 1;
+    if (elseNode) {
+        elseNode.getCodeBefore = function getCodeBefore(builder) {
+            builder.write('.test(function() { return ');
+            builder.write(hasItemsVar);
+            builder.writeln('; })');
+        };
+
+        elseNode.getCodeAfter = function getCodeAfter(builder) {
+            builder.writeln(getEnds(elseNode));
+        };
+
+        processSubcommands(elseNode, noitems);
+    }
+
+    return noitems ? 2 : 1;
 }
 
 
