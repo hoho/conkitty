@@ -482,6 +482,25 @@ optional.
     // <em>k3: v3</em>
     // <em>k4: v4</em>
 
+It is possible to add fallback for an empty array (or object):
+
+    template
+        ul
+            EACH $val ([])
+                li
+                    $val
+            ELSE
+                li.empty
+                    "No items."
+
+        EACH $key $val ({})
+            p
+                $key
+                ": "
+                $val
+        ELSE
+            em
+                "Empty."
 
 ### JS *[$item $index $obj]*
 
