@@ -2115,7 +2115,7 @@ function getCalledNSTemplates(tpls, template, ret, includes) {
 }
 
 
-ConkittyGenerator.prototype.generateCode = function(sourceMapFile) {
+ConkittyGenerator.prototype.generateCode = function(sourceMapFile, noConcatJS) {
     var ret,
         codeBuilder = new ConkittyCodeBuilder(!!sourceMapFile),
         i,
@@ -2165,7 +2165,9 @@ ConkittyGenerator.prototype.generateCode = function(sourceMapFile) {
 
     if (tpl) {
         common = [];
-        common.push(fs.readFileSync(require.resolve('concat.js'), {encoding: 'utf8'}));
+        if (!noConcatJS) {
+            common.push(fs.readFileSync(require.resolve('concat.js'), {encoding: 'utf8'}));
+        }
         common.push(fs.readFileSync(path.join(__dirname, '_env.js'), {encoding: 'utf8'}));
 
         codeBuilder.writeln('}).apply(null, $C._$args);');
