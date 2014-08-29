@@ -421,7 +421,9 @@ test('Template with precompile expressions test', function() {
 
     domEqual(domToArray(container), [
         {name: 'h3', children: ["|('no effect')|"]},
-        {name: 'div', children: ["|('no effect either')|"]}
+        {name: 'div', children: ["|('no effect either')|"]},
+        {name: 'p', attr: {'class': 'cls1', attr1: 'attr1'}, children: ['alala']},
+        {name: 'span', children: ['ololo']}
     ]);
 
     container.innerHTML = '';

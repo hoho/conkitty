@@ -168,7 +168,8 @@ ConkittyParser.prototype.nextChar = function nextChar(noMove) {
                     var i,
                         pos = this.chars.length,
                         expr = this.readPrecompileExpr(),
-                        tmp;
+                        tmp,
+                        tmp2;
 
                     try {
                         expr = execPrecompileExpr(expr, this.precompileEnv) || '';
@@ -183,12 +184,17 @@ ConkittyParser.prototype.nextChar = function nextChar(noMove) {
                     this.chars.splice(pos, this.chars.length);
 
                     for (i = 0; i < expr.length; i++) {
-                        this.chars.push({
-                            val: expr[i],
+                        tmp2 = {
                             line: ret.line,
                             col: ret.col,
                             id: this.chars.length
-                        });
+                        };
+                        if (expr[i] === '\n') {
+                            tmp2.EOL = true;
+                        } else {
+                            tmp2.val = expr[i];
+                        }
+                        this.chars.push(tmp2);
                     }
 
                     this.chars.push(tmp);
