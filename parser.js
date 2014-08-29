@@ -105,7 +105,7 @@ function strip(str) {
 }
 
 
-function ConkittyParser(filename, code, base) {
+function ConkittyParser(filename, code, base, precompileEnv) {
     this.filename = filename;
     if (code === undefined) { code = fs.readFileSync(filename, {encoding: 'utf8'}); }
     this.base = base || path.dirname(filename);
@@ -116,6 +116,8 @@ function ConkittyParser(filename, code, base) {
     this.chars = [];
     this.charsPos = 0;
     this.currentChar = {line: 0, col: 0};
+    this.allowPrecompileExpr = true;
+    this.precompileEnv = precompileEnv;
 }
 
 
@@ -124,6 +126,22 @@ function ConkittyCommandPart(type, code, lineAt, charAt) {
     this.src = code;
     this.lineAt = lineAt === undefined ? code.currentChar.line : lineAt;
     this.charAt = charAt === undefined ? code.currentChar.col : charAt;
+}
+
+
+function execPrecompileExpr(expr, env) {
+    var args = Object.keys(env || {}),
+        i,
+        values = [],
+        func;
+
+    for (i = 0; i < args.length; i++) {
+        values.push(env[args[i]]);
+    }
+
+    func = new Function(args.join(','), 'return ' + expr);
+
+    return func.apply(null, values) + '';
 }
 
 
@@ -145,6 +163,39 @@ ConkittyParser.prototype.nextChar = function nextChar(noMove) {
                     col: this.charAt,
                     id: this.chars.length
                 };
+
+                if (ret.val === '|' && this.allowPrecompileExpr) {
+                    var i,
+                        pos = this.chars.length,
+                        expr = this.readPrecompileExpr(),
+                        tmp;
+
+                    try {
+                        expr = execPrecompileExpr(expr, this.precompileEnv) || '';
+                    } catch(e) {
+                        throw new ConkittyErrors.PrecompileExprError('Failed to execute precompile expression: ' + e.message, this, ret.line, ret.col);
+                    }
+
+                    this.charsPos = pos;
+                    tmp = this.chars.pop(); // readJS reads two more chars after
+                                            // JS expression, first one is
+                                            // closing `|` and we keep the last one here.
+                    this.chars.splice(pos, this.chars.length);
+
+                    for (i = 0; i < expr.length; i++) {
+                        this.chars.push({
+                            val: expr[i],
+                            line: ret.line,
+                            col: ret.col,
+                            id: this.chars.length
+                        });
+                    }
+
+                    this.chars.push(tmp);
+
+                    return this.nextChar(noMove);
+                }
+
                 if (!noMove) {
                     this.charAt++;
                 }
@@ -1095,6 +1146,8 @@ ConkittyParser.prototype.readString = function readString(noRaw) {
         val = [],
         ret;
 
+    this.allowPrecompileExpr = false;
+
     ch = this.nextChar();
     if (ch.val !== '"' && ch.val !== "'") {
         throw new ConkittyErrors.UnexpectedSymbol(this);
@@ -1145,6 +1198,8 @@ ConkittyParser.prototype.readString = function readString(noRaw) {
     ret.value = closer + val.join('') + closer;
     ret.raw = raw;
 
+    this.allowPrecompileExpr = true;
+
     return ret;
 };
 
@@ -1155,6 +1210,8 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
         ch3,
         ret,
         val = [];
+
+    this.allowPrecompileExpr = false;
 
     if (!indent) {
         ch = this.nextChar();
@@ -1306,7 +1363,33 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
         );
     }
 
+    this.allowPrecompileExpr = true;
+
     return ret;
+};
+
+
+ConkittyParser.prototype.readPrecompileExpr = function readPrecompileExpr() {
+    var ch,
+        expr;
+
+    this.allowPrecompileExpr = false;
+
+    ch = this.nextChar();
+    if (ch.val !== '|') {
+        throw new ConkittyErrors.UnexpectedSymbol(this);
+    }
+
+    expr = this.readJS(undefined, true);
+
+    ch = this.nextChar();
+    if (ch.val !== '|') {
+        throw new ConkittyErrors.UnexpectedSymbol(this);
+    }
+
+    this.allowPrecompileExpr = true;
+
+    return expr.value;
 };
 
 

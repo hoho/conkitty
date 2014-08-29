@@ -1,0 +1,6 @@
+precompile-expr-|(1 + 2 + prop1)|-test
+    &|('"includes/file' + (2 + 3  + prop2) + '.css"')|
+    h|(prop3 - 1)|
+        "|('no effect')|"
+    div
+        ("|('no effect either')|")

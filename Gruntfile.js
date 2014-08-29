@@ -38,7 +38,8 @@ module.exports = function(grunt) {
                         'test/nodes.ctpl',
                         'test/ret.ctpl',
                         'test/namespaces.ctpl',
-                        'test/classes.ctpl'
+                        'test/classes.ctpl',
+                        'test/precompileexpr.ctpl'
                     ]
                 }
             }
@@ -70,7 +71,7 @@ module.exports = function(grunt) {
         var Conkitty = require(__dirname + '/conkitty.js');
 
         this.files.forEach(function(f) {
-            var conkitty = new Conkitty();
+            var conkitty = new Conkitty({prop1: 100500, prop2: 'yo', prop3: 4});
 
             f.src.map(function(filename) {
                 conkitty.push(path.resolve(filename));
@@ -91,7 +92,8 @@ module.exports = function(grunt) {
                     'test/includes/button.css',
                     'test/includes/textarea.css',
                     'test/includes/c.css',
-                    'test/includes/file1.css'
+                    'test/includes/file1.css',
+                    'test/includes/file5yo.css'
                 ].map(function(filename) { return path.normalize(path.join(__dirname, filename)); }),
                 'Incorrect test includes'
             );

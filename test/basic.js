@@ -412,3 +412,17 @@ test('Default argument values and named arguments test', function() {
 
     container.innerHTML = '';
 });
+
+
+test('Template with precompile expressions test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('precompile-expr-100503-test').end();
+
+    domEqual(domToArray(container), [
+        {name: 'h3', children: ["|('no effect')|"]},
+        {name: 'div', children: ["|('no effect either')|"]}
+    ]);
+
+    container.innerHTML = '';
+});

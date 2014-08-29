@@ -95,6 +95,14 @@ function InconsistentCommand(part) {
 InconsistentCommand.prototype = new Error();
 
 
+function PrecompileExprError(msg, code, lineAt, charAt) {
+    this.name = 'PrecompileExprError';
+    this.message = getErrorMessage(msg, code, lineAt, charAt);
+    this.stack = (new Error()).stack;
+}
+PrecompileExprError.prototype = new Error();
+
+
 module.exports.BadIndentation = BadIndentation;
 module.exports.UnexpectedSymbol = UnexpectedSymbol;
 module.exports.IllegalName = IllegalName;
@@ -104,3 +112,4 @@ module.exports.DuplicateDecl = DuplicateDecl;
 module.exports.IncompletePart = IncompletePart;
 module.exports.UnknownPart = UnknownPart;
 module.exports.InconsistentCommand = InconsistentCommand;
+module.exports.PrecompileExprError = PrecompileExprError;

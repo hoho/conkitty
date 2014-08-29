@@ -14,13 +14,14 @@ var path = require('path'),
 
 
 // Conkitty constructor.
-function Conkitty() {
+function Conkitty(precompileEnv) {
     this.code = [];
+    this.precompileEnv = precompileEnv;
 }
 
 
 Conkitty.prototype.push = function push(filename, code, base) {
-    code = new ConkittyParser(filename, code, base);
+    code = new ConkittyParser(filename, code, base, this.precompileEnv);
     this.code = this.code.concat(code.readBlock(0) || []);
 };
 
