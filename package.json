@@ -1,6 +1,6 @@
 {
     "name": "conkitty",
-    "version": "0.5.13",
+    "version": "0.5.14",
     "description": "Template Engine",
     "main": "conkitty",
     "directories": {
@@ -39,6 +39,7 @@
         "grunt-contrib-qunit": "~0.5.2",
         "grunt-contrib-uglify": "~0.5.1",
         "grunt-contrib-clean": "~0.6.0",
-        "qunitjs": "~1.14.0"
+        "qunitjs": "~1.15.0",
+        "assert-version": "~0.0.3"
     }
 }

@@ -105,19 +105,6 @@ function strip(str) {
 }
 
 
-function skipWhitespaces(line, charAt) {
-    while (charAt < line.length && whitespace.test(line[charAt])) {
-        charAt++;
-    }
-    return charAt;
-}
-
-
-function getIndent(line) {
-    return skipWhitespaces(line, 0);
-}
-
-
 function ConkittyParser(filename, code, base) {
     this.filename = filename;
     if (code === undefined) { code = fs.readFileSync(filename, {encoding: 'utf8'}); }
@@ -126,47 +113,143 @@ function ConkittyParser(filename, code, base) {
     this.code = code.split(/\n\r|\r\n|\r|\n/);
     clearComments(this.code);
     this.lineAt = this.charAt = 0;
+    this.chars = [];
+    this.charsPos = 0;
+    this.currentChar = {line: 0, col: 0};
 }
 
 
 function ConkittyCommandPart(type, code, lineAt, charAt) {
     this.type = type;
     this.src = code;
-    this.lineAt = lineAt === undefined ? code.lineAt : lineAt;
-    this.charAt = charAt === undefined ? code.charAt : charAt;
+    this.lineAt = lineAt === undefined ? code.currentChar.line : lineAt;
+    this.charAt = charAt === undefined ? code.currentChar.col : charAt;
 }
 
 
-ConkittyParser.prototype.skipEmptyLines = function skipEmptyLines() {
-    while (this.lineAt < this.code.length &&
-        skipWhitespaces(this.code[this.lineAt], 0) === this.code[this.lineAt].length)
-    {
-        this.lineAt++;
+ConkittyParser.prototype.nextChar = function nextChar(noMove) {
+    var ret;
+
+    if (this.charsPos < this.chars.length) {
+        ret = this.chars[this.charsPos];
+        if (!noMove) {
+            this.currentChar = ret;
+            this.charsPos++;
+        }
+    } else {
+        if (this.lineAt < this.code.length) {
+            if (this.charAt < this.code[this.lineAt].length) {
+                ret = {
+                    val: this.code[this.lineAt][this.charAt],
+                    line: this.lineAt,
+                    col: this.charAt,
+                    id: this.chars.length
+                };
+                if (!noMove) {
+                    this.charAt++;
+                }
+            } else {
+                ret = {
+                    EOL: true,
+                    line: this.lineAt,
+                    col: this.charAt,
+                    id: this.chars.length
+                };
+                if (!noMove) {
+                    this.lineAt++;
+                    this.charAt = 0;
+                }
+            }
+        } else {
+            ret = {
+                EOF: true,
+                EOL: true,
+                line: this.lineAt,
+                col: 0,
+                id: this.chars.length
+            };
+        }
+
+        if (!noMove) {
+            this.currentChar = ret;
+            this.chars.push(ret);
+            this.charsPos++;
+        }
     }
 
-    this.charAt = 0;
+    return ret;
+};
 
-    return this.lineAt < this.code.length;
+
+ConkittyParser.prototype.pushBack = function pushBack(count) {
+    if (this.charsPos < count || count < 0) {
+        throw new Error('Cannot push back `' + count + '` long');
+    } else {
+        if (count > 0) {
+            this.charsPos -= count;
+            this.currentChar = this.chars[this.charsPos];
+        }
+    }
+};
+
+
+ConkittyParser.prototype.skipWhitespaces = function skipWhitespaces() {
+    var ret = 0;
+    while (whitespace.test(this.nextChar(true).val)) {
+        this.nextChar();
+        ret++;
+    }
+    return ret;
+};
+
+
+ConkittyParser.prototype.getIndent = function getIndent() {
+    return this.skipWhitespaces();
+};
+
+
+ConkittyParser.prototype.skipEmptyLines = function skipEmptyLines() {
+    var ch,
+        sincePrevEOL = 0;
+
+    while (true) {
+        ch = this.nextChar();
+        if (ch.EOF) {
+            return false;
+        } else if (ch.EOL) {
+            sincePrevEOL = 0;
+        } else if (whitespace.test(ch.val)) {
+            sincePrevEOL++;
+        } else {
+            this.pushBack(1);
+            break;
+        }
+    }
+    this.pushBack(sincePrevEOL);
+    return true;
 };
 
 
 ConkittyParser.prototype.readBlock = function readBlock(indent) {
     if (!this.skipEmptyLines()) { return false; }
 
-    this.charAt = getIndent(this.code[this.lineAt]);
+    var newIndent = indent,
+        block = [];
 
-    var block = [];
-
-    while (this.charAt === indent) {
+    while (newIndent === indent) {
         block.push(this.readCommand(indent));
-
-        if (!this.skipEmptyLines()) { break; }
-
-        this.charAt = getIndent(this.code[this.lineAt]);
+        if (!this.skipEmptyLines()) {
+            break;
+        }
+        newIndent = this.getIndent();
     }
 
-    if (this.charAt > indent) {
+    if (newIndent > indent) {
         throw new ConkittyErrors.BadIndentation(this);
+    } else {
+        if (!this.nextChar(true).EOF) {
+            this.pushBack(newIndent);
+        }
     }
 
     return block;
@@ -181,9 +264,11 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
         classAttrValue = 0,
         attrValue = 0,
         argumentsDecl,
-        argumentsVal;
+        argumentsVal,
+        ch;
 
-    while (this.charAt < this.code[this.lineAt].length) {
+    ch = this.nextChar(true);
+    while (!ch.EOL) {
         if (templateName) {
             templateName++;
             if (templateName > 2) { templateName = 0; }
@@ -199,7 +284,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
             if (attrValue > 2) { attrValue = 0; }
         }
 
-        switch (this.code[this.lineAt][this.charAt]) {
+        switch (ch.val) {
             case '$':
                 if (argumentsDecl) {
                     val.push(this.readArgument(true));
@@ -232,6 +317,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
 
             case '@':
                 if (classAttrValue || attrValue) {
+                    this.nextChar();
                     throw new ConkittyErrors.UnexpectedSymbol(this);
                 }
 
@@ -342,26 +428,23 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                 }
         }
 
-        if (this.charAt < this.code[this.lineAt].length) {
-            i = skipWhitespaces(this.code[this.lineAt], this.charAt);
-
-            if (this.charAt === i) {
-                throw new ConkittyErrors.UnexpectedSymbol(this);
-            }
-
-            this.charAt = i;
+        i = this.nextChar(true);
+        this.skipWhitespaces();
+        ch = this.nextChar(true);
+        if (!ch.EOL && i.id === ch.id) {
+            this.nextChar();
+            throw new ConkittyErrors.UnexpectedSymbol(this);
         }
     }
 
     ret.value = val;
 
-    this.lineAt++;
-
     if (this.skipEmptyLines()) {
-        this.charAt = getIndent(this.code[this.lineAt]);
-
-        if (this.charAt > indent) {
-            ret.children = this.readBlock(this.charAt);
+        var newIndent = this.getIndent();
+        if (newIndent > indent) {
+            ret.children = this.readBlock(newIndent);
+        } else {
+            this.pushBack(newIndent);
         }
     }
 
@@ -371,14 +454,24 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
 
 ConkittyParser.prototype._readName = function _readName(type, stopExpr, checkExpr, offset) {
     var val = [],
-        line = this.code[this.lineAt],
-        ret = new ConkittyCommandPart(type, this);
+        ch,
+        ret;
 
-    this.charAt += (offset || 0);
+    ch = this.nextChar();
 
-    while (this.charAt < line.length && !stopExpr.test(line[this.charAt])) {
-        val.push(line[this.charAt++]);
+    offset = offset || 0;
+    while (offset > 0) {
+        ch = this.nextChar();
+        offset--;
     }
+
+    ret = new ConkittyCommandPart(type, this);
+
+    while (ch.val && !stopExpr.test(ch.val)) {
+        val.push(ch.val);
+        ch = this.nextChar();
+    }
+    this.pushBack(1);
 
     val = val.join('');
 
@@ -393,10 +486,16 @@ ConkittyParser.prototype._readName = function _readName(type, stopExpr, checkExp
 
 
 ConkittyParser.prototype.readTemplateName = function readTemplateName() {
-    var ret = this._readName(ConkittyTypes.TEMPLATE_NAME, whitespace, /^(?:(?:[a-zA-Z0-9_-]*(?:\:\:)?[a-zA-Z0-9_-]+)|(?:[a-zA-Z0-9_-]+\:\:))$/),
+    var ret = this._readName(
+            ConkittyTypes.TEMPLATE_NAME,
+            whitespace,
+            /^(?:(?:[a-zA-Z0-9_-]*(?:\:\:)?[a-zA-Z0-9_-]+)|(?:[a-zA-Z0-9_-]+\:\:))$/
+        ),
         i;
 
-    if (ret.value.substring(0, 2) === '::') { ret.value = ret.value.substring(2); }
+    if (ret.value.substring(0, 2) === '::') {
+        ret.value = ret.value.substring(2);
+    }
 
     i = ret.value.indexOf('::');
 
@@ -413,7 +512,8 @@ ConkittyParser.prototype.readTemplateName = function readTemplateName() {
 
 
 ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
-    var pos,
+    var ch,
+        ws,
         ret = this._readName(
             isDecl ? ConkittyTypes.ARGUMENT_DECL : ConkittyTypes.ARGUMENT_VAL,
             variableStopExpr,
@@ -424,17 +524,20 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
     ret.name = ret.value;
     delete ret.value;
 
-    pos = skipWhitespaces(this.code[this.lineAt], this.charAt);
+    ws = this.skipWhitespaces();
+    ch = this.nextChar(true);
 
-    if (this.code[this.lineAt][pos] === '=') {
+    if (ch.val === '=') {
+        this.nextChar();
+
         if (commandExpr.test(ret.name)) {
-            this.charAt = pos;
             throw new ConkittyErrors.UnexpectedSymbol(this);
         }
 
-        this.charAt = skipWhitespaces(this.code[this.lineAt], pos + 1);
+        this.skipWhitespaces();
+        ch = this.nextChar(true);
 
-        switch (this.code[this.lineAt][this.charAt]) {
+        switch (ch.val) {
             case '(':
                 ret.value = this.readJS(undefined, true);
                 break;
@@ -452,28 +555,31 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
                 }
 
             default:
+                ch = this.nextChar();
                 throw new ConkittyErrors.UnexpectedSymbol(this);
                 /* jshint +W086 */
         }
 
-        if (!whitespace.test(this.code[this.lineAt][this.charAt]) &&
-            this.charAt !== this.code[this.lineAt].length)
-        {
+        ch = this.nextChar(true);
+        if (!whitespace.test(ch.val) && !ch.EOL) {
+            this.nextChar();
             throw new ConkittyErrors.UnexpectedSymbol(this);
         }
-    }
-    else if (!isDecl &&
-             (whitespace.test(this.code[this.lineAt][this.charAt]) ||
-              this.charAt === this.code[this.lineAt].length))
-    {
-        if (ret.name === 'PAYLOAD') {
-            ret = new ConkittyCommandPart(ConkittyTypes.COMMAND_NAME, this, ret.lineAt, ret.charAt);
-            ret.value = 'PAYLOAD';
-        } else if (ret.name === 'AS') {
-            ret = new ConkittyCommandPart(ConkittyTypes.COMMAND_NAME, this, ret.lineAt, ret.charAt);
-            ret.value = 'AS';
-        } else {
-            throw new ConkittyErrors.IncompletePart(ret);
+    } else {
+        if (ws) {
+            this.pushBack(ws);
+        }
+        ch = this.nextChar(true);
+        if (!isDecl && (whitespace.test(ch.val) || ch.EOL)) {
+            if (ret.name === 'PAYLOAD') {
+                ret = new ConkittyCommandPart(ConkittyTypes.COMMAND_NAME, this, ret.lineAt, ret.charAt);
+                ret.value = 'PAYLOAD';
+            } else if (ret.name === 'AS') {
+                ret = new ConkittyCommandPart(ConkittyTypes.COMMAND_NAME, this, ret.lineAt, ret.charAt);
+                ret.value = 'AS';
+            } else {
+                throw new ConkittyErrors.IncompletePart(ret);
+            }
         }
     }
 
@@ -491,26 +597,41 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
 ConkittyParser.prototype.readCommandName = function readCommandName() {
     var ret = this._readName(ConkittyTypes.COMMAND_NAME, /[^A-Z]/, commandExpr);
     if (ret.value === 'JS') {
-        var line = this.code[this.lineAt],
-            args = [];
+        var ch,
+            args = [],
+            count = 0,
+            indent;
 
-        while (this.charAt < line.length && args.length < 3) {
-            this.charAt = skipWhitespaces(line, this.charAt);
-            args.push(this.readVariable());
+        this.pushBack(1);
+        while (!this.nextChar(true).EOL) {
+            this.pushBack(1);
+            count++;
+        }
+        this.nextChar();
+        indent = this.skipWhitespaces();
+
+        count -= indent;
+        while (count > 0) {
+            this.nextChar();
+            count--;
         }
 
-        this.charAt = skipWhitespaces(line, this.charAt);
+        ch = this.nextChar(true);
+        while (ch.val && args.length < 3) {
+            this.skipWhitespaces();
+            args.push(this.readVariable());
+            ch = this.nextChar(true);
+        }
 
-        if (this.charAt < line.length) {
+        this.skipWhitespaces();
+        ch = this.nextChar();
+
+        if (!ch.EOL) {
             throw new ConkittyErrors.UnexpectedSymbol(this);
         }
 
         ret.args = args;
-
-        this.lineAt++;
-        this.charAt = 0;
-
-        ret.js = this.readJS(getIndent(line), true);
+        ret.js = this.readJS(indent, true);
     }
     return ret;
 };
@@ -525,24 +646,33 @@ ConkittyParser.prototype.readAttrName = function readAttrName() {
 
 
 ConkittyParser.prototype.readInclude = function readInclude() {
-    var charAt = this.charAt;
-    this.charAt = skipWhitespaces(this.code[this.lineAt], charAt + 1);
+    var start,
+        ch;
 
-    if (this.code[this.lineAt][this.charAt] !== '"' &&
-        this.code[this.lineAt][this.charAt] !== "'")
-    {
+    start = this.nextChar();
+    if (start.val !== '&') {
+        throw new ConkittyErrors.UnexpectedSymbol(this);
+    }
+
+    this.skipWhitespaces();
+    ch = this.nextChar(true);
+
+    if (ch.val !== '"' && ch.val !== "'") {
+        this.nextChar();
         throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
     var ret = this.readString(true);
     ret.type = ConkittyTypes.INCLUDE;
-    ret.charAt = charAt;
+    ret.charAt = start.col;
 
     ret.value = path.normalize(path.join(this.base || '.', utils.evalString(ret.value)));
 
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+    this.skipWhitespaces();
+    ch = this.nextChar(true);
 
-    if (this.charAt !== this.code[this.lineAt].length) {
+    if (!ch.EOL) {
+        this.nextChar();
         throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
@@ -551,11 +681,18 @@ ConkittyParser.prototype.readInclude = function readInclude() {
 
 
 ConkittyParser.prototype.readAppender = function readAppender() {
-    var ret = new ConkittyCommandPart(ConkittyTypes.NODE_APPENDER, this);
+    var ret,
+        ch;
 
-    this.charAt++;
+    ch = this.nextChar();
+    if (ch.val !== '^') {
+        throw new ConkittyErrors.UnexpectedSymbol(this);
+    }
 
-    switch (this.code[this.lineAt][this.charAt]) {
+    ret = new ConkittyCommandPart(ConkittyTypes.NODE_APPENDER, this);
+
+    ch = this.nextChar(true);
+    switch (ch.val) {
         case '$':
             ret.value = this.readVariable();
             break;
@@ -565,6 +702,7 @@ ConkittyParser.prototype.readAppender = function readAppender() {
             break;
 
         default:
+            this.nextChar();
             throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
@@ -573,14 +711,21 @@ ConkittyParser.prototype.readAppender = function readAppender() {
 
 
 ConkittyParser.prototype.readCSSOrTemplateName = function readCSSOrTemplateName() {
-    var i = this.charAt,
-        line = this.code[this.lineAt];
+    var count = 1,
+        ch,
+        ch2;
 
-    while (i < line.length && !cssStopExpr.test(line[i])) {
-        i++;
+    ch = this.nextChar();
+    while (!ch.EOL && !cssStopExpr.test(ch.val)) {
+        ch = this.nextChar();
+        count++;
     }
 
-    if (line[i] === ':' && line[i + 1] === ':') {
+    ch2 = this.nextChar();
+    this.pushBack(count + 1);
+
+
+    if (ch.val === ':' && ch2.val === ':') {
         return this.readTemplateName();
     } else {
         return this.readCSS();
@@ -589,19 +734,25 @@ ConkittyParser.prototype.readCSSOrTemplateName = function readCSSOrTemplateName(
 
 
 ConkittyParser.prototype.readCSS = function readCSS(classesOnly, lastBEMBlock) {
-    var line = this.code[this.lineAt],
-        ret = new ConkittyCommandPart(ConkittyTypes.CSS, this),
+    var ch,
+        ret,
         tmp,
         tmp2,
-        val = ret.value = {
-            attrs: {},
-            classes: {},
-            ifs: [],
-            names: []
-        };
+        val;
 
-    while (this.charAt < line.length && !whitespace.test(line[this.charAt]) && line[this.charAt] !== ',' && line[this.charAt] !== ')') {
-        switch (line[this.charAt]) {
+    this.nextChar();
+    ret = new ConkittyCommandPart(ConkittyTypes.CSS, this);
+    val = ret.value = {
+        attrs: {},
+        classes: {},
+        ifs: [],
+        names: []
+    };
+    this.pushBack(1);
+    ch = this.nextChar(true);
+
+    while (!ch.EOL && !whitespace.test(ch.val) && ch.val !== ',' && ch.val !== ')') {
+        switch (ch.val) {
             case '.':
                 tmp = this.readCSSClass();
                 // In case class looks like BEM class with modifier, cut
@@ -651,14 +802,17 @@ ConkittyParser.prototype.readCSS = function readCSS(classesOnly, lastBEMBlock) {
                 break;
 
             default:
-                if (!classesOnly && /[a-z]/.test(line[this.charAt])) {
+                if (!classesOnly && /[a-z]/.test(ch.val)) {
                     tmp = this.readCSSTag();
                     if (tmp.name in val.attrs) { throw new ConkittyErrors.DuplicateDecl(tmp); }
                     val.attrs[tmp.name] = tmp;
                 } else {
+                    this.nextChar();
                     throw new ConkittyErrors.UnexpectedSymbol(this);
                 }
         }
+
+        ch = this.nextChar(true);
     }
 
     return ret;
@@ -678,28 +832,40 @@ ConkittyParser.prototype.readCSSClass = function readCSSClass() {
 
 
 ConkittyParser.prototype.readCSSAttr = function readCSSAttr() {
-    var ret = new ConkittyCommandPart(ConkittyTypes.CSS_ATTR, this),
+    var ch,
+        ret,
         name,
         val;
 
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+    ch = this.nextChar();
+    ret = new ConkittyCommandPart(ConkittyTypes.CSS_ATTR, this);
 
-    if (this.charAt === this.code[this.lineAt].length) {
+    if (ch.val !== '[') {
+        throw new ConkittyErrors.UnexpectedSymbol(this);
+    }
+
+    this.skipWhitespaces();
+    ch = this.nextChar(true);
+
+    if (ch.EOL) {
+        this.nextChar();
         throw new ConkittyErrors.UnterminatedPart(ret);
     }
 
     name = this._readName(ConkittyTypes.CSS_ATTR_NAME, cssStopExpr, cssNameCheckExpr);
 
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+    this.skipWhitespaces();
+    ch = this.nextChar();
 
-    if (this.code[this.lineAt][this.charAt] === '=') {
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+    if (ch.val === '=') {
+        this.skipWhitespaces();
+        ch = this.nextChar(true);
 
-        if (this.charAt === this.code[this.lineAt].length) {
+        if (ch.EOL) {
             throw new ConkittyErrors.UnterminatedPart(ret);
         }
 
-        switch (this.code[this.lineAt][this.charAt]) {
+        switch (ch.val) {
             case '$':
                 val = this.readVariable();
                 break;
@@ -714,20 +880,21 @@ ConkittyParser.prototype.readCSSAttr = function readCSSAttr() {
                 break;
 
             case ']':
+                this.nextChar();
                 throw new ConkittyErrors.UnterminatedPart(ret);
 
             default:
+                this.nextChar();
                 throw new ConkittyErrors.UnexpectedSymbol(this);
         }
 
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        this.skipWhitespaces();
+        ch = this.nextChar();
     }
 
-    if (this.code[this.lineAt][this.charAt] !== ']') {
+    if (ch.val !== ']') {
         throw new ConkittyErrors.UnterminatedPart(ret);
     }
-
-    this.charAt++;
 
     ret.name = name.value;
     ret.value = val;
@@ -745,22 +912,25 @@ ConkittyParser.prototype.readCSSId = function readCSSId() {
 
 ConkittyParser.prototype.readCSSBEMBlock = function readCSSBEMBlock() {
     var block,
-        elem;
+        elem,
+        ch;
 
     block = this._readName(ConkittyTypes.CSS_BEM, bemStopExpr, bemCheckExpr, 1);
 
-    if (this.code[this.lineAt][this.charAt] === '(') {
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+    ch = this.nextChar();
+    if (ch.val === '(') {
+        this.skipWhitespaces();
         elem = this._readName(ConkittyTypes.CSS_BEM, bemStopExpr, bemCheckExpr);
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        this.skipWhitespaces();
 
-        if (this.code[this.lineAt][this.charAt] !== ')') {
+        ch = this.nextChar();
+        if (ch.val !== ')') {
             throw new ConkittyErrors.UnexpectedSymbol(this);
         }
 
-        this.charAt++;
-
         block.value += '__' + elem.value;
+    } else {
+        this.pushBack(1);
     }
 
     return block;
@@ -770,28 +940,39 @@ ConkittyParser.prototype.readCSSBEMBlock = function readCSSBEMBlock() {
 ConkittyParser.prototype.readCSSBEMMod = function readCSSBEMMod(block) {
     if (!block) { throw new ConkittyErrors.UnexpectedSymbol(this); }
 
-    var ret = new ConkittyCommandPart(ConkittyTypes.CSS_BEM_MOD, this),
+    var ret,
         name,
-        val;
+        val,
+        ch;
 
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+    ch = this.nextChar();
+    if (ch.val !== '{') {
+        throw new ConkittyErrors.UnexpectedSymbol(this);
+    }
+    ret = new ConkittyCommandPart(ConkittyTypes.CSS_BEM_MOD, this);
 
-    if (this.charAt === this.code[this.lineAt].length) {
+    this.skipWhitespaces();
+    ch = this.nextChar(true);
+
+    if (ch.EOL) {
+        this.nextChar();
         throw new ConkittyErrors.UnterminatedPart(ret);
     }
 
     name = this._readName(ConkittyTypes.CSS_BEM, bemStopExpr, bemCheckExpr);
 
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+    this.skipWhitespaces();
+    ch = this.nextChar();
 
-    if (this.code[this.lineAt][this.charAt] === '=') {
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+    if (ch.val === '=') {
+        this.skipWhitespaces();
+        ch = this.nextChar(true);
 
-        if (this.charAt === this.code[this.lineAt].length) {
+        if (ch.EOL) {
             throw new ConkittyErrors.UnterminatedPart(ret);
         }
 
-        switch (this.code[this.lineAt][this.charAt]) {
+        switch (ch.val) {
             case '$':
                 val = this.readVariable();
                 break;
@@ -806,20 +987,21 @@ ConkittyParser.prototype.readCSSBEMMod = function readCSSBEMMod(block) {
                 break;
 
             case '}':
+                this.nextChar();
                 throw new ConkittyErrors.UnterminatedPart(ret);
 
             default:
+                this.nextChar();
                 throw new ConkittyErrors.UnexpectedSymbol(this);
         }
 
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+        this.skipWhitespaces();
+        ch = this.nextChar();
     }
 
-    if (this.code[this.lineAt][this.charAt] !== '}') {
+    if (ch.val !== '}') {
         throw new ConkittyErrors.UnterminatedPart(ret);
     }
-
-    this.charAt++;
 
     ret.name = block.value + '_' + name.value;
     ret.value = val;
@@ -830,7 +1012,8 @@ ConkittyParser.prototype.readCSSBEMMod = function readCSSBEMMod(block) {
 
 ConkittyParser.prototype.readCSSConditional = function readCSSConditional(classesOnly, lastBEMBlock) {
     var ret = new ConkittyCommandPart(ConkittyTypes.CSS_IF, this),
-        what = this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, /^(?:if|elem)$/, 1);
+        what = this._readName(ConkittyTypes.CSS_CLASS, cssStopExpr, /^(?:if|elem)$/, 1),
+        ch;
 
     ret.what = what.value;
 
@@ -838,11 +1021,15 @@ ConkittyParser.prototype.readCSSConditional = function readCSSConditional(classe
         throw new ConkittyErrors.InconsistentCommand(what);
     }
 
-    if (this.code[this.lineAt][this.charAt] !== '(') { throw new ConkittyErrors.UnexpectedSymbol(this); }
+    ch = this.nextChar();
+    if (ch.val !== '(') {
+        throw new ConkittyErrors.UnexpectedSymbol(this);
+    }
 
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+    this.skipWhitespaces();
+    ch = this.nextChar(true);
 
-    switch (this.code[this.lineAt][this.charAt]) {
+    switch (ch.val) {
         case '$':
             ret.cond = this.readVariable();
             break;
@@ -855,29 +1042,34 @@ ConkittyParser.prototype.readCSSConditional = function readCSSConditional(classe
             throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
-    this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+    this.skipWhitespaces();
+    ch = this.nextChar();
 
     if (ret.what === 'if') {
-        if (this.code[this.lineAt][this.charAt] !== ',') {
+        if (ch.val !== ',') {
             throw new ConkittyErrors.UnexpectedSymbol(this);
         }
 
-        this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
-        if (this.code[this.lineAt][this.charAt] !== ',') {
+        this.skipWhitespaces();
+        ch = this.nextChar(true);
+
+        if (ch.val !== ',') {
             ret.positive = this.readCSS(classesOnly, lastBEMBlock);
-            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+            this.skipWhitespaces();
+            ch = this.nextChar(true);
         }
 
-        if (this.code[this.lineAt][this.charAt] === ',') {
-            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt + 1);
+        if (ch.val === ',') {
+            this.nextChar();
+            this.skipWhitespaces();
             ret.negative = this.readCSS(classesOnly, lastBEMBlock);
-            this.charAt = skipWhitespaces(this.code[this.lineAt], this.charAt);
+            this.skipWhitespaces();
         }
+
+        ch = this.nextChar();
     }
 
-    if (this.code[this.lineAt][this.charAt] === ')') {
-        this.charAt++;
-    } else {
+    if (ch.val !== ')') {
         throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
@@ -896,36 +1088,59 @@ ConkittyParser.prototype.readVariable = function readVariable() {
 
 
 ConkittyParser.prototype.readString = function readString(noRaw) {
-    var line = this.code[this.lineAt],
-        closer = line[this.charAt],
+    var ch,
+        ch2,
+        closer,
         raw = false, // Indicates that string is enclosed in triple quotes.
-        i = this.charAt + 1,
         val = [],
-        ret = new ConkittyCommandPart(ConkittyTypes.STRING, this);
+        ret;
 
-    if (!noRaw && line[i] === closer && line[i + 1] === closer) {
-        raw = true;
-        i += 2;
+    ch = this.nextChar();
+    if (ch.val !== '"' && ch.val !== "'") {
+        throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
-    while (i < line.length) {
-        if (line[i] === '\\' && (line[i + 1] === '\\' || line[i + 1] === closer)) {
+    ret = new ConkittyCommandPart(ConkittyTypes.STRING, this);
+
+    closer = ch.val;
+
+    ch = this.nextChar();
+    ch2 = this.nextChar();
+
+    if (!noRaw && ch.val === closer && ch2.val === closer) {
+        raw = true;
+        ch = this.nextChar();
+    } else {
+        this.pushBack(1);
+    }
+
+    while (!ch.EOL) {
+        ch2 = this.nextChar(true);
+        if (ch.val === '\\' && (ch2.val === '\\' || ch2.val === closer)) {
             val.push('\\');
-            val.push(line[i + 1]);
-            i += 2;
+            val.push(ch2.val);
+            this.nextChar();
         } else {
-            if (line[i] === closer) { break; }
-            val.push(line[i++]);
+            if (ch.val === closer) {
+                break;
+            }
+            val.push(ch.val);
+        }
+        ch = this.nextChar();
+    }
+
+    if (ch.val === closer && raw) {
+        ch = this.nextChar();
+        ch2 = this.nextChar();
+        if (ch.val !== closer || ch2.val !== closer) {
+            this.pushBack(2);
+            throw new ConkittyErrors.UnterminatedPart(ret);
         }
     }
 
-    if (line[i] !== closer ||
-        (raw && (line[i + 1] !== closer || line[i + 2] !== closer)))
-    {
+    if (ch.val !== closer) {
         throw new ConkittyErrors.UnterminatedPart(ret);
     }
-
-    this.charAt = i + (raw ? 3 : 1);
 
     ret.value = closer + val.join('') + closer;
     ret.raw = raw;
@@ -935,88 +1150,83 @@ ConkittyParser.prototype.readString = function readString(noRaw) {
 
 
 ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
-    var ret = new ConkittyCommandPart(ConkittyTypes.JAVASCRIPT, this),
+    var ch,
+        ch2,
+        ch3,
+        ret,
         val = [];
 
     if (!indent) {
+        ch = this.nextChar();
+        if (ch.val !== '(') {
+            throw new ConkittyErrors.UnexpectedSymbol(this);
+        }
+
+        ret = new ConkittyCommandPart(ConkittyTypes.JAVASCRIPT, this);
+
         var brackets,
             inString = false,
-            raw = 0;
+            raw = false;
 
         brackets = 1;
-        this.charAt++;
 
-        if (!noRaw &&
-            this.code[this.lineAt][this.charAt] === '(' &&
-            this.code[this.lineAt][this.charAt + 1] === '(')
-        {
-            raw = 2;
-            this.charAt += 2;
+        ch2 = this.nextChar();
+        ch3 = this.nextChar();
+
+        if (!noRaw && ch2.val === '(' && ch3.val === '(') {
+            raw = true;
+        } else {
+            this.pushBack(2);
         }
 
-        if (this.charAt === this.code[this.lineAt].length) {
-            this.lineAt++;
-
-            val.push('\n');
-
-            if (!this.skipEmptyLines()) {
-                throw new ConkittyErrors.UnterminatedPart(ret);
-            }
-        }
-
-        while (this.charAt < this.code[this.lineAt].length) {
+        ch = this.nextChar();
+        while (!ch.EOF) {
             if (!inString) {
-                if (this.code[this.lineAt][this.charAt] === '(') {
+                if (ch.val === '(') {
                     brackets++;
-                } else if (this.code[this.lineAt][this.charAt] === ')') {
+                } else if (ch.val === ')') {
                     brackets--;
                     // Avoiding this: (((   function(){})(   ))).
                     if (brackets === 0) {
-                        if (raw &&
-                            (this.code[this.lineAt][this.charAt + 1] !== ')' ||
-                                this.code[this.lineAt][this.charAt + 2] !== ')'))
-                        {
-                            brackets += raw;
-                            raw = 0;
+                        ch2 = this.nextChar();
+                        ch3 = this.nextChar();
+                        if (raw && (ch2.val !== ')' || ch3.val !== ')')) {
+                            this.pushBack(2);
+                            brackets += 2;
+                            raw = false;
                             val.unshift('((');
                         } else {
-                            this.charAt += (raw + 1);
+                            if (!raw) { this.pushBack(2); }
                             break;
                         }
                     }
-                    /* jshint -W109 */
-                } else if (this.code[this.lineAt][this.charAt] === '"' ||
-                    this.code[this.lineAt][this.charAt] === "'")
+                /* jshint -W109 */
+                } else if (ch.val === '"' || ch.val === "'") {
                 /* jshint +W109 */
-                {
-                    inString = this.code[this.lineAt][this.charAt];
+                    inString = ch.val;
                 }
             } else {
-                if (this.code[this.lineAt][this.charAt] === '\\' &&
-                    (this.code[this.lineAt][this.charAt + 1] === '\\' ||
-                        this.code[this.lineAt][this.charAt + 1] === inString))
-                {
+                ch2 = this.nextChar(true);
+                if (ch.val === '\\' && (ch2.val === '\\' || ch2.val === inString)) {
                     val.push('\\');
-                    this.charAt++;
-                } else if (this.code[this.lineAt][this.charAt] === inString) {
+                    ch = this.nextChar();
+                } else if (ch.val === inString) {
                     inString = false;
                 }
             }
 
-            val.push(this.code[this.lineAt][this.charAt]);
-
-            this.charAt++;
-
-
-            if (this.charAt === this.code[this.lineAt].length) {
-                this.lineAt++;
-
+            if (ch.val) {
+                val.push(ch.val);
+            } else if (ch.EOL && !ch.EOF) {
                 val.push('\n');
-
-                if (!this.skipEmptyLines()) {
-                    throw new ConkittyErrors.UnterminatedPart(ret);
-                }
+            } else {
+                break;
             }
+            ch = this.nextChar();
+        }
+
+        if (ch.EOF) {
+            throw new ConkittyErrors.UnterminatedPart(ret);
         }
 
         val = val.join('');
@@ -1025,19 +1235,43 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
             throw new ConkittyErrors.JSParseError('Empty expression', this, ret.lineAt, ret.charAt);
         }
 
-        ret.raw = !!raw;
+        ret.raw = raw;
         ret.expr = true;
         ret.value = val;
     } else {
-        while (this.skipEmptyLines() && getIndent(this.code[this.lineAt]) > indent) {
-            val.push(this.code[this.lineAt].substring(indent));
-            this.lineAt++;
+        var newIndent,
+            i;
+
+        this.skipEmptyLines();
+        ret = new ConkittyCommandPart(ConkittyTypes.JAVASCRIPT, this);
+
+        while (((newIndent = this.getIndent())) > indent) {
+            this.pushBack(newIndent);
+
+            for (i = 0; i < indent; i++) {
+                this.nextChar();
+            }
+
+            while (!((ch = this.nextChar())).EOL) {
+                val.push(ch.val);
+            }
+
+            i = 0;
+            ch2 = null;
+            while (!ch.EOF && ch.EOL) {
+                val.push('\n');
+                i = this.skipWhitespaces();
+                ch = ch2 = this.nextChar();
+            }
+
+            if (ch2 && !ch2.EOF) {
+                this.pushBack(i + 1);
+            }
         }
 
-        this.lineAt--;
-        this.charAt = this.code[this.lineAt].length;
+        this.pushBack(newIndent + 1);
 
-        val = val.join('\n');
+        val = val.join('');
 
         ret.raw = false;
         ret.expr = false;
@@ -1047,7 +1281,6 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
             throw new ConkittyErrors.JSParseError('Empty expression', this, ret.lineAt, ret.charAt);
         }
     }
-
 
     try {
         val = (indent ? utils.parseJSFunction : utils.parseJSExpression)(val);

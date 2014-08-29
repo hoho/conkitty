@@ -110,5 +110,19 @@ module.exports = function(grunt) {
         });
     });
 
-    grunt.registerTask('default', ['jshint', 'clean', 'conkitty', 'uglify', 'qunit']);
+    grunt.registerTask('assert-version', function() {
+        var assertVersion = require('assert-version'),
+            error;
+
+        error = assertVersion({
+            'conkitty.js': ''
+        });
+
+        if (error) {
+            grunt.log.error(error);
+            return false;
+        }
+    });
+
+    grunt.registerTask('default', ['jshint', 'clean', 'assert-version', 'conkitty', 'uglify', 'qunit']);
 };

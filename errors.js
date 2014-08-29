@@ -6,8 +6,8 @@
 'use strict';
 
 function getErrorMessage(msg, code, lineAt, charAt) {
-    lineAt = lineAt === undefined ? code.lineAt : lineAt;
-    charAt = charAt === undefined ? code.charAt : charAt;
+    lineAt = lineAt === undefined ? code.currentChar.line : lineAt;
+    charAt = charAt === undefined ? code.currentChar.col : charAt;
     return (code.filename ? code.filename + ': ' : '(no filename): ') + msg +
         ' (line: ' + (lineAt + 1) +
         ', col: ' + (charAt + 1) + '):\n' +
