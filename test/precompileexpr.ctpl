@@ -4,5 +4,5 @@ precompile-expr-|(1 + 2 + prop1)|-test
         "|('no effect')|"
     div
         ("|('no effect either')|")
-    p|('.cls1' + '[attr1]\n        "alala"\n    span')|
+    p|(function() { return '.cls1' + '[attr1]\n        "alala"\n    span'; })|
         "ololo"

@@ -139,7 +139,10 @@ function execPrecompileExpr(expr, env) {
         values.push(env[args[i]]);
     }
 
-    func = new Function(args.join(','), 'return ' + expr);
+    func = new Function(
+        args.join(','),
+        'return ' + (expr.isFunc ? '(' + expr.value + ')()' : expr.value)
+    );
 
     return func.apply(null, values) + '';
 }
@@ -1395,7 +1398,7 @@ ConkittyParser.prototype.readPrecompileExpr = function readPrecompileExpr() {
 
     this.allowPrecompileExpr = true;
 
-    return expr.value;
+    return expr;
 };
 
 
