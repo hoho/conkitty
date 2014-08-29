@@ -31,6 +31,7 @@ template engine, it doesn't produce strings of HTML, but generates DOM instead.
 - [Returning more from templates](#returning-more-from-templates)
 - [Node appender](#node-appender)
 - [External files dependency declaration](#external-files-dependency-declaration)
+- [Precompile expressions](#precompile-expressions)
 - [Generated code notes](#generated-code-notes)
 - [Source maps](#source-maps)
 - [Performance notes](#performance-notes)
@@ -997,6 +998,32 @@ Let's use command line tool like
     /absolute/path/to/button.css
     /absolute/path/to/file1.css
     /absolute/path/to/file1.js
+
+
+## Precompile expressions
+
+Precompile expressions are a kind of black voodoo and should be used in
+exceptional cases only.
+
+Precompile expressions are JavaScript expressions that are evaluated by
+template parser. Precompile expression should start with `|(` and end with `)|`.
+
+For example, we have a template like this:
+
+    template|('-suffix' + prop1)|
+        &|('"style.' + prop2 + '.css"')|
+        p|(prop3 ? '.class1' : '')|
+            "Hello"
+
+In this example `prop1`, `prop2` and `prop3` are keys of environment object
+passed to `Conkitty` constructor. Here is the actual template that will be
+compiled if we pass environment object like
+`{prop1: 111, prop2: 'dark', prop3: true}`:
+
+    template-suffix111
+        &"style.dark.css"
+        p.class1
+            "Hello"
 
 
 ## Generated code notes
