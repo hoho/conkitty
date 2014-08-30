@@ -23,7 +23,9 @@ var path = require('path'),
     bemStopExpr = /[^a-zA-Z0-9-]/,
     bemCheckExpr = /^[a-zA-Z][a-zA-Z0-9-]*$/,
 
-    commandExpr = /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|EXPOSE|JS|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/;
+    commandExpr = /^(?:AS|ATTR|CALL|CHOOSE|EACH|ELSE|EXCEPT|EXPOSE|JS|MEM|OTHERWISE|PAYLOAD|SET|TEST|TRIGGER|WHEN|WITH)$/,
+
+    argExpr = /^[a-zA-Z_$][0-9a-zA-Z_$]*$/;
 
 
 function clearComments(code) {
@@ -132,11 +134,16 @@ function ConkittyCommandPart(type, code, lineAt, charAt) {
 function execPrecompileExpr(expr, env) {
     var args = Object.keys(env || {}),
         i,
+        arg,
         values = [],
         func;
 
     for (i = 0; i < args.length; i++) {
-        values.push(env[args[i]]);
+        arg = args[i];
+        if (!argExpr.test(arg)) {
+            throw new Error('Invalid key `' + arg + '`');
+        }
+        values.push(env[arg]);
     }
 
     func = new Function(
