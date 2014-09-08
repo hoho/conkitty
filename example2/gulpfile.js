@@ -42,7 +42,7 @@ gulp.task('copy-index-html', ['clean'], function() {
 
 
 gulp.task('clean', function() {
-    gulp.src('./dst')
+    return gulp.src('./dst')
         .pipe(clean());
 });
 
