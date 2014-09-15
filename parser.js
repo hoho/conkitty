@@ -118,7 +118,7 @@ function ConkittyParser(filename, code, base, precompileEnv) {
     this.chars = [];
     this.charsPos = 0;
     this.currentChar = {line: 0, col: 0};
-    this.allowPrecompileExpr = true;
+    this.inStringOrJS = false;
     this.precompileEnv = precompileEnv;
 }
 
@@ -174,7 +174,7 @@ ConkittyParser.prototype.nextChar = function nextChar(noMove) {
                     id: this.chars.length
                 };
 
-                if (ret.val === '|' && this.allowPrecompileExpr) {
+                if (ret.val === '|' && !this.inStringOrJS) {
                     var i,
                         pos = this.chars.length,
                         expr = this.readPrecompileExpr(),
@@ -1162,7 +1162,7 @@ ConkittyParser.prototype.readString = function readString(noRaw) {
         val = [],
         ret;
 
-    this.allowPrecompileExpr = false;
+    this.inStringOrJS = true;
 
     ch = this.nextChar();
     if (ch.val !== '"' && ch.val !== "'") {
@@ -1214,7 +1214,7 @@ ConkittyParser.prototype.readString = function readString(noRaw) {
     ret.value = closer + val.join('') + closer;
     ret.raw = raw;
 
-    this.allowPrecompileExpr = true;
+    this.inStringOrJS = false;
 
     return ret;
 };
@@ -1227,7 +1227,7 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
         ret,
         val = [];
 
-    this.allowPrecompileExpr = false;
+    this.inStringOrJS = true;
 
     if (!indent) {
         ch = this.nextChar();
@@ -1379,7 +1379,7 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
         );
     }
 
-    this.allowPrecompileExpr = true;
+    this.inStringOrJS = false;
 
     return ret;
 };
@@ -1389,7 +1389,7 @@ ConkittyParser.prototype.readPrecompileExpr = function readPrecompileExpr() {
     var ch,
         expr;
 
-    this.allowPrecompileExpr = false;
+    this.inStringOrJS = true;
 
     ch = this.nextChar();
     if (ch.val !== '|') {
@@ -1403,7 +1403,7 @@ ConkittyParser.prototype.readPrecompileExpr = function readPrecompileExpr() {
         throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
-    this.allowPrecompileExpr = true;
+    this.inStringOrJS = false;
 
     return expr;
 };
