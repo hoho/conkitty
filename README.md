@@ -26,6 +26,7 @@ template engine, it doesn't produce strings of HTML, but generates DOM instead.
     - [WITH *$name* *expr*](#with-name-expr)
 - [Unescaped strings](#unescaped-strings)
 - [Unescaped JavaScript expressions](#unescaped-javascript-expressions)
+- [Line wrap](#line-wrap)
 - [Namespaced templates](#namespaced-templates)
 - [Remembering created nodes](#remembering-created-nodes)
 - [Returning more from templates](#returning-more-from-templates)
@@ -760,6 +761,30 @@ you are probably doing something wrong.*
     //     &lt;em&gt;no, it is not&lt;/em&gt;
     //     <strong>yes, it is</strong>
     // </div>
+
+
+## Line wrap
+
+Templates can accept many arguments, selectors could be pretty long. It is
+possible to split command into several lines. When parser meets `\`, it skips
+all the whitespaces after and continues with first non-whitespace character.
+
+    template1
+        CALL template2  \
+            "Argument1" \
+            "Argument2" \
+            "Argument3"
+
+    template2 $arg1 $arg2 $arg3
+        div.class1\
+                  [attr1=$arg1]\
+                  [attr2=$arg2]\
+                  [attr3=$arg3]            
+            "Hello"
+
+    // $C.tpl.template1() will produce:
+    //
+    // <div class="class1" attr1="Argument1" attr2="Argument2" attr3="Argument3">Hello</div>
 
 
 ## Namespaced templates
