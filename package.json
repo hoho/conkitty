@@ -1,6 +1,6 @@
 {
     "name": "conkitty",
-    "version": "0.5.14",
+    "version": "0.5.15",
     "description": "Template Engine",
     "main": "conkitty",
     "directories": {
