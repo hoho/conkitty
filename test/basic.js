@@ -428,3 +428,23 @@ test('Template with precompile expressions test', function() {
 
     container.innerHTML = '';
 });
+
+
+test('Multiline test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('multiline-test').end();
+
+    domEqual(domToArray(container), [
+        {name: 'h1', attr: {'class': 'class1 class2 class3 class4'}, children: ['aaa1']},
+        {name: 'h2', attr: {attr1: 'val1', attr2: 'val2'}, children: ['aaa2']},
+        {name: 'h3', children: ['aaa3']},
+        {name: 'h4', children: ['aaa4']},
+        {name: 'h1', attr: {'class': 'class1 class2 class3 class4'}, children: ['bbb1']},
+        {name: 'h2', attr: {attr1: 'val1', attr2: 'val2'}, children: ['bbb2']},
+        {name: 'h3', children: ['bbb3']},
+        {name: 'h4', children: ['bbb4']}
+    ]);
+
+    container.innerHTML = '';
+});

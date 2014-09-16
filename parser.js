@@ -155,11 +155,26 @@ function execPrecompileExpr(expr, env) {
 }
 
 
-ConkittyParser.prototype.nextChar = function nextChar(noMove) {
-    var ret;
+ConkittyParser.prototype.nextChar = function nextChar(noMove, lineContinues) {
+    var ret,
+        sameLine;
 
     if (this.charsPos < this.chars.length) {
         ret = this.chars[this.charsPos];
+        if (ret.val === '\\' && !this.inStringOrJS) {
+            // We've got `\` during reading JS expression, handle it.
+            this.chars.splice(this.charsPos, 1);
+            sameLine = true;
+            while (((ret = this.chars[this.charsPos])) && (ret.EOL || whitespace.test(ret.val))) {
+                if (ret.EOL) { sameLine = false; }
+                this.chars.splice(this.charsPos, 1);
+            }
+            if (ret && sameLine) {
+                this.currentChar = ret;
+                throw new ConkittyErrors.UnexpectedSymbol(this);
+            }
+            return this.nextChar(noMove, sameLine ? 1 : 2);
+        }
         if (!noMove) {
             this.currentChar = ret;
             this.charsPos++;
@@ -174,7 +189,35 @@ ConkittyParser.prototype.nextChar = function nextChar(noMove) {
                     id: this.chars.length
                 };
 
-                if (ret.val === '|' && !this.inStringOrJS) {
+                if (lineContinues || (ret.val === '\\' && !this.inStringOrJS)) {
+                    if (lineContinues) {
+                        sameLine = lineContinues === 1;
+                    } else {
+                        sameLine = true;
+                        this.charAt++;
+                    }
+                    while (true) {
+                        if (this.charAt < this.code[this.lineAt].length) {
+                            if (whitespace.test(this.code[this.lineAt][this.charAt])) {
+                                this.charAt++;
+                            } else {
+                                if (sameLine) {
+                                    this.currentChar = {line: this.lineAt, col: this.charAt};
+                                    throw new ConkittyErrors.UnexpectedSymbol(this);
+                                } else {
+                                    return this.nextChar(noMove);
+                                }
+                            }
+                        } else {
+                            this.lineAt++;
+                            this.charAt = 0;
+                            sameLine = false;
+                            if (this.lineAt >= this.code.length) {
+                                return this.nextChar(noMove);
+                            }
+                        }
+                    }
+                } else if (ret.val === '|' && !this.inStringOrJS) {
                     var i,
                         pos = this.chars.length,
                         expr = this.readPrecompileExpr(),
@@ -216,12 +259,19 @@ ConkittyParser.prototype.nextChar = function nextChar(noMove) {
                     this.charAt++;
                 }
             } else {
+                if (lineContinues) {
+                    this.lineAt++;
+                    this.charAt = 0;
+                    return this.nextChar(noMove, 2);
+                }
+
                 ret = {
                     EOL: true,
                     line: this.lineAt,
                     col: this.charAt,
                     id: this.chars.length
                 };
+
                 if (!noMove) {
                     this.lineAt++;
                     this.charAt = 0;

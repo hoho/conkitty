@@ -265,3 +265,35 @@ default-args-test-inner $arg1 $arg2="hello" $arg3 $arg4=({a: 'b'})
         $arg3
     u
         (JSON.stringify($arg4))
+
+
+multiline-test
+    CALL multiline-test-inner "aaa1" "aaa2" "aaa3" "aaa4"
+
+    CALL \
+        multiline-test-inner \
+            "bbb1" \
+            "bbb2" "bbb3" \
+            "bbb4"
+
+
+multiline-test\
+  -inner \
+    $arg1 \
+    $arg2 $arg3 \
+    $arg4
+    h1.class1\
+        .class2.class3\
+        .class4
+        $arg1
+    h2[attr1 = \
+        ('val1')]\
+      [attr2\
+         =\
+         "val2"\
+      ]
+        $arg2
+    h3
+        $arg3
+    h4
+        $arg4
