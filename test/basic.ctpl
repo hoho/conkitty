@@ -280,7 +280,10 @@ multiline-test
 multiline-test\
   -inner \
     $arg1 \
+           \
     $arg2 $arg3 \
+
+
     $arg4
     h1.class1\
         .class2.class3\
