@@ -102,7 +102,7 @@ test('More complex test', function() {
     $C(container).callTemplate('tpl1', '777', '888').end();
 
     domEqual(domToArray(container), [
-        {name: 'div', attr: {a1: 'bebe'}, children: [
+        {name: 'div', attr: {a1: 'bebe', attr1: 'attr1', attr2: 'attr2'}, children: [
             '888888',
             {name: 'h1', children: ['777yo']},
             'aaa',

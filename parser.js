@@ -406,7 +406,6 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                 if (argumentsDecl) {
                     val.push(this.readArgument(true));
                 } else if (classAttrValue || attrValue) {
-                    val[val.length - 1].mode = 'replace';
                     val[val.length - 1].value = this.readVariable();
                 } else {
                     val.push(this.readVariable());
@@ -416,7 +415,6 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
             case '"':
             case "'":
                 if (classAttrValue || attrValue) {
-                    val[val.length - 1].mode = 'replace';
                     val[val.length - 1].value = this.readString(true);
                 } else {
                     val.push(this.readString());
@@ -425,7 +423,6 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
 
             case '(':
                 if (classAttrValue || attrValue) {
-                    val[val.length - 1].mode = 'replace';
                     val[val.length - 1].value = this.readJS(undefined, true);
                 } else {
                     val.push(this.readJS());
@@ -438,8 +435,10 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                     throw new ConkittyErrors.UnexpectedSymbol(this);
                 }
 
-                val.push(this.readAttrName());
-                if (val[val.length - 1].name === 'class') {
+                i = this.readAttrName();
+                i.mode = 'replace';
+                val.push(i);
+                if (i.name === 'class') {
                     classAttrValue = 1;
                 } else {
                     attrValue = 1;
@@ -533,7 +532,6 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                         }
                     } else {
                         if (classAttrValue) {
-                            val[val.length - 1].mode = 'replace';
                             val[val.length - 1].value = this.readCSS(true);
                         } else {
                             val.push(this.readCSSOrTemplateName());

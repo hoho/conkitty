@@ -11,8 +11,9 @@ page
 
 /* Another comment test */
 tpl1 $arg1 $arg2
-    div
+    div[attr1]
         ATTR ('a' + 1) "bebe"
+        @attr2
 
         ($arg2 + $arg2)
 

@@ -732,7 +732,10 @@ function processAttr(parent, isCommand, cmd) {
                     throw new Error('Unknown mode');
             }
 
-            if (val.type === ConkittyTypes.CSS) {
+            if (!val) {
+                // `@attr` without value.
+                builder.write(JSON.stringify(cmd.value[0].name), cmd.value[0]);
+            } else if (val.type === ConkittyTypes.CSS) {
                 // Is is `class` attribute modification.
                 val = getAttrsByCSS(node, val)['class'];
                 if (val.plain) {
