@@ -131,11 +131,11 @@ function conkittyGetValuePatternPart(cmd, count, noPayload) {
 }
 
 
-function ConkittyCodeBuilder(withSourceMap) {
+function ConkittyCodeBuilder(sourceMapFile) {
     this.code = [];
     this.line = '';
-    if (withSourceMap) {
-        this.sourceMap = new SourceMapGenerator();
+    if (!!sourceMapFile) {
+        this.sourceMap = new SourceMapGenerator({file:sourceMapFile});
     }
 }
 
@@ -2120,7 +2120,7 @@ function getCalledNSTemplates(tpls, template, ret, includes) {
 
 ConkittyGenerator.prototype.generateCode = function(sourceMapFile, noConcatJS) {
     var ret,
-        codeBuilder = new ConkittyCodeBuilder(!!sourceMapFile),
+        codeBuilder = new ConkittyCodeBuilder(sourceMapFile),
         i,
         tpl,
         calls = {'': {}},
