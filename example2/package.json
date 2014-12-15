@@ -3,10 +3,10 @@
     "private": true,
 
     "devDependencies": {
-        "gulp": "~3.8.8",
-        "gulp-conkitty": "~0.5.10",
+        "gulp": "~3.8.10",
+        "gulp-conkitty": "~0.5.12",
         "gulp-filter": "~1.0.2",
-        "gulp-concat": "~2.4.0",
+        "gulp-concat": "~2.4.2",
         "gulp-clean": "~0.3.1"
     }
 }
