@@ -30,75 +30,78 @@ var path = require('path'),
 
 function clearComments(code) {
     var i,
-        j,
-        k,
-        line,
         inComment,
-        inString;
+        inMultilineComment,
+        inString,
+        inRegExp,
+        ret = [];
 
-    i = 0;
-    while (i < code.length) {
-        line = code[i];
-
-        if (!inComment) {
-            inString = false;
-            j = 0;
-
-            while (j < line.length) {
-                if (line[j] === "'" || line[j] === '"') {
-                    if (inString === line[j] && line[j - 1] !== '\\') {
-                        inString = false;
-                        j++;
-                        continue;
-                    } else if (!inString) {
-                        inString = line[j];
-                        j++;
-                        continue;
-                    }
-                }
-
-                if (!inString) {
-                    if (line[j] === '/' && (line[j + 1] === '/' || line[j + 1] === '*')) {
-                        if (line[j + 1] === '*') {
-                            k = line.indexOf('*/');
-
-                            if (k > j + 1) {
-                                line = line.substring(0, j) + new Array(k + 3 - j).join(' ') + line.substring(k + 2);
-                                continue;
-                            } else {
-                                inComment = true;
-                            }
-                        }
-
-                        line = line.substring(0, j);
-                        break;
-                    }
-                }
-
-                j++;
-            }
-
-            code[i] = line;
-        } else { // In comment.
-            k = line.indexOf('*/');
-
-            if (k >= 0) {
-                // Fill comment part with spaces.
-                code[i] = new Array(k + 3).join(' ') + line.substring(k + 2);
-                inComment = false;
-                i--;
-            } else {
-                // Whole string is comment, clear it.
-                code[i] = '';
-            }
-        }
-
-        i++;
-    }
+    code = code.replace(/\s+$/g, '');
 
     for (i = 0; i < code.length; i++) {
-        code[i] = code[i].replace(/\s+$/g, '');
+        if (inComment) {
+            if (code[i] === '\n') {
+                inComment = false;
+                ret.push('\n');
+            } else {
+                ret.push(' ');
+            }
+        } else if (inMultilineComment) {
+            if (code[i] + code[i + 1] === '*/') {
+                inMultilineComment = false;
+                ret.push('  ');
+                i++;
+            } else {
+                ret.push(' ');
+            }
+        } else if (inString) {
+            if (code[i] === '\\') {
+                ret.push(code[i]);
+                i++;
+                if (i < code.length) {
+                    ret.push(code[i]);
+                }
+            } else {
+                if (code[i] === inString) {
+                    inString = false;
+                }
+                ret.push(code[i]);
+            }
+        } else if (inRegExp) {
+            if (code[i] === '\\') {
+                ret.push(code[i]);
+                i++;
+                if (i < code.length) {
+                    ret.push(code[i]);
+                }
+            } else {
+                if (code[i] === '/') {
+                    inRegExp = false;
+                }
+                ret.push(code[i]);
+            }
+        } else {
+            if (code[i] === '"' || code[i] === "'") {
+                inString = code[i];
+                ret.push(code[i]);
+            } else if (code[i] + code[i + 1] === '//') {
+                inComment = true;
+                ret.push('  ');
+                i++;
+            } else if (code[i] + code[i + 1] === '/*') {
+                inMultilineComment = true;
+                ret.push('  ');
+                i++;
+            } else if (code[i] === '/') {
+                inRegExp = true;
+                ret.push(code[i]);
+            } else {
+                ret.push(code[i]);
+            }
+        }
     }
+
+    return ret.join('');
 }
 
 
@@ -112,8 +115,7 @@ function ConkittyParser(filename, code, base, precompileEnv) {
     if (code === undefined) { code = fs.readFileSync(filename, {encoding: 'utf8'}); }
     this.base = base || path.dirname(filename);
     this.src = code.split(/\n\r|\r\n|\r|\n/);
-    this.code = code.split(/\n\r|\r\n|\r|\n/);
-    clearComments(this.code);
+    this.code = clearComments(code).split(/\n\r|\r\n|\r|\n/);
     this.lineAt = this.charAt = 0;
     this.chars = [];
     this.charsPos = 0;
@@ -1287,6 +1289,7 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
 
         var brackets,
             inString = false,
+            inRegExp = false,
             raw = false;
 
         brackets = 1;
@@ -1302,7 +1305,7 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
 
         ch = this.nextChar();
         while (!ch.EOF) {
-            if (!inString) {
+            if (!inString && !inRegExp) {
                 if (ch.val === '(') {
                     brackets++;
                 } else if (ch.val === ')') {
@@ -1325,14 +1328,23 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
                 } else if (ch.val === '"' || ch.val === "'") {
                 /* jshint +W109 */
                     inString = ch.val;
+                } else if (ch.val === '/') {
+                    inRegExp = true;
                 }
-            } else {
+            } else if (inString) {
                 ch2 = this.nextChar(true);
                 if (ch.val === '\\' && (ch2.val === '\\' || ch2.val === inString)) {
                     val.push('\\');
                     ch = this.nextChar();
                 } else if (ch.val === inString) {
                     inString = false;
+                }
+            } else { // inRegExp.
+                if (ch.val === '\\') {
+                    val.push('\\');
+                    ch = this.nextChar();
+                } else if (ch.val === '/') {
+                    inRegExp = false;
                 }
             }
 

@@ -301,3 +301,10 @@ multiline-test\
         $arg3
     h4
         $arg4
+
+
+weird-expr-test
+    (/\(/.exec('(')[0])
+    (/\\/.exec('\\')[0])
+    (/\//.exec('/')[0])
+    (/\\\//.exec('\\\\/')[0])

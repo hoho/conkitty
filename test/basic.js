@@ -448,3 +448,14 @@ test('Multiline test', function() {
 
     container.innerHTML = '';
 });
+
+
+test('Weird expression test', function() {
+    var container = document.getElementById('container');
+
+    $C(container).callTemplate('weird-expr-test').end();
+
+    domEqual(domToArray(container), ['(', '\\', '/', '\\/']);
+
+    container.innerHTML = '';
+});
