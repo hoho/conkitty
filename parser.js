@@ -92,9 +92,9 @@ function clearComments(code) {
                 inMultilineComment = true;
                 ret.push('  ');
                 i++;
-            } else if (code[i] === '/') {
-                inRegExp = true;
-                ret.push(code[i]);
+            //} else if (code[i] === '/') {
+            //    inRegExp = true;
+            //    ret.push(code[i]);
             } else {
                 ret.push(code[i]);
             }
@@ -1329,7 +1329,7 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
                 /* jshint +W109 */
                     inString = ch.val;
                 } else if (ch.val === '/') {
-                    inRegExp = true;
+                    // inRegExp = true;
                 }
             } else if (inString) {
                 ch2 = this.nextChar(true);
