@@ -11,8 +11,6 @@ var path = require('path'),
     ConkittyTypes = require(path.join(__dirname, 'types.js')),
     utils = require(path.join(__dirname, 'utils.js')),
 
-    fs = require('fs'),
-
     whitespace = /[\x20\t\r\n\f]/,
 
     variableStopExpr = /[^a-zA-Z0-9_]/,
@@ -112,7 +110,6 @@ function strip(str) {
 
 function ConkittyParser(filename, code, base, precompileEnv) {
     this.filename = filename;
-    if (code === undefined) { code = fs.readFileSync(filename, {encoding: 'utf8'}); }
     this.base = base || path.dirname(filename);
     this.src = code.split(/\n\r|\r\n|\r|\n/);
     this.code = clearComments(code).split(/\n\r|\r\n|\r|\n/);
