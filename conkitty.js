@@ -1,5 +1,5 @@
 /*!
- * conkitty v0.5.20, https://github.com/hoho/conkitty
+ * conkitty v0.5.21, https://github.com/hoho/conkitty
  * Copyright 2013-2015 Marat Abdullin
  * Released under the MIT license
  */
@@ -12,7 +12,7 @@ var path = require('path'),
     ConkittyErrors = require(path.join(__dirname, 'errors.js')),
     fs = require('fs');
 
-var _cache = {};
+//var _cache = {};
 
 
 // Conkitty constructor.
@@ -23,17 +23,17 @@ function Conkitty(precompileEnv) {
 
 
 Conkitty.prototype.push = function push(filename, code, base) {
-    var key = JSON.stringify([filename, base]);
+    //var key = JSON.stringify([filename, base]);
     if (code === undefined) { code = fs.readFileSync(filename, {encoding: 'utf8'}); }
 
-    var cached = _cache[key];
+    var cached /*= _cache[key]*/;
 
-    if (!cached || (cached.code !== code)) {
-        _cache[key] = cached = {
+    //if (!cached || (cached.code !== code)) {
+        /*_cache[key] =*/ cached = {
             code: code,
             parsed: new ConkittyParser(filename, code, base, this.precompileEnv).readBlock(0) || []
         };
-    }
+    //}
 
     this.code = this.code.concat(cached.parsed);
 };
