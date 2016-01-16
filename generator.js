@@ -134,7 +134,7 @@ function conkittyGetValuePatternPart(cmd, count, noPayload) {
 function ConkittyCodeBuilder(sourceMapFile) {
     this.code = [];
     this.line = '';
-    if (!!sourceMapFile) {
+    if (sourceMapFile) {
         this.sourceMap = new SourceMapGenerator({file:sourceMapFile});
     }
 }
@@ -335,9 +335,7 @@ ConkittyGeneratorValue.prototype.canAbsorb = function absorb(val) {
 };
 
 
-/* jshint -W098 */
-ConkittyGeneratorValue.prototype.absorb = function absorb(val) {
-    //console.log(val);
+ConkittyGeneratorValue.prototype.absorb = function absorb(val) { //eslint-disable-line no-unused-vars
 };
 
 
@@ -348,8 +346,7 @@ ConkittyGeneratorAction.prototype.canAbsorb = function absorb(act) {
 };
 
 
-ConkittyGeneratorAction.prototype.absorb = function absorb(act) {
-    //console.log(act);
+ConkittyGeneratorAction.prototype.absorb = function absorb(act) { //eslint-disable-line no-unused-vars
 };
 
 
@@ -370,15 +367,13 @@ function getExpressionString(node, val, wrap) {
         isVar;
 
     switch (val.type) {
-        /* jshint -W086 */
         case ConkittyTypes.VARIABLE:
             if (!(val.value in node.root.args || val.value in node.root.vars)) {
                 throw new ConkittyErrors.UnknownPart(val);
             }
             isVar = true;
 
-        case ConkittyTypes.JAVASCRIPT:
-        /* jshint +W086 */
+        case ConkittyTypes.JAVASCRIPT: //eslint-disable-line no-fallthrough
             ret = [];
             if (wrap) {
                 if (val.isFunc) {
@@ -410,7 +405,6 @@ function getExpressionString(node, val, wrap) {
             ret.push(JSON.stringify(utils.evalString(val.value)));
             return ret.join('');
 
-        /* jshint -W086 */
         case ConkittyTypes.COMMAND_NAME:
             if (val.value === 'PAYLOAD') {
                 ret = [];
@@ -421,8 +415,7 @@ function getExpressionString(node, val, wrap) {
                 return ret.join('');
             }
 
-        default:
-        /* jshint +W086 */
+        default: //eslint-disable-line no-fallthrough
             throw new ConkittyErrors.InconsistentCommand(val);
     }
 
@@ -836,7 +829,6 @@ function processCall(parent, startsWithCALL, cmd, except) {
         catchNode,
         payloadNode,
         exceptNode,
-        args,
         asVar;
 
     if (startsWithCALL) {

@@ -31,7 +31,7 @@ try {
     sourcemapFilename = program.sourcemap;
 
     if (!program.args.length) {
-        console.log('No template files specified.');
+        console.log('No template files specified.'); //eslint-disable-line no-console
     } else {
         var conkitty = new Conkitty(),
             i,
@@ -50,30 +50,30 @@ try {
         );
 
         if (!tplFilename && !commonFilename && !depsFilename) {
-            console.log(conkitty.getTemplatesCode());
+            console.log(conkitty.getTemplatesCode()); //eslint-disable-line no-console
         } else {
             if (commonFilename) {
                 fs.writeFileSync(commonFilename, conkitty.getCommonCode());
-                console.log('File "' + commonFilename + '" created.');
+                console.log('File "' + commonFilename + '" created.'); //eslint-disable-line no-console
             }
 
             if (tplFilename) {
                 fs.writeFileSync(tplFilename, conkitty.getTemplatesCode());
-                console.log('File "' + tplFilename + '" created.');
+                console.log('File "' + tplFilename + '" created.'); //eslint-disable-line no-console
             }
 
             if (depsFilename) {
                 fs.writeFileSync(depsFilename, conkitty.getIncludes().join('\n'));
-                console.log('File "' + depsFilename + '" created.');
+                console.log('File "' + depsFilename + '" created.'); //eslint-disable-line no-console
             }
 
             if (tplFilename && sourcemapFilename) {
                 fs.writeFileSync(sourcemapFilename, conkitty.getSourceMap());
-                console.log('File "' + sourcemapFilename + '" created.');
+                console.log('File "' + sourcemapFilename + '" created.'); //eslint-disable-line no-console
             }
         }
     }
 } catch(e) {
-    console.log(e.message);
+    console.log(e.message); //eslint-disable-line no-console
     process.exit(1);
 }

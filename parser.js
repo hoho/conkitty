@@ -79,7 +79,7 @@ function clearComments(code) {
                 ret.push(code[i]);
             }
         } else {
-            if (code[i] === '"' || code[i] === "'") {
+            if (code[i] === '"' || code[i] === "'") { //eslint-disable-line quotes
                 inString = code[i];
                 ret.push(code[i]);
             } else if (code[i] + code[i + 1] === '//') {
@@ -195,7 +195,7 @@ ConkittyParser.prototype.nextChar = function nextChar(noMove, lineContinues) {
                         sameLine = true;
                         this.charAt++;
                     }
-                    while (true) {
+                    while (true) { //eslint-disable-line no-constant-condition
                         if (this.charAt < this.code[this.lineAt].length) {
                             if (whitespace.test(this.code[this.lineAt][this.charAt])) {
                                 this.charAt++;
@@ -328,7 +328,7 @@ ConkittyParser.prototype.skipEmptyLines = function skipEmptyLines() {
     var ch,
         sincePrevEOL = 0;
 
-    while (true) {
+    while (true) { //eslint-disable-line no-constant-condition
         ch = this.nextChar();
         if (ch.EOF) {
             return false;
@@ -412,7 +412,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                 break;
 
             case '"':
-            case "'":
+            case "'": //eslint-disable-line quotes
                 if (classAttrValue || attrValue) {
                     val[val.length - 1].value = this.readString(true);
                 } else {
@@ -456,7 +456,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                             break;
 
                         case '"':
-                        case "'":
+                        case "'": //eslint-disable-line quotes
                             val[val.length - 1].value = this.readString(true);
                             break;
 
@@ -485,7 +485,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
                             break;
 
                         case '"':
-                        case "'":
+                        case "'": //eslint-disable-line quotes
                             val[val.length - 1].value = this.readString(true);
                             break;
 
@@ -510,6 +510,7 @@ ConkittyParser.prototype.readCommand = function readCommand(indent) {
 
             default:
                 if (argumentsDecl) {
+                    // No action.
                 } else if (argumentsVal) {
                     val.push(this.readArgument(false));
                     if (val[val.length - 1].type === ConkittyTypes.COMMAND_NAME) {
@@ -657,21 +658,19 @@ ConkittyParser.prototype.readArgument = function readArgument(isDecl) {
                 break;
 
             case '"':
-            case "'":
+            case "'": //eslint-disable-line quotes
                 ret.value = this.readString(true);
                 break;
 
             case '$':
-                /* jshint -W086 */
                 if (!isDecl) {
                     ret.value = this.readVariable();
                     break;
                 }
 
-            default:
+            default: //eslint-disable-line no-fallthrough
                 ch = this.nextChar();
                 throw new ConkittyErrors.UnexpectedSymbol(this);
-                /* jshint +W086 */
         }
 
         ch = this.nextChar(true);
@@ -771,7 +770,7 @@ ConkittyParser.prototype.readInclude = function readInclude() {
     this.skipWhitespaces();
     ch = this.nextChar(true);
 
-    if (ch.val !== '"' && ch.val !== "'") {
+    if (ch.val !== '"' && ch.val !== "'") { //eslint-disable-line quotes
         this.nextChar();
         throw new ConkittyErrors.UnexpectedSymbol(this);
     }
@@ -989,7 +988,7 @@ ConkittyParser.prototype.readCSSAttr = function readCSSAttr() {
                 break;
 
             case '"':
-            case "'":
+            case "'": //eslint-disable-line quotes
                 val = this.readString(true);
                 break;
 
@@ -1096,7 +1095,7 @@ ConkittyParser.prototype.readCSSBEMMod = function readCSSBEMMod(block) {
                 break;
 
             case '"':
-            case "'":
+            case "'": //eslint-disable-line quotes
                 val = this.readString(true);
                 break;
 
@@ -1212,7 +1211,7 @@ ConkittyParser.prototype.readString = function readString(noRaw) {
     this.inStringOrJS = true;
 
     ch = this.nextChar();
-    if (ch.val !== '"' && ch.val !== "'") {
+    if (ch.val !== '"' && ch.val !== "'") { //eslint-disable-line quotes
         throw new ConkittyErrors.UnexpectedSymbol(this);
     }
 
@@ -1321,9 +1320,7 @@ ConkittyParser.prototype.readJS = function readJS(indent, noRaw) {
                             break;
                         }
                     }
-                /* jshint -W109 */
-                } else if (ch.val === '"' || ch.val === "'") {
-                /* jshint +W109 */
+                } else if (ch.val === '"' || ch.val === "'") { //eslint-disable-line quotes
                     inString = ch.val;
                 } else if (ch.val === '/') {
                     // inRegExp = true;

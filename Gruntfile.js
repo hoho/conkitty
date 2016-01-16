@@ -7,7 +7,24 @@ module.exports = function(grunt) {
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
 
-        jshint: {
+        eslint: {
+            options: {
+                configFile: 'eslint.json'
+            },
+            src: [
+                'conkitty.js',
+                'parser.js',
+                'generator.js',
+                'types.js',
+                'errors.js',
+                'utils.js',
+                'bin/conkitty',
+                'Gruntfile.js'
+            ]
+        },
+
+/*        eslint: {
+
             all: {
                 src: [
                     'conkitty.js',
@@ -23,7 +40,7 @@ module.exports = function(grunt) {
                     jshintrc: '.jshintrc'
                 }
             }
-        },
+        },*/
 
         clean: {
             tmp: ['tmp']
@@ -62,7 +79,7 @@ module.exports = function(grunt) {
         }
     });
 
-    grunt.loadNpmTasks('grunt-contrib-jshint');
+    grunt.loadNpmTasks('grunt-eslint');
     grunt.loadNpmTasks('grunt-contrib-qunit');
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-contrib-clean');
@@ -126,5 +143,5 @@ module.exports = function(grunt) {
         }
     });
 
-    grunt.registerTask('default', ['jshint', 'clean', 'assert-version', 'conkitty', 'uglify', 'qunit']);
+    grunt.registerTask('default', ['eslint', 'clean', 'assert-version', 'conkitty', 'uglify', 'qunit']);
 };
