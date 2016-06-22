@@ -1,6 +1,6 @@
 /*!
- * conkitty v0.5.21, https://github.com/hoho/conkitty
- * Copyright 2013-2015 Marat Abdullin
+ * conkitty v0.6.0, https://github.com/hoho/conkitty
+ * Copyright 2013-2016 Marat Abdullin
  * Released under the MIT license
  */
 'use strict';
