@@ -44,7 +44,7 @@ function domToArray(node, self) {
     return ret;
 }
 
-function attrEqual(val, expected) {
+function attrEqual(assert, val, expected) {
     var i = 0, j = 0, name;
 
     for (name in val) {
@@ -55,37 +55,37 @@ function attrEqual(val, expected) {
         j++;
     }
 
-    deepEqual(i, j, 'Same attribute count');
+    assert.deepEqual(i, j, 'Same attribute count');
 
     for (name in val) {
-        deepEqual(val[name], expected[name], 'Same attribute value');
+        assert.deepEqual(val[name], expected[name], 'Same attribute value');
     }
 }
 
-function domEqual(val, expected) {
+function domEqual(assert, val, expected) {
     var i;
 
-    deepEqual(val.length, expected.length, 'Same node count');
+    assert.deepEqual(val.length, expected.length, 'Same node count');
 
     for (i = 0; i < Math.min(val.length, expected.length); i++) {
-        deepEqual(typeof val[i], typeof expected[i], 'Same node type');
+        assert.deepEqual(typeof val[i], typeof expected[i], 'Same node type');
 
         if (typeof val[i] === 'object') {
-            deepEqual(val[i].name, expected[i].name, 'Same name');
-            attrEqual(val[i].attr, expected[i].attr);
-            domEqual(val[i].children, expected[i].children);
+            assert.deepEqual(val[i].name, expected[i].name, 'Same name');
+            attrEqual(assert, val[i].attr, expected[i].attr);
+            domEqual(assert, val[i].children, expected[i].children);
         } else {
-            deepEqual(val[i], expected[i], 'Same text value');
+            assert.deepEqual(val[i], expected[i], 'Same text value');
         }
     }
 }
 
-test('Simple test', function() {
+QUnit.test('Simple test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('page').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'div', attr: {'class': 'class ahah', id: 'id', 'data-ololo': '123', 'attr1': 'attr1', 'attr2': '', 'attr3': 'hello'}, children: [
             'Hello ',
             {name: 'strong', children: ['wor', 'ld']},
@@ -96,12 +96,12 @@ test('Simple test', function() {
     container.innerHTML = '';
 });
 
-test('More complex test', function() {
+QUnit.test('More complex test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('tpl1', '777', '888').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'div', attr: {a1: 'bebe', attr1: 'attr1', attr2: 'attr2'}, children: [
             '888888',
             {name: 'h1', children: ['777yo']},
@@ -125,12 +125,12 @@ test('More complex test', function() {
     container.innerHTML = '';
 });
 
-test('Each test', function() {
+QUnit.test('Each test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('eachtest', [[11, 22, 33], ['aa', 'bb']]).end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'ul', children: [
             {name: 'li', children: [
                 '11,22,33',
@@ -153,12 +153,12 @@ test('Each test', function() {
     container.innerHTML = '';
 });
 
-test('Each test 2', function() {
+QUnit.test('Each test 2', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('eachtest2', [{a: 11, b: 22}, {c: 33, d: 44}]).end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         'eeee',
         'eeee',
         {name: 'ul', children: [
@@ -181,12 +181,12 @@ test('Each test 2', function() {
 });
 
 
-test('Each test 3', function() {
+QUnit.test('Each test 3', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('eachtest3', [], []).end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         'no eeee',
         {name: 'ul', children: [
             {name: 'li', children: ['no items']}
@@ -197,7 +197,7 @@ test('Each test 3', function() {
 
     $C(container).callTemplate('eachtest3', [1, 2], [{}, {a: 'aa', b: 'bb'}, [33, 44], []]).end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         'eeee',
         'eeee',
         {name: 'ul', children: [
@@ -222,12 +222,12 @@ test('Each test 3', function() {
 });
 
 
-test('Unescaped test', function() {
+QUnit.test('Unescaped test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('unescaped').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'div', attr: {aa: 's"<>ss', he: 'ha'}, children: []},
         {name: 'p', children: ['"hello"']},
         {name: 'a', children: ['\'world\'']},
@@ -237,12 +237,12 @@ test('Unescaped test', function() {
     container.innerHTML = '';
 });
 
-test('Dynamic call name test', function() {
+QUnit.test('Dynamic call name test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('dynamic-call').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         'ooooo',
         'yoyoyo'
     ]);
@@ -250,22 +250,22 @@ test('Dynamic call name test', function() {
     container.innerHTML = '';
 });
 
-test('Memorize test', function() {
+QUnit.test('Memorize test', function(assert) {
     var container = document.getElementById('container'),
         ret = $C.tpl['mem-test'].call(container);
 
-    deepEqual(ret, undefined);
+    assert.deepEqual(ret, undefined);
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'div', attr: {id: 'm1'}, children: []},
         {name: 'div', attr: {id: 'm2'}, children: []}
     ]);
 
-    deepEqual($C.mem.m0, 'aaaaa');
-    deepEqual($C.mem.m1.getAttribute('id'), 'm1');
-    deepEqual($C.mem['m2-999'].node.getAttribute('id'), 'm2');
-    deepEqual($C.mem['m2-999'].aa, 'bb');
-    deepEqual($C.mem.mmm, undefined);
+    assert.deepEqual($C.mem.m0, 'aaaaa');
+    assert.deepEqual($C.mem.m1.getAttribute('id'), 'm1');
+    assert.deepEqual($C.mem['m2-999'].node.getAttribute('id'), 'm2');
+    assert.deepEqual($C.mem['m2-999'].aa, 'bb');
+    assert.deepEqual($C.mem.mmm, undefined);
 
     container.innerHTML = '';
 
@@ -273,37 +273,37 @@ test('Memorize test', function() {
 
     ret = $C.tpl['mem-test'].call(container);
 
-    deepEqual(ret, undefined);
+    assert.deepEqual(ret, undefined);
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'div', attr: {id: 'm1'}, children: []},
         {name: 'div', attr: {id: 'm2'}, children: []}
     ]);
 
-    deepEqual($C.mem.m0, 'aaaaa');
-    deepEqual($C.mem.m1.getAttribute('id'), 'm1');
-    deepEqual($C.mem['m2-999'].node.getAttribute('id'), 'm2');
-    deepEqual($C.mem['m2-999'].aa, 'bb');
-    deepEqual($C.mem.mmm, 'uuuuu');
+    assert.deepEqual($C.mem.m0, 'aaaaa');
+    assert.deepEqual($C.mem.m1.getAttribute('id'), 'm1');
+    assert.deepEqual($C.mem['m2-999'].node.getAttribute('id'), 'm2');
+    assert.deepEqual($C.mem['m2-999'].aa, 'bb');
+    assert.deepEqual($C.mem.mmm, 'uuuuu');
 
     $C.mem = {};
     container.innerHTML = '';
 });
 
-test('ACT test', function() {
+QUnit.test('ACT test', function(assert) {
     document.actTest = undefined;
     document.actTest2 = undefined;
 
     $C().callTemplate('act-test').end();
 
-    deepEqual(document.actTest, 'Yo!', 'ACT worked');
-    deepEqual(document.actTest2, 'Hahahaboompiuboom', 'ACT worked');
+    assert.deepEqual(document.actTest, 'Yo!', 'ACT worked');
+    assert.deepEqual(document.actTest2, 'Hahahaboompiuboom', 'ACT worked');
 
     document.actTest = undefined;
     document.actTest2 = undefined;
 });
 
-test('TRIGGER test', function() {
+QUnit.test('TRIGGER test', function(assert) {
     var expected = [
         'div|["div1",123]',
         'p|["p1",234,345]',
@@ -313,7 +313,7 @@ test('TRIGGER test', function() {
 
     $C.on(function() {
         var ret = this.tagName.toLowerCase() + '|' + JSON.stringify(Array.prototype.slice.call(arguments, 0));
-        deepEqual(ret, expected.shift());
+        assert.deepEqual(ret, expected.shift());
     });
 
     $C().callTemplate('trigger-test').end();
@@ -321,22 +321,22 @@ test('TRIGGER test', function() {
     $C.off();
 });
 
-test('WITH test', function() {
+QUnit.test('WITH test', function(assert) {
     var container = document.getElementById('container'),
         ret = $C.tpl['with-test'].call(container, {ololo: {piupiu: "yo!"}});
 
-    deepEqual(ret, undefined);
-    domEqual(domToArray(container), ["yo!"]);
+    assert.deepEqual(ret, undefined);
+    domEqual(assert, domToArray(container), ["yo!"]);
 
     container.innerHTML = '';
 });
 
-test('Lazy PAYLOAD test', function() {
+QUnit.test('Lazy PAYLOAD test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('lazy-payload-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'h1', children: [
             {name: 'p', children: ['test1', {name: 'span', children: ['1']}]},
             {name: 'h6', children: ['test1', {name: 'span', children: ['2']}]},
@@ -358,12 +358,12 @@ test('Lazy PAYLOAD test', function() {
     container.innerHTML = '';
 });
 
-test('Safe CALL test', function() {
+QUnit.test('Safe CALL test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('safe-call-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'em', children: ['error1']},
         {name: 'p', children: ['ok']},
         {name: 'div', children: ['error3']}
@@ -372,12 +372,12 @@ test('Safe CALL test', function() {
     container.innerHTML = '';
 });
 
-test('Default argument values and named arguments test', function() {
+QUnit.test('Default argument values and named arguments test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('default-args-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'h1', children: [
             {name: 'span', children: []},
             {name: 'em', children: ["hello"]},
@@ -414,12 +414,12 @@ test('Default argument values and named arguments test', function() {
 });
 
 
-test('Template with precompile expressions test', function() {
+QUnit.test('Template with precompile expressions test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('precompile-expr-100503-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'h3', children: ["|('no effect')|"]},
         {name: 'div', children: ["|('no effect either')|"]},
         {name: 'p', attr: {'class': 'cls1', attr1: 'attr1'}, children: ['alala']},
@@ -430,12 +430,12 @@ test('Template with precompile expressions test', function() {
 });
 
 
-test('Multiline test', function() {
+QUnit.test('Multiline test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('multiline-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'h1', attr: {'class': 'class1 class2 class3 class4'}, children: ['aaa1']},
         {name: 'h2', attr: {attr1: 'val1', attr2: 'val2'}, children: ['aaa2']},
         {name: 'h3', children: ['aaa3']},
@@ -450,12 +450,12 @@ test('Multiline test', function() {
 });
 
 
-test('Weird expression test', function() {
+QUnit.test('Weird expression test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('weird-expr-test').end();
 
-    domEqual(domToArray(container), [/*'(', '\\', '/', '\\/'*/]);
+    domEqual(assert, domToArray(container), [/*'(', '\\', '/', '\\/'*/]);
 
     container.innerHTML = '';
 });

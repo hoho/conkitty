@@ -1,9 +1,9 @@
-test('Namespaces test', function() {
+QUnit.test('Namespaces test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('namespaces-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'header', children: [
             {name: 'div', attr: {'class': 'logo'}, children: [
                 'Bebebe',
@@ -20,14 +20,14 @@ test('Namespaces test', function() {
         ]}
     ]);
 
-    deepEqual($C._tpl['ns1::'], undefined);
-    deepEqual($C._tpl['ns2::'], undefined);
-    deepEqual($C._tpl['ns100500::'], undefined);
-    deepEqual($C._tpl['ns1::login'], undefined);
-    deepEqual($C._tpl['ns2::dropdown'], undefined);
-    deepEqual($C._tpl['ns3::copyleft'], undefined);
-    deepEqual($C._tpl['ns3::button'], undefined);
-    deepEqual($C._tpl['ns100500::yep'], undefined);
+    assert.deepEqual($C._tpl['ns1::'], undefined);
+    assert.deepEqual($C._tpl['ns2::'], undefined);
+    assert.deepEqual($C._tpl['ns100500::'], undefined);
+    assert.deepEqual($C._tpl['ns1::login'], undefined);
+    assert.deepEqual($C._tpl['ns2::dropdown'], undefined);
+    assert.deepEqual($C._tpl['ns3::copyleft'], undefined);
+    assert.deepEqual($C._tpl['ns3::button'], undefined);
+    assert.deepEqual($C._tpl['ns100500::yep'], undefined);
 
     container.innerHTML = '';
 });

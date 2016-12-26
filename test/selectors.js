@@ -1,9 +1,9 @@
-test('Selectors test', function() {
+QUnit.test('Selectors test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('selectors-test').end();
 
-    domEqual(domToArray(container), [{name: 'h1', children: [
+    domEqual(assert, domToArray(container), [{name: 'h1', children: [
         {name: 'span', attr: {
             'class': 'something ccond2-false',
             id: 'very',
@@ -56,12 +56,12 @@ test('Selectors test', function() {
 });
 
 
-test('BEM selectors test', function() {
+QUnit.test('BEM selectors test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('bem-selectors-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'h1', children: [{name: 'span', attr: {
             'class': 'a b-block1 b b-block1_mod1 c b-block2 d e b-block2_mod3_mmm b-block2_mod5 b-block4__elem2 b-block2_mod2_3 b-block3__elem1 b-block4__elem2_mod7'
         }, children: []}]},
@@ -80,12 +80,12 @@ test('BEM selectors test', function() {
 });
 
 
-test('Dynamic element name test', function() {
+QUnit.test('Dynamic element name test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('dynamic-element-name-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'abc', children: []},
         {name: 'blah', children: []},
         {name: 'efg', children: []},

@@ -1,9 +1,9 @@
-test('Classes test', function() {
+QUnit.test('Classes test', function(assert) {
     var container = document.getElementById('container');
 
     $C(container).callTemplate('change-class-test').end();
 
-    domEqual(domToArray(container), [
+    domEqual(assert, domToArray(container), [
         {name: 'div', attr: {'class': 'hello beautiful world really'}, children: []},
         {name: 'span', attr: {'class': 'this is good'}, children: []},
         {name: 'em', attr: {'class': 'ululu ilili'}, children: []},
