@@ -779,7 +779,7 @@ all the whitespaces after and continues with first non-whitespace character.
         div.class1\
                   [attr1=$arg1]\
                   [attr2=$arg2]\
-                  [attr3=$arg3]            
+                  [attr3=$arg3]
             "Hello"
 
     // $C.tpl.template1() will produce:
@@ -1097,7 +1097,7 @@ Or use `--sourcemap` argument of command line utility:
 
     conkitty --common=common.js --templates=tpl.js --sourcemap=tpl.map tpl.ctpl
 
-When you compile templates with source map, `//@ sourceMappingURL=your.source.map`
+When you compile templates with source map, `//# sourceMappingURL=your.source.map`
 comment is being added on top of your compiled templates code.
 
 
