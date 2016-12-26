@@ -9,8 +9,8 @@ var clean = require('gulp-clean');
 
 
 gulp.task('conkitty', ['clean'], function() {
-    var cssFilter = gulpFilter('**/*.css');
-    var jsFilter = gulpFilter(['**/*.js', '!tpl.js']); // Everything except tpl.js.
+    var cssFilter = gulpFilter('**/*.css', {restore: true});
+    var jsFilter = gulpFilter(['**/*.js', '!tpl.js'], {restore: true}); // Everything except tpl.js.
 
     return gulp.src(['./src/**/*.ctpl'])
         .pipe(conkitty({
@@ -25,11 +25,11 @@ gulp.task('conkitty', ['clean'], function() {
         // declared in templates (because deps setting is true) dependencies.
         .pipe(cssFilter)
         .pipe(concat('deps.css')) // Concat all css files to bundle deps.css.
-        .pipe(cssFilter.restore())
+        .pipe(cssFilter.restore)
 
         .pipe(jsFilter)
         .pipe(concat('deps.js')) // Concat all js files except for tpl.js to bundle deps.js.
-        .pipe(jsFilter.restore())
+        .pipe(jsFilter.restore)
 
         .pipe(gulp.dest('./dst')); // Copy deps.css, deps.js, tpl.js and tpl.map to dst.
 });
